@@ -14,8 +14,10 @@ venv.bak/
 # Distribution / packaging
 .Python
 build/
+!build/.gitkeep
 develop-eggs/
 dist/
+!dist/.gitkeep
 downloads/
 eggs/
 .eggs/
@@ -35,11 +37,22 @@ MANIFEST
 pip-log.txt
 pip-delete-this-directory.txt
 
-# PyInstaller
-*.manifest
-*.spec
-installer.dat/
-pkg/
+# AUR (archlinux package) artifacts generated locally
+aur/*/pkg/
+aur/*/src/
+aur/*/*.tar.zst
+aur/*/*.tar.gz
+aur/*/*.tar.xz
+aur/*/*.tar.bz2
+!aur/*/PKGBUILD
+!aur/*/.SRCINFO
+!aur/*/*.desktop
+!aur/*/*.png
+!aur/*/*.install
+
+# GitHub Release staging (upload artifacts, source archives, checksums)
+releases/
+!releases/.gitkeep
 
 # Unit test / coverage reports
 htmlcov/
@@ -117,10 +130,19 @@ cached/
 *.onnx
 *.msgpack
 *.arrow
-*.tar.gz
-*.zip
-*.7z
-*.rar
+
+# Source/archive patterns — allow tracked project assets like release tarballs
+# and pre-built packages intended for distribution.
+!*.tar.zst
+!*.tar.gz
+!*.tar.xz
+!*.tar.bz2
+!*.zip
+!*.7z
+!*.rar
+!*.tgz
+!*.tbz2
+!*.txz
 
 # Local settings overrides
 settings/*.local.ini

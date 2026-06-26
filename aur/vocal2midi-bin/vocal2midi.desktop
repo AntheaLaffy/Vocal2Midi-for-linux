@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Vocal2Midi
+GenericName=Vocal to MIDI
+Comment=AI-powered vocal audio to lyric-aligned MIDI / USTX converter
+Exec=/opt/vocal2midi/Vocal2Midi
+Icon=vocal2midi
+Terminal=false
+Categories=AudioVideo;Audio;Music;Editing;
+Keywords=vocal;midi;asr;transcription;audio;music;
+StartupWMClass=vocal2midi

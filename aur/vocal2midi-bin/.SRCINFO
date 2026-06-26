@@ -1,0 +1,16 @@
+pkgbase = vocal2midi-bin
+	pkgdesc = AI vocal-to-MIDI desktop tool (PyQt5 + ONNX Runtime, Linux x86_64 binary)
+	pkgver = 0.1.0
+	pkgrel = 1
+	url = https://github.com/AntheaLaffy/Vocal2Midi-for-linux
+	arch = x86_64
+	license = MIT
+	options = !strip
+	source = https://github.com/AntheaLaffy/Vocal2Midi-for-linux/releases/download/v0.1.0/Vocal2Midi-linux-amd64.tar.zst
+	source = vocal2midi.desktop
+	source = vocal2midi.png::https://raw.githubusercontent.com/AntheaLaffy/Vocal2Midi-for-linux/v0.1.0/icon.png
+	sha256sums = ab740c5fcdb072f776f49962813b33930fc18bf04a9bffc39a75ab8b24e68aa0
+	sha256sums = 2eee7b972f9ea19f150ee333e221857ed19522c7526683856f94711b45ab7f98
+	sha256sums = ca784d2e2ae4b57a1f2eff7065a4f6c3612593be3b651b4e0c97279cd3615e51
+
+pkgname = vocal2midi-bin
