@@ -1,0 +1,20 @@
+# Runtime note:
+# - `llama.cpp` stays on CPU OR Vulkan.
+# - Windows uses DirectML when available.
+# - Linux/macOS use the standard ONNX Runtime CPU package and install `qwen-asr`
+#   from requirements-linux.txt for the official Qwen backend.
+
+click
+librosa
+mido
+numpy<2.0.0
+PyQt5
+PyQt-Fluent-Widgets
+PyYAML
+scipy>=1.10.0
+onnxruntime-directml; platform_system == "Windows"
+onnxruntime; platform_system != "Windows"
+soundfile
+textgrid
+tqdm
+pyopenjtalk; platform_system == "Windows"

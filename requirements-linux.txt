@@ -1,0 +1,4 @@
+# Linux runtime dependencies.
+# Windows DirectML users should keep using requirements.txt on Windows.
+-r requirements.txt
+qwen-asr

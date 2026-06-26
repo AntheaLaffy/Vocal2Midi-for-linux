@@ -1,0 +1,9 @@
+name: vocal2midi
+channels:
+  - conda-forge
+dependencies:
+  - python=3.12
+  - onnxruntime
+  - pip
+  - pip:
+    - -r requirements.txt
