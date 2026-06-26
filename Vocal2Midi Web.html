@@ -1,0 +1,1937 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vocal2Midi - Web UI</title>
+
+    <!-- Socket.IO Client Library -->
+    <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+
+    <style>
+        :root {
+            --color-primary: #0078D4;
+            --color-primary-hover: #106EBE;
+            --color-primary-active: #005A9E;
+            --color-secondary: #005A9E;
+            --color-bg-neutral: #FAFAFA;
+            --color-bg-card: #FFFFFF;
+            --color-text-primary: #201F1E;
+            --color-text-secondary: #605E5C;
+            --color-text-tertiary: #8A8886;
+            --color-accent-orange: #FF8C00;
+            --color-border: #E1DFDD;
+            --color-border-focus: #0078D4;
+            --color-success: #107C10;
+            --color-error: #A4262C;
+            --color-warning: #FF8C00;
+
+            --font-family-base: "Segoe UI Variable", "Segoe UI", system-ui, -apple-system, sans-serif;
+            --font-family-mono: "Cascadia Code", "Consolas", "Courier New", monospace;
+
+            --spacing-xs: 4px;
+            --spacing-sm: 8px;
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --spacing-xxl: 48px;
+            --spacing-xxxl: 64px;
+
+            --radius-sm: 4px;
+            --radius-md: 8px;
+            --radius-lg: 12px;
+
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.06);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.15);
+
+            --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-normal: 200ms cubic-bezier(0.4, 0, 0.2, 1);
+            --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+
+            --sidebar-width: 50px;
+            --header-height: 48px;
+            --content-max-width: 1200px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family-base);
+            font-size: 14px;
+            line-height: 1.5;
+            color: var(--color-text-primary);
+            background-color: var(--color-bg-neutral);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+        }
+
+        .app-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            position: fixed;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: var(--sidebar-width);
+            background-color: var(--color-bg-card);
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            z-index: 100;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            padding: var(--spacing-sm) 0;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+            height: 44px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            border-left: 3px solid transparent;
+            color: var(--color-text-secondary);
+            position: relative;
+            text-decoration: none;
+        }
+
+        .nav-item:hover {
+            background-color: rgba(0, 120, 212, 0.05);
+            color: var(--color-primary);
+        }
+
+        .nav-item.active {
+            background-color: rgba(0, 120, 212, 0.1);
+            color: var(--color-primary);
+            border-left-color: var(--color-primary);
+        }
+
+        .nav-item svg {
+            width: 20px;
+            height: 20px;
+            fill: currentColor;
+        }
+
+        .nav-item-bottom {
+            margin-top: auto;
+            border-top: 1px solid var(--color-border);
+        }
+
+        .main-content {
+            margin-left: var(--sidebar-width);
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            height: var(--header-height);
+            background-color: var(--color-bg-card);
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            padding: 0 var(--spacing-lg);
+            box-shadow: var(--shadow-sm);
+            z-index: 50;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .header-icon {
+            width: 24px;
+            height: 24px;
+        }
+
+        .connection-status {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-xs);
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--color-text-tertiary);
+            transition: all var(--transition-fast);
+        }
+
+        .status-dot.connected {
+            background-color: var(--color-success);
+            box-shadow: 0 0 6px rgba(16, 124, 16, 0.5);
+        }
+
+        .status-dot.disconnected {
+            background-color: var(--color-error);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .content-area {
+            flex: 1;
+            overflow-y: auto;
+            padding: var(--spacing-xl);
+            max-width: var(--content-max-width);
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        .page {
+            display: none;
+            animation: fadeIn var(--transition-normal) ease-in;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .page-title {
+            font-size: 24px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .card {
+            background-color: var(--color-bg-card);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            padding: var(--spacing-lg);
+            margin-bottom: var(--spacing-lg);
+            transition: all var(--transition-fast);
+            border: 1px solid transparent;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-md);
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-md);
+        }
+
+        .card-icon {
+            font-size: 18px;
+        }
+
+        .card-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            flex: 1;
+        }
+
+        .card-actions {
+            display: flex;
+            gap: var(--spacing-sm);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: var(--spacing-xs);
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 500;
+            border-radius: var(--radius-sm);
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            font-family: inherit;
+            white-space: nowrap;
+            line-height: 1.4;
+        }
+
+        .btn:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        .btn:active:not(:disabled) {
+            transform: scale(0.98);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background-color: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background-color: var(--color-primary-hover);
+            border-color: var(--color-primary-hover);
+        }
+
+        .btn-secondary {
+            background-color: var(--color-bg-card);
+            color: var(--color-text-primary);
+            border-color: var(--color-border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background-color: var(--color-bg-neutral);
+            border-color: var(--color-primary);
+            color: var(--color-primary);
+        }
+
+        .btn-danger {
+            color: var(--color-error);
+            border-color: transparent;
+        }
+
+        .btn-danger:hover:not(:disabled) {
+            background-color: rgba(162, 38, 44, 0.1);
+        }
+
+        .btn-lg {
+            padding: 10px 24px;
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .form-group {
+            margin-bottom: var(--spacing-md);
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            font-size: 13px;
+            font-family: inherit;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            background-color: var(--color-bg-card);
+            color: var(--color-text-primary);
+            transition: all var(--transition-fast);
+            outline: none;
+        }
+
+        .form-control:focus {
+            border-color: var(--color-border-focus);
+            box-shadow: 0 0 0 3px rgba(0, 120, 212, 0.1);
+        }
+
+        .form-control::placeholder {
+            color: var(--color-text-tertiary);
+        }
+
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+            line-height: 1.5;
+        }
+
+        select.form-control {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23605E5C' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        input[type="number"].form-control {
+            -moz-appearance: textfield;
+        }
+
+        input[type="number"].form-control::-webkit-inner-spin-button,
+        input[type="number"].form-control::-webkit-outer-spin-button {
+            opacity: 1;
+        }
+
+        .file-list {
+            list-style: none;
+            max-height: 120px;
+            overflow-y: auto;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            background-color: var(--color-bg-neutral);
+        }
+
+        .file-list li {
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            border-bottom: 1px solid var(--color-border);
+            font-size: 13px;
+        }
+
+        .file-list li:last-child {
+            border-bottom: none;
+        }
+
+        .file-list .file-name {
+            flex: 1;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .file-list .file-remove {
+            cursor: pointer;
+            color: var(--color-error);
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: var(--radius-sm);
+            transition: all var(--transition-fast);
+        }
+
+        .file-list .file-remove:hover {
+            background-color: rgba(162, 38, 44, 0.1);
+        }
+
+        .params-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: var(--spacing-md);
+        }
+
+        .param-item {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-xs);
+        }
+
+        .switch-group {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+        }
+
+        .switch {
+            position: relative;
+            width: 44px;
+            height: 22px;
+            background-color: var(--color-border);
+            border-radius: 11px;
+            cursor: pointer;
+            transition: all var(--transition-fast);
+            flex-shrink: 0;
+        }
+
+        .switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 18px;
+            height: 18px;
+            background-color: white;
+            border-radius: 50%;
+            transition: all var(--transition-fast);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+
+        .switch.active {
+            background-color: var(--color-primary);
+        }
+
+        .switch.active::after {
+            transform: translateX(22px);
+        }
+
+        /* Progress Bar Styles */
+        .progress-container {
+            margin: var(--spacing-lg) 0;
+            padding: var(--spacing-lg);
+            background-color: var(--color-bg-card);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--color-border);
+        }
+
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: var(--spacing-sm);
+        }
+
+        .progress-stage {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--color-text-secondary);
+        }
+
+        .progress-percentage {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--color-primary);
+        }
+
+        .progress-bar-wrapper {
+            width: 100%;
+            height: 8px;
+            background-color: var(--color-bg-neutral);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--color-primary), var(--color-primary-hover));
+            border-radius: 4px;
+            transition: width 0.3s ease-out;
+            width: 0%;
+        }
+
+        .progress-bar.stage-loading { background: linear-gradient(90deg, #0078D4, #00BCF2); }
+        .progress-bar.stage-slicing { background: linear-gradient(90deg, #107C10, #43C659); }
+        .progress-bar.stage-asr { background: linear-gradient(90deg, #FFB900, #FF8C00); }
+        .progress-bar.stage-alignment { background: linear-gradient(90deg, #E3008C, #FF1361); }
+        .progress-bar.stage-export { background: linear-gradient(90deg, #5C2D91, #8764B8); }
+        .progress-bar.stage-done { background: linear-gradient(90deg, #107C10, #43C659); }
+
+        .action-bar {
+            display: flex;
+            gap: var(--spacing-md);
+            margin: var(--spacing-lg) 0;
+            flex-wrap: wrap;
+        }
+
+        .log-panel {
+            background-color: #1E1E1E;
+            border-radius: var(--radius-md);
+            padding: var(--spacing-md);
+            min-height: 150px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: var(--font-family-mono);
+            font-size: 12px;
+            line-height: 1.6;
+            color: #D4D4D4;
+        }
+
+        .log-entry {
+            margin-bottom: 2px;
+            word-break: break-all;
+        }
+
+        .log-entry.error {
+            color: #F48771;
+        }
+
+        .log-entry.warning {
+            color: #FFD700;
+        }
+
+        .log-entry.success {
+            color: #89D185;
+        }
+
+        .log-entry.info {
+            color: #9CDCFE;
+        }
+
+        .settings-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .path-input-group {
+            display: flex;
+            gap: var(--spacing-sm);
+            align-items: center;
+        }
+
+        .path-input-group .form-control {
+            flex: 1;
+        }
+
+        .advanced-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: var(--spacing-md) var(--spacing-xl);
+        }
+
+        .toast {
+            position: fixed;
+            top: var(--spacing-lg);
+            right: var(--spacing-lg);
+            background-color: var(--color-bg-card);
+            color: var(--color-text-primary);
+            padding: var(--spacing-md) var(--spacing-lg);
+            border-radius: var(--radius-md);
+            box-shadow: var(--shadow-lg);
+            z-index: 1000;
+            animation: slideInRight var(--transition-normal) ease-out;
+            max-width: 400px;
+            border-left: 4px solid var(--color-primary);
+        }
+
+        .toast.success {
+            border-left-color: var(--color-success);
+        }
+
+        .toast.error {
+            border-left-color: var(--color-error);
+        }
+
+        .toast.warning {
+            border-left-color: var(--color-warning);
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            animation: fadeIn var(--transition-fast) ease-in;
+        }
+
+        .modal {
+            background-color: var(--color-bg-card);
+            border-radius: var(--radius-lg);
+            padding: var(--spacing-xl);
+            max-width: 480px;
+            width: 90%;
+            box-shadow: var(--shadow-lg);
+            animation: modalSlideUp var(--transition-normal) ease-out;
+        }
+
+        @keyframes modalSlideUp {
+            from {
+                transform: translateY(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+        }
+
+        .modal-body {
+            color: var(--color-text-secondary);
+            margin-bottom: var(--spacing-lg);
+            line-height: 1.6;
+        }
+
+        .modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: var(--spacing-sm);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .optional-badge {
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+            font-weight: normal;
+        }
+
+        /* Log toolbar */
+        .log-toolbar {
+            display: flex;
+            gap: var(--spacing-sm);
+            margin-bottom: var(--spacing-sm);
+            align-items: center;
+        }
+
+        .log-filter-btn {
+            padding: 4px 8px;
+            font-size: 11px;
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-sm);
+            background: var(--color-bg-card);
+            cursor: pointer;
+            transition: all var(--transition-fast);
+        }
+
+        .log-filter-btn.active {
+            background: var(--color-primary);
+            color: white;
+            border-color: var(--color-primary);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+
+        @media (max-width: 768px) {
+            :root {
+                --sidebar-width: 0px;
+            }
+
+            .sidebar {
+                position: fixed;
+                bottom: 0;
+                left: 0;
+                right: 0;
+                top: auto;
+                width: 100%;
+                height: auto;
+                flex-direction: row;
+                border-right: none;
+                border-top: 1px solid var(--color-border);
+            }
+
+            .sidebar-nav {
+                flex-direction: row;
+                padding: 0;
+                width: 100%;
+            }
+
+            .nav-item {
+                flex: 1;
+                height: 56px;
+                border-left: none;
+                border-top: 3px solid transparent;
+            }
+
+            .nav-item.active {
+                border-left: none;
+                border-top-color: var(--color-primary);
+            }
+
+            .nav-item-bottom {
+                margin-top: 0;
+                border-top: none;
+                border-left: 1px solid var(--color-border);
+            }
+
+            .main-content {
+                margin-left: 0;
+                margin-bottom: 56px;
+            }
+
+            .content-area {
+                padding: var(--spacing-md);
+            }
+
+            .params-grid,
+            .advanced-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .card {
+                padding: var(--spacing-md);
+            }
+
+            .action-bar {
+                flex-direction: column;
+            }
+
+            .action-bar .btn {
+                width: 100%;
+            }
+        }
+
+        @media (min-width: 769px) and (max-width: 1024px) {
+            .params-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .advanced-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <aside class="sidebar" role="navigation" aria-label="主导航">
+            <nav class="sidebar-nav">
+                <a href="#extract" class="nav-item active" data-page="extract" aria-label="自动提取与灌注" title="自动提取与灌注">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    </svg>
+                </a>
+                <a href="#settings" class="nav-item nav-item-bottom" data-page="settings" aria-label="全局设置" title="全局设置">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+                    </svg>
+                </a>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <h1 class="header-title">
+                    <img src="icon.png" alt="" class="header-icon">
+                    Vocal2Midi
+                </h1>
+                <div class="connection-status">
+                    <span class="status-dot disconnected" id="connectionDot"></span>
+                    <span id="connectionText">未连接</span>
+                </div>
+            </header>
+
+            <div class="content-area">
+                <!-- Extract Page -->
+                <section id="page-extract" class="page active" aria-labelledby="extract-title">
+                    <h2 id="extract-title" class="page-title">自动提取与歌词灌注</h2>
+
+                    <!-- Audio Upload Card -->
+                    <div class="card audio-upload-card">
+                        <div class="card-header">
+                            <span class="card-icon">🎵</span>
+                            <h3 class="card-title">上传音频文件</h3>
+                            <div class="card-actions">
+                                <button type="button" class="btn btn-secondary" onclick="document.getElementById('audioInput').click()">
+                                    选择文件
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="clearAudioFiles()">清空选择</button>
+                                <input type="file" id="audioInput" accept=".wav,.m4a,.flac,.mp3,.ogg" onchange="handleAudioSelect(event)">
+                            </div>
+                        </div>
+                        <ul class="file-list" id="audioFileList"></ul>
+                    </div>
+
+                    <!-- Lyrics Input Card -->
+                    <div class="card lyric-card" id="lyricCard">
+                        <h3 class="card-title">参考歌词 <span class="optional-badge">(可选)</span></h3>
+                        <textarea
+                            class="form-control"
+                            id="lyricsInput"
+                            placeholder="如果有确切的歌词，请在此输入（纯文本）以提高对齐准确率..."
+                            rows="4"
+                        ></textarea>
+                    </div>
+
+                    <!-- Parameters Card -->
+                    <div class="card params-card">
+                        <div class="params-grid">
+                            <div class="param-item">
+                                <label class="form-label" for="slicingMethod">音频切片方法</label>
+                                <select class="form-control" id="slicingMethod">
+                                    <option value="auto">智能切片</option>
+                                    <option value="heuristic">启发式切片</option>
+                                    <option value="default">默认切片</option>
+                                    <option value="grid">网格搜索切片</option>
+                                </select>
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="targetLanguage">目标语言</label>
+                                <select class="form-control" id="targetLanguage" onchange="updateLyricOptions()">
+                                    <option value="zh">zh (中文)</option>
+                                    <option value="ja">ja (日文)</option>
+                                </select>
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="lyricOutputFormat">歌词输出格式</label>
+                                <select class="form-control" id="lyricOutputFormat">
+                                    <option value="pinyin">拼音</option>
+                                    <option value="hanzi">汉字</option>
+                                </select>
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="computeDevice">计算设备</label>
+                                <select class="form-control" id="computeDevice">
+                                    <option value="dml">dml</option>
+                                    <option value="cpu">cpu</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: var(--spacing-lg);">
+                            <div class="params-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+                                <div class="switch-group">
+                                    <span class="form-label" style="margin-bottom: 0;">启用歌词匹配</span>
+                                    <div class="switch" id="switchMatchLyrics" onclick="toggleSwitch(this)" role="switch" aria-checked="false" tabindex="0"></div>
+                                </div>
+
+                                <div class="switch-group">
+                                    <span class="form-label" style="margin-bottom: 0;">输出歌词</span>
+                                    <div class="switch active" id="switchOutputLyrics" onclick="toggleSwitch(this)" role="switch" aria-checked="true" tabindex="0"></div>
+                                </div>
+
+                                <div class="switch-group">
+                                    <span class="form-label" style="margin-bottom: 0;">导出 USTX</span>
+                                    <div class="switch" id="switchExportUstx" onclick="toggleSwitch(this); togglePitchCurve()" role="switch" aria-checked="false" tabindex="0"></div>
+                                </div>
+
+                                <div class="switch-group">
+                                    <span class="form-label" style="margin-bottom: 0;" id="pitchCurveLabel">输出音高曲线</span>
+                                    <div class="switch active" id="switchPitchCurve" onclick="toggleSwitch(this)" role="switch" aria-checked="true" tabindex="0"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Output Settings Card -->
+                    <div class="card output-settings-card">
+                        <h3 class="card-title">输出设置</h3>
+                        <div class="params-grid">
+                            <div class="param-item">
+                                <label class="form-label" for="tempoBPM">Tempo BPM:</label>
+                                <input type="number" class="form-control" id="tempoBPM" min="10" max="300" value="120" step="1">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="quantizePrecision">MIDI 量化精度:</label>
+                                <select class="form-control" id="quantizePrecision" disabled>
+                                    <option value="none">不量化</option>
+                                    <option value="1/4">1/4 音符 (1拍)</option>
+                                    <option value="1/8">1/8 音符 (1/2拍)</option>
+                                    <option value="1/16">1/16 音符 (1/4拍)</option>
+                                    <option value="1/32">1/32 音符 (1/8拍)</option>
+                                    <option value="1/64">1/64 音符 (1/16拍)</option>
+                                </select>
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="quantizeAlgorithm">量化算法:</label>
+                                <select class="form-control" id="quantizeAlgorithm" disabled>
+                                    <option value="dev">开发中</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-top: var(--spacing-md);">
+                            <label class="form-label" for="saveDirectory">保存目录:</label>
+                            <div class="path-input-group">
+                                <input type="text" class="form-control" id="saveDirectory" placeholder="输入或浏览选择保存目录..." value="./output">
+                                <button type="button" class="btn btn-secondary" onclick="showToast('浏览器环境无法直接访问文件系统，请手动输入路径', 'warning')">浏览</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Progress Bar (Hidden by default) -->
+                    <div class="progress-container hidden" id="progressContainer">
+                        <div class="progress-header">
+                            <span class="progress-stage" id="progressStage">准备中...</span>
+                            <span class="progress-percentage" id="progressPercentage">0%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="progressBar"></div>
+                        </div>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="action-bar">
+                        <button type="button" class="btn btn-primary btn-lg" id="btnRun" onclick="runPipeline()">
+                            ▶ 开始全自动提取
+                        </button>
+                        <button type="button" class="btn btn-secondary" id="btnStop" onclick="stopPipeline()" disabled>
+                            ⏸ 强制停止
+                        </button>
+                    </div>
+
+                    <!-- Log Panel -->
+                    <div class="card log-card">
+                        <div class="log-toolbar">
+                            <strong>运行日志</strong>
+                            <div style="flex: 1;"></div>
+                            <button class="log-filter-btn active" onclick="filterLog('all')" data-level="all">全部</button>
+                            <button class="log-filter-btn" onclick="filterLog('info')" data-level="info">信息</button>
+                            <button class="log-filter-btn" onclick="filterLog('success')" data-level="success">成功</button>
+                            <button class="log-filter-btn" onclick="filterLog('warning')" data-level="warning">警告</button>
+                            <button class="log-filter-btn" onclick="filterLog('error')" data-level="error">错误</button>
+                            <button class="btn btn-secondary" style="padding: 2px 8px;" onclick="clearLogs()">清空</button>
+                        </div>
+                        <div class="log-panel" id="logPanel" role="log" aria-live="polite"></div>
+                    </div>
+                </section>
+
+                <!-- Settings Page -->
+                <section id="page-settings" class="page" aria-labelledby="settings-title">
+                    <div class="settings-header">
+                        <h2 id="settings-title" class="page-title" style="margin-bottom: 0;">全局设置</h2>
+                        <button type="button" class="btn btn-secondary" onclick="showResetConfirm()">恢复默认</button>
+                    </div>
+
+                    <!-- Model Config Card -->
+                    <div class="card model-config-card">
+                        <h3 class="card-title">模型配置</h3>
+
+                        <div class="form-group">
+                            <label class="form-label" for="gameModelPath">GAME 模型路径:</label>
+                            <div class="path-input-group">
+                                <input type="text" class="form-control" id="gameModelPath" value="">
+                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="hfaModelPath">HubertFA 模型路径:</label>
+                            <div class="path-input-group">
+                                <input type="text" class="form-control" id="hfaModelPath" value="">
+                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="asrModelPath">Qwen3-ASR 模型路径:</label>
+                            <div class="path-input-group">
+                                <input type="text" class="form-control" id="asrModelPath" value="">
+                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="phonemeAsrPath">音素 ASR 模型路径:</label>
+                            <div class="path-input-group">
+                                <input type="text" class="form-control" id="phonemeAsrPath" value="">
+                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="rmvpePath">RMVPE 模型文件路径:</label>
+                            <div class="path-input-group">
+                                <input type="text" class="form-control" id="rmvpePath" value="">
+                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Advanced Params Card -->
+                    <div class="card advanced-params-card">
+                        <h3 class="card-title">高级处理参数</h3>
+                        <div class="advanced-grid">
+                            <div class="param-item">
+                                <label class="form-label" for="segThreshold">边界解码阈值:</label>
+                                <input type="number" class="form-control" id="segThreshold" min="0.01" max="0.99" step="0.01" value="0.2">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="segRadius">边界解码半径/秒:</label>
+                                <input type="number" class="form-control" id="segRadius" min="0.01" max="0.1" step="0.005" value="0.02">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="estThreshold">音符存在阈值:</label>
+                                <input type="number" class="form-control" id="estThreshold" min="0.01" max="0.99" step="0.01" value="0.2">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="t0Value">D3PM 起始 T 值:</label>
+                                <input type="number" class="form-control" id="t0Value" min="0.0" max="0.99" step="0.01" value="0.0">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="nstepsValue">D3PM 采样步数:</label>
+                                <input type="number" class="form-control" id="nstepsValue" min="1" max="20" step="1" value="8">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="gameBatch">GAME Batch:</label>
+                                <input type="number" class="form-control" id="gameBatch" min="1" max="32" step="1" value="1">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="asrBatch">ASR Batch:</label>
+                                <input type="number" class="form-control" id="asrBatch" min="1" max="32" step="1" value="2">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="sliceMin">Slice Min (s):</label>
+                                <input type="number" class="form-control" id="sliceMin" min="0" max="60" step="0.5" value="8.0" onchange="validateSliceBounds()">
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="sliceMax">Slice Max (s):</label>
+                                <input type="number" class="form-control" id="sliceMax" min="0" max="60" step="0.5" value="22.0" onchange="validateSliceBounds()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Debug Card -->
+                    <div class="card debug-card">
+                        <h3 class="card-title">Debug</h3>
+                        <div class="params-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                            <div class="switch-group">
+                                <span class="form-label" style="margin-bottom: 0;">导出 Text (.txt)</span>
+                                <div class="switch" id="switchDebugTxt" onclick="toggleSwitch(this)" role="switch" aria-checked="false" tabindex="0"></div>
+                            </div>
+
+                            <div class="switch-group">
+                                <span class="form-label" style="margin-bottom: 0;">导出 CSV (.csv)</span>
+                                <div class="switch" id="switchDebugCsv" onclick="toggleSwitch(this)" role="switch" aria-checked="false" tabindex="0"></div>
+                            </div>
+
+                            <div class="switch-group">
+                                <span class="form-label" style="margin-bottom: 0;">导出切片</span>
+                                <div class="switch" id="switchDebugChunks" onclick="toggleSwitch(this)" role="switch" aria-checked="false" tabindex="0"></div>
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="pitchFormat">音高格式:</label>
+                                <select class="form-control" id="pitchFormat">
+                                    <option value="name">name</option>
+                                    <option value="number">number</option>
+                                </select>
+                            </div>
+
+                            <div class="switch-group">
+                                <span class="form-label" style="margin-bottom: 0;">音高取整</span>
+                                <div class="switch active" id="switchRoundPitch" onclick="toggleSwitch(this)" role="switch" aria-checked="true" tabindex="0"></div>
+                            </div>
+                        </div>
+
+                        <div style="margin-top: var(--spacing-lg); text-align: right;">
+                            <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                                💾 保存设置
+                            </button>
+                        </div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // ==================== Global State ====================
+        let selectedFiles = [];
+        let isRunning = false;
+        let currentTaskId = null;
+        let socket = null;
+        let currentLogFilter = 'all';
+
+        // API Base URL
+        const API_BASE = '/api';
+
+        // ==================== Initialization ====================
+        document.addEventListener('DOMContentLoaded', function() {
+            initNavigation();
+            initKeyboardNav();
+            initWebSocket();
+            updateLyricVisibility();
+            loadSettings();
+        });
+
+        // ==================== WebSocket Management ====================
+        function initWebSocket() {
+            try {
+                socket = io({
+                    transports: ['websocket', 'polling'],
+                    reconnection: true,
+                    reconnectionAttempts: 5,
+                    reconnectionDelay: 1000,
+                });
+
+                socket.on('connect', () => {
+                    console.log('[WebSocket] Connected to server');
+                    updateConnectionStatus(true);
+                    showToast('已连接到服务器', 'success');
+                });
+
+                socket.on('disconnect', () => {
+                    console.log('[WebSocket] Disconnected from server');
+                    updateConnectionStatus(false);
+                    showToast('与服务器断开连接', 'warning');
+                });
+
+                socket.on('connect_error', (error) => {
+                    console.error('[WebSocket] Connection error:', error);
+                    updateConnectionStatus(false);
+                    showToast(`连接失败: ${error.message}`, 'error');
+                });
+
+                // Handle real-time log messages
+                socket.on('log', (data) => {
+                    addLog(data.message, data.level || 'info');
+                });
+
+                // Handle progress updates
+                socket.on('progress', (data) => {
+                    updateProgressBar(data.progress, data.stage);
+                });
+
+                // Handle task status changes
+                socket.on('status_change', (data) => {
+                    handleStatusChange(data);
+                });
+
+                // Handle join confirmation
+                socket.on('joined', (data) => {
+                    console.log(`[WebSocket] Joined task room: ${data.task_id}`);
+                });
+
+            } catch (error) {
+                console.error('[WebSocket] Initialization failed:', error);
+                showToast('WebSocket 初始化失败', 'error');
+            }
+        }
+
+        function connectToTask(taskId) {
+            if (!socket || !socket.connected) {
+                showToast('WebSocket 未连接，无法接收实时更新', 'warning');
+                return;
+            }
+
+            socket.emit('join_task', { task_id: taskId });
+            currentTaskId = taskId;
+        }
+
+        function disconnectFromTask() {
+            if (socket && currentTaskId && socket.connected) {
+                socket.emit('leave_task', { task_id: currentTaskId });
+            }
+            currentTaskId = null;
+        }
+
+        function updateConnectionStatus(isConnected) {
+            const dot = document.getElementById('connectionDot');
+            const text = document.getElementById('connectionText');
+
+            if (isConnected) {
+                dot.classList.remove('disconnected');
+                dot.classList.add('connected');
+                text.textContent = '已连接';
+            } else {
+                dot.classList.remove('connected');
+                dot.classList.add('disconnected');
+                text.textContent = '未连接';
+            }
+        }
+
+        // ==================== API Client ====================
+        async function apiCall(endpoint, options = {}) {
+            const url = `${API_BASE}${endpoint}`;
+            
+            try {
+                const response = await fetch(url, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...options.headers
+                    },
+                    ...options
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({}));
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return await response.json();
+            } catch (error) {
+                console.error(`[API Error] ${endpoint}:`, error);
+                throw error;
+            }
+        }
+
+        // ==================== Navigation ====================
+        function initNavigation() {
+            const navItems = document.querySelectorAll('.nav-item[data-page]');
+            navItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const pageId = this.getAttribute('data-page');
+                    navigateTo(pageId);
+                });
+            });
+
+            window.addEventListener('hashchange', function() {
+                const hash = window.location.hash.slice(1);
+                if (hash) {
+                    navigateTo(hash);
+                }
+            });
+
+            const initialHash = window.location.hash.slice(1) || 'extract';
+            navigateTo(initialHash);
+        }
+
+        function initKeyboardNav() {
+            document.querySelectorAll('.switch').forEach(sw => {
+                sw.addEventListener('keydown', function(e) {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleSwitch(this);
+                    }
+                });
+            });
+        }
+
+        function navigateTo(pageId) {
+            const pages = document.querySelectorAll('.page');
+            const navItems = document.querySelectorAll('.nav-item[data-page]');
+
+            pages.forEach(page => {
+                page.classList.remove('active');
+                if (page.id === `page-${pageId}`) {
+                    page.classList.add('active');
+                }
+            });
+
+            navItems.forEach(item => {
+                item.classList.remove('active');
+                if (item.getAttribute('data-page') === pageId) {
+                    item.classList.add('active');
+                }
+            });
+
+            if (!window.location.hash || window.location.hash.slice(1) !== pageId) {
+                history.pushState(null, null, `#${pageId}`);
+            }
+
+            // Load settings when navigating to settings page
+            if (pageId === 'settings') {
+                loadSettings();
+            }
+        }
+
+        // ==================== File Upload ====================
+        function handleAudioSelect(event) {
+            const files = event.target.files;
+            if (files.length > 0) {
+                selectedFiles = Array.from(files);
+                renderFileList();
+                addLog(`已选择文件: ${files[0].name}`, 'success');
+            }
+        }
+
+        function renderFileList() {
+            const listEl = document.getElementById('audioFileList');
+            listEl.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const li = document.createElement('li');
+                li.innerHTML = `
+                    <span>📄</span>
+                    <span class="file-name">${file.name}</span>
+                    <span class="file-remove" onclick="removeFile(${index})" title="移除">×</span>
+                `;
+                listEl.appendChild(li);
+            });
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            renderFileList();
+            if (selectedFiles.length === 0) {
+                document.getElementById('audioInput').value = '';
+            }
+        }
+
+        function clearAudioFiles() {
+            selectedFiles = [];
+            renderFileList();
+            document.getElementById('audioInput').value = '';
+            addLog('已清空文件选择', 'info');
+        }
+
+        // ==================== Form Controls ====================
+        function toggleSwitch(element) {
+            element.classList.toggle('active');
+            const isActive = element.classList.contains('active');
+            element.setAttribute('aria-checked', isActive);
+
+            const switchId = element.id;
+            if (switchId === 'switchMatchLyrics') {
+                updateLyricVisibility();
+            } else if (switchId === 'switchExportUstx') {
+                togglePitchCurve();
+            }
+        }
+
+        function updateLyricVisibility() {
+            const switchEl = document.getElementById('switchMatchLyrics');
+            const lyricCard = document.getElementById('lyricCard');
+            const isEnabled = switchEl && switchEl.classList.contains('active');
+
+            if (isEnabled) {
+                lyricCard.classList.remove('hidden');
+                lyricCard.style.animation = 'fadeIn 0.2s ease-in';
+            } else {
+                lyricCard.classList.add('hidden');
+            }
+        }
+
+        function togglePitchCurve() {
+            const ustxSwitch = document.getElementById('switchExportUstx');
+            const pitchCurveLabel = document.getElementById('pitchCurveLabel');
+            const pitchCurveSwitch = document.getElementById('switchPitchCurve');
+
+            const isUstxEnabled = ustxSwitch && ustxSwitch.classList.contains('active');
+            pitchCurveLabel.style.opacity = isUstxEnabled ? '1' : '0.5';
+            pitchCurveSwitch.style.opacity = isUstxEnabled ? '1' : '0.5';
+            pitchCurveSwitch.style.pointerEvents = isUstxEnabled ? 'auto' : 'none';
+        }
+
+        function updateLyricOptions() {
+            const lang = document.getElementById('targetLanguage').value;
+            const formatSelect = document.getElementById('lyricOutputFormat');
+
+            formatSelect.innerHTML = '';
+            if (lang === 'zh') {
+                formatSelect.innerHTML += '<option value="pinyin">拼音</option>';
+                formatSelect.innerHTML += '<option value="hanzi">汉字</option>';
+            } else {
+                formatSelect.innerHTML += '<option value="romaji">罗马音</option>';
+                formatSelect.innerHTML += '<option value="kana">假名</option>';
+            }
+        }
+
+        function validateSliceBounds() {
+            const sliceMin = parseFloat(document.getElementById('sliceMin').value);
+            const sliceMax = parseFloat(document.getElementById('sliceMax').value);
+
+            if (sliceMin > sliceMax) {
+                showToast('Slice Min 不能大于 Slice Max', 'error');
+                document.getElementById('sliceMin').value = sliceMax;
+            }
+        }
+
+        // ==================== Pipeline Execution ====================
+        async function runPipeline() {
+            if (isRunning) return;
+
+            try {
+                // Validate inputs
+                if (selectedFiles.length === 0) {
+                    throw new Error('请先选择音频文件');
+                }
+
+                const saveDir = document.getElementById('saveDirectory').value;
+                if (!saveDir.trim()) {
+                    throw new Error('请输入保存目录');
+                }
+
+                // Set running state
+                isRunning = true;
+                updateButtonStates();
+                showProgressBar();
+
+                // Clear previous logs
+                clearLogs();
+                addLog('正在准备任务...', 'info');
+
+                // Collect form data as config
+                const config = collectConfig();
+
+                // Create FormData for file upload
+                const formData = new FormData();
+                formData.append('audio_file', selectedFiles[0]);
+                formData.append('config', JSON.stringify(config));
+
+                // Call API to start pipeline
+                addLog('正在上传文件和配置...', 'info');
+                const result = await fetch(`${API_BASE}/pipeline/start`, {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (!response.ok) {
+                        return response.json().then(data => {
+                            throw new Error(data.error || '启动失败');
+                        });
+                    }
+                    return response.json();
+                });
+
+                if (!result.success) {
+                    throw new Error(result.error || '启动失败');
+                }
+
+                // Connect to task via WebSocket
+                currentTaskId = result.task_id;
+                connectToTask(currentTaskId);
+
+                addLog(`✓ 任务已启动 (ID: ${currentTaskId.substring(0, 8)}...)`, 'success');
+                addLog('等待处理开始...', 'info');
+
+            } catch (error) {
+                console.error('[Pipeline Start Error]:', error);
+                addLog(`错误: ${error.message}`, 'error');
+                showToast(error.message || '启动任务失败', 'error');
+                
+                isRunning = false;
+                updateButtonStates();
+                hideProgressBar();
+            }
+        }
+
+        async function stopPipeline() {
+            if (!isRunning || !currentTaskId) return;
+
+            try {
+                addLog('', 'warning');
+                addLog('⚠ 正在请求停止任务...', 'warning');
+
+                // Stop via WebSocket (preferred)
+                if (socket && socket.connected) {
+                    socket.emit('stop_task', { task_id: currentTaskId });
+                }
+
+                // Also call REST API as backup
+                await apiCall('/pipeline/stop', {
+                    method: 'POST',
+                    body: JSON.stringify({ task_id: currentTaskId })
+                });
+
+                addLog('✓ 停止请求已发送', 'warning');
+                showToast('已请求停止任务', 'warning');
+
+            } catch (error) {
+                console.error('[Stop Error]:', error);
+                addLog(`错误: ${error.message}`, 'error');
+                showToast(error.message || '停止失败', 'error');
+            }
+        }
+
+        function collectConfig() {
+            return {
+                slicing_method: document.getElementById('slicingMethod').value,
+                language: document.getElementById('targetLanguage').value,
+                device: document.getElementById('computeDevice').value,
+                tempo: parseFloat(document.getElementById('tempoBPM').value),
+                save_dir: document.getElementById('saveDirectory').value,
+                enable_lyrics_match: document.getElementById('switchMatchLyrics').classList.contains('active'),
+                lyrics: document.getElementById('lyricsInput').value,
+                lyric_output_mode: document.getElementById('lyricOutputFormat').value,
+                output_lyrics: document.getElementById('switchOutputLyrics').classList.contains('active'),
+                export_ustx: document.getElementById('switchExportUstx').classList.contains('active'),
+                output_pitch_curve: document.getElementById('switchPitchCurve').classList.contains('active'),
+                debug_txt: document.getElementById('switchDebugTxt').classList.contains('active'),
+                debug_csv: document.getElementById('switchDebugCsv').classList.contains('active'),
+                debug_chunks: document.getElementById('switchDebugChunks').classList.contains('active'),
+                pitch_format: document.getElementById('pitchFormat').value,
+                round_pitch: document.getElementById('switchRoundPitch').classList.contains('active')
+            };
+        }
+
+        function handleStatusChange(data) {
+            console.log('[Status Change]', data);
+
+            const status = data.status;
+            
+            if (status === 'completed') {
+                isRunning = false;
+                updateButtonStates();
+                hideProgressBar();
+                updateProgressBar(100, 'done');
+
+                addLog('', 'success');
+                addLog('=============================', 'success');
+                addLog('✓ 全自动提取完成！', 'success');
+                
+                if (data.result && data.result.files.length > 0) {
+                    addLog(`输出文件 (${data.result.files.length}个):`, 'success');
+                    data.result.files.forEach(file => {
+                        addLog(`  📄 ${file.split('/').pop()}`, 'success');
+                    });
+                }
+
+                showToast('提取完成！', 'success');
+                disconnectFromTask();
+
+            } else if (status === 'failed') {
+                isRunning = false;
+                updateButtonStates();
+                hideProgressBar();
+
+                addLog('', 'error');
+                addLog('❌ 任务执行失败！', 'error');
+                if (data.error) {
+                    addLog(`错误详情: ${data.error}`, 'error');
+                }
+
+                showToast(data.error || '任务失败', 'error');
+                disconnectFromTask();
+
+            } else if (status === 'cancelled') {
+                isRunning = false;
+                updateButtonStates();
+                hideProgressBar();
+
+                addLog('', 'warning');
+                addLog('⚠ 任务已被取消', 'warning');
+
+                showToast('任务已取消', 'warning');
+                disconnectFromTask();
+            }
+        }
+
+        // ==================== Progress Bar ====================
+        function showProgressBar() {
+            document.getElementById('progressContainer').classList.remove('hidden');
+            updateProgressBar(0, 'idle');
+        }
+
+        function hideProgressBar() {
+            setTimeout(() => {
+                document.getElementById('progressContainer').classList.add('hidden');
+            }, 1500);
+        }
+
+        function updateProgressBar(progress, stage) {
+            const container = document.getElementById('progressContainer');
+            const bar = document.getElementById('progressBar');
+            const stageText = document.getElementById('progressStage');
+            const percentageText = document.getElementById('progressPercentage');
+
+            // Update bar width and color
+            bar.style.width = `${progress}%`;
+            bar.className = `progress-bar stage-${stage}`;
+
+            // Update stage text
+            const stageNames = {
+                'idle': '准备中...',
+                'loading': '加载模型...',
+                'slicing': '音频切片...',
+                'asr': '语音识别...',
+                'alignment': '强制对齐...',
+                'export': '生成 MIDI...',
+                'done': '完成!'
+            };
+            stageText.textContent = stageNames[stage] || stage;
+
+            // Update percentage
+            percentageText.textContent = `${Math.round(progress)}%`;
+        }
+
+        // ==================== Button States ====================
+        function updateButtonStates() {
+            const btnRun = document.getElementById('btnRun');
+            const btnStop = document.getElementById('btnStop');
+
+            if (isRunning) {
+                btnRun.disabled = true;
+                btnStop.disabled = false;
+                btnRun.innerHTML = '<span class="loading-spinner"></span> 处理中...';
+            } else {
+                btnRun.disabled = false;
+                btnStop.disabled = true;
+                btnRun.innerHTML = '▶ 开始全自动提取';
+            }
+        }
+
+        // ==================== Log Panel ====================
+        function addLog(message, type = 'info') {
+            const logPanel = document.getElementById('logPanel');
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.dataset.level = type;
+            entry.textContent = message;
+            logPanel.appendChild(entry);
+            
+            // Auto-scroll to bottom
+            logPanel.scrollTop = logPanel.scrollHeight;
+
+            // Apply filter if active
+            if (currentLogFilter !== 'all' && type !== currentLogFilter) {
+                entry.style.display = 'none';
+            }
+        }
+
+        function clearLogs() {
+            const logPanel = document.getElementById('logPanel');
+            logPanel.innerHTML = '';
+        }
+
+        function filterLog(level) {
+            currentLogFilter = level;
+            
+            // Update button states
+            document.querySelectorAll('.log-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.level === level);
+            });
+
+            // Filter visible entries
+            const entries = document.querySelectorAll('.log-entry');
+            entries.forEach(entry => {
+                if (level === 'all' || entry.dataset.level === level) {
+                    entry.style.display = 'block';
+                } else {
+                    entry.style.display = 'none';
+                }
+            });
+        }
+
+        // ==================== Settings Management ====================
+        async function loadSettings() {
+            try {
+                const data = await apiCall('/settings');
+                
+                if (data.success) {
+                    // Populate model paths
+                    document.getElementById('gameModelPath').value = data.models?.game_model_path || '';
+                    document.getElementById('hfaModelPath').value = data.models?.hfa_model_path || '';
+                    document.getElementById('asrModelPath').value = data.models?.asr_model_path || '';
+                    document.getElementById('phonemeAsrPath').value = data.models?.phoneme_asr_model_path || '';
+                    document.getElementById('rmvpePath').value = data.models?.rmvpe_model_path || '';
+
+                    // Populate params
+                    if (data.params) {
+                        document.getElementById('segThreshold').value = data.params.seg_threshold ?? 0.2;
+                        document.getElementById('segRadius').value = data.params.seg_radius ?? 0.02;
+                        document.getElementById('estThreshold').value = data.params.est_threshold ?? 0.2;
+                        document.getElementById('t0Value').value = data.params.t0 ?? 0.0;
+                        document.getElementById('nstepsValue').value = data.params.nsteps ?? 8;
+                        document.getElementById('gameBatch').value = data.params.game_batch ?? 1;
+                        document.getElementById('asrBatch').value = data.params.asr_batch ?? 2;
+                        document.getElementById('sliceMin').value = data.params.slice_min ?? 8.0;
+                        document.getElementById('sliceMax').value = data.params.slice_max ?? 22.0;
+                    }
+
+                    // Populate debug options
+                    if (data.debug) {
+                        setSwitchState('switchDebugTxt', data.debug.export_txt || false);
+                        setSwitchState('switchDebugCsv', data.debug.export_csv || false);
+                        setSwitchState('switchDebugChunks', data.debug.export_chunks || false);
+                        document.getElementById('pitchFormat').value = data.debug.pitch_format || 'name';
+                        setSwitchState('switchRoundPitch', data.debug.round_pitch !== false);
+                    }
+
+                    console.log('[Settings] Loaded successfully');
+                }
+            } catch (error) {
+                console.warn('[Settings] Failed to load:', error.message);
+                // Use defaults on error - don't show toast to avoid annoyance
+            }
+        }
+
+        async function saveSettings() {
+            try {
+                const settingsData = {
+                    models: {
+                        game_model_path: document.getElementById('gameModelPath').value,
+                        hfa_model_path: document.getElementById('hfaModelPath').value,
+                        asr_model_path: document.getElementById('asrModelPath').value,
+                        phoneme_asr_model_path: document.getElementById('phonemeAsrPath').value,
+                        rmvpe_model_path: document.getElementById('rmvpePath').value
+                    },
+                    params: {
+                        seg_threshold: parseFloat(document.getElementById('segThreshold').value),
+                        seg_radius: parseFloat(document.getElementById('segRadius').value),
+                        est_threshold: parseFloat(document.getElementById('estThreshold').value),
+                        t0: parseFloat(document.getElementById('t0Value').value),
+                        nsteps: parseInt(document.getElementById('nstepsValue').value),
+                        game_batch: parseInt(document.getElementById('gameBatch').value),
+                        asr_batch: parseInt(document.getElementById('asrBatch').value),
+                        slice_min: parseFloat(document.getElementById('sliceMin').value),
+                        slice_max: parseFloat(document.getElementById('sliceMax').value)
+                    },
+                    debug: {
+                        export_txt: document.getElementById('switchDebugTxt').classList.contains('active'),
+                        export_csv: document.getElementById('switchDebugCsv').classList.contains('active'),
+                        export_chunks: document.getElementById('switchDebugChunks').classList.contains('active'),
+                        pitch_format: document.getElementById('pitchFormat').value,
+                        round_pitch: document.getElementById('switchRoundPitch').classList.contains('active')
+                    }
+                };
+
+                const result = await apiCall('/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify(settingsData)
+                });
+
+                if (result.success) {
+                    showToast('设置已保存', 'success');
+                    addLog('设置已保存到服务器', 'info');
+                } else {
+                    throw new Error(result.error || '保存失败');
+                }
+
+            } catch (error) {
+                console.error('[Save Settings Error]:', error);
+                showToast(error.message || '保存设置失败', 'error');
+            }
+        }
+
+        async function resetSettings() {
+            try {
+                const result = await apiCall('/settings/reset', {
+                    method: 'POST'
+                });
+
+                if (result.success) {
+                    showToast('已恢复为默认设置', 'success');
+                    addLog('设置已恢复为默认值', 'info');
+                    
+                    // Reload the settings into form
+                    await loadSettings();
+                } else {
+                    throw new Error(result.error || '重置失败');
+                }
+
+            } catch (error) {
+                console.error('[Reset Settings Error]:', error);
+                showToast(error.message || '重置设置失败', 'error');
+            }
+        }
+
+        function setSwitchState(switchId, isActive) {
+            const el = document.getElementById(switchId);
+            if (isActive) {
+                el.classList.add('active');
+            } else {
+                el.classList.remove('active');
+            }
+            el.setAttribute('aria-checked', isActive);
+        }
+
+        // ==================== Toast Notifications ====================
+        function showToast(message, type = 'info') {
+            // Remove existing toasts
+            document.querySelectorAll('.toast').forEach(t => t.remove());
+
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            toast.setAttribute('role', 'alert');
+            toast.setAttribute('aria-live', 'assertive');
+
+            document.body.appendChild(toast);
+
+            // Auto-remove after 3 seconds
+            setTimeout(() => {
+                toast.style.animation = 'slideInRight 0.2s ease-in reverse';
+                setTimeout(() => toast.remove(), 200);
+            }, 3000);
+        }
+
+        // ==================== Modal Dialogs ====================
+        function showResetConfirm() {
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.onclick = function(e) {
+                if (e.target === overlay) overlay.remove();
+            };
+
+            overlay.innerHTML = `
+                <div class="modal" role="dialog" aria-modal="true" aria-labelledby="resetModalTitle">
+                    <h3 class="modal-title" id="resetModalTitle">确认重置</h3>
+                    <p class="modal-body">确定要恢复所有设置为默认值吗？此操作不可撤销。</p>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="this.closest('.modal-overlay').remove()">取消</button>
+                        <button type="button" class="btn btn-danger" onclick="resetSettings(); this.closest('.modal-overlay').remove();">确认重置</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+        }
+
+        // ==================== Drag & Drop Support ====================
+        document.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+
+        document.addEventListener('drop', function(e) {
+            e.preventDefault();
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                const validTypes = ['.wav', '.m4a', '.flac', '.mp3', '.ogg'];
+                const ext = '.' + file.name.split('.').pop().toLowerCase();
+
+                if (validTypes.includes(ext)) {
+                    selectedFiles = [file];
+                    renderFileList();
+                    addLog(`已拖放文件: ${file.name}`, 'success');
+                } else {
+                    showToast('不支持的文件格式', 'error');
+                    addLog(`错误: 不支持的文件格式 "${ext}"`, 'error');
+                }
+            }
+        });
+
+        // ==================== Cleanup on Page Unload ====================
+        window.addEventListener('beforeunload', () => {
+            disconnectFromTask();
+            if (socket) {
+                socket.disconnect();
+            }
+        });
+    </script>
+</body>
+</html>

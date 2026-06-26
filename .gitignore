@@ -147,3 +147,11 @@ cached/
 # Local settings overrides
 settings/*.local.ini
 *.local.ini
+
+# 压缩包
+*.zip
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+.trae/documents/vocal2midi-fullstack-plan.md
+.trae/documents/vocal2midi-web-ui-plan.md
