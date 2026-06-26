@@ -1,0 +1,20 @@
+# Vocal2Midi Web UI Dependencies
+# Flask web framework
+flask>=3.0.0,<4.0.0
+
+# WebSocket support (required for real-time communication)
+flask-socketio>=5.3.0,<6.0.0
+
+# CORS support for cross-origin requests
+flask-cors>=4.0.0,<5.0.0
+
+# Python Socket.IO client library
+python-socketio>=5.11.0,<6.0.0
+
+# WSGI server for production deployment
+gunicorn>=21.2.0,<22.0.0
+
+# Testing dependencies (optional - only needed for running tests)
+pytest>=7.4.0,<8.0.0
+pytest-flask>=1.3.0,<2.0.0
+eventlet>=0.35.0,<1.0.0  # Required for WebSocket testing with Flask-SocketIO
