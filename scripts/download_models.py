@@ -301,7 +301,9 @@ def download_github_model(model: GithubModel, force: bool) -> bool:
         return True
 
     url = asset_url(model)
-    info(f"Downloading {model.asset} from {model.label}")
+    expected_size = github_api_asset_sizes(model.repo, model.tag).get(model.asset, 0)
+    size_hint = f"  ({human_size(expected_size)})" if expected_size else ""
+    info(f"Downloading {model.asset} from {model.label}{size_hint}")
     print(f"  {paint(url, Color.DIM)}")
 
     EXPERIMENTS_DIR.mkdir(parents=True, exist_ok=True)
@@ -311,9 +313,29 @@ def download_github_model(model: GithubModel, force: bool) -> bool:
         tmp_zip = Path(tf.name)
 
     try:
-        stream_download(url, tmp_zip)
+        downloaded = stream_download(url, tmp_zip)
+
+        # Layer 1: verify download size against GitHub API asset size.
+        if expected_size and downloaded != expected_size:
+            fail(f"Size mismatch for {model.asset}: got {human_size(downloaded)}, "
+                 f"expected {human_size(expected_size)} (download may be truncated)")
+            return False
+        if expected_size:
+            ok(f"Size verified: {human_size(downloaded)}")
+
         info(f"Extracting {model.asset} -> {model.target.relative_to(ROOT_DIR)}")
-        extract_zip(tmp_zip, model.target)
+        try:
+            extract_zip(tmp_zip, model.target)
+        except zipfile.BadZipFile:
+            fail(f"Corrupted zip archive: {model.asset} (re-run with --force to retry)")
+            return False
+
+        # Layer 2: verify the marker file appeared after extraction.
+        if not target_has_model(model):
+            fail(f"Extraction finished but marker '{model.marker}' not found in "
+                 f"{model.target.relative_to(ROOT_DIR)} — the zip may have an "
+                 f"unexpected layout")
+            return False
     except urllib.error.HTTPError as e:
         fail(f"HTTP {e.code} downloading {model.asset}")
         if e.code == 404:
@@ -423,6 +445,10 @@ def download_qwen_modelscope(dest: Path) -> bool:
         fail("modelscope download failed")
         return False
     _cleanup_qwen_artifacts(dest)
+    if not qwen_has_weights(dest):
+        fail(f"No model weights (.safetensors/.bin) found in "
+             f"{dest.relative_to(ROOT_DIR)} after download")
+        return False
     ok(f"{dest.relative_to(ROOT_DIR)} ready")
     return True
 
@@ -448,6 +474,10 @@ def download_qwen_huggingface(dest: Path) -> bool:
         fail("huggingface-cli download failed")
         return False
     _cleanup_qwen_artifacts(dest)
+    if not qwen_has_weights(dest):
+        fail(f"No model weights (.safetensors/.bin) found in "
+             f"{dest.relative_to(ROOT_DIR)} after download")
+        return False
     ok(f"{dest.relative_to(ROOT_DIR)} ready")
     return True
 
