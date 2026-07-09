@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Download model assets for Vocal2Midi.
 
-Each model is fetched from its own upstream source and extracted under
+All ONNX models are published as zip assets on the project's own GitHub
+release (AntheaLaffy/Vocal2Midi-for-linux v0.1.0) and extracted under
 ``experiments/``:
 
-    game    GAME note/pitch extraction   openvpi/GAME v1.0.3
-    hfa     HubertFA forced alignment    wolfgitpr/HubertFA v0.0.7
-    rmvpe   RMVPE pitch estimation       yxlllc/RMVPE 230917
-    romaji  romajiASR (self-hosted)      AntheaLaffy/Vocal2Midi-for-linux v0.1.0
+    game    GAME note/pitch extraction        GAME-1.0.3-medium-onnx.zip
+    hfa     HubertFA forced alignment         1218_hfa_model_new_dict.zip
+    rmvpe   RMVPE pitch estimation            RMVPE.zip
+    romaji  romajiASR Japanese mora ASR       romajiASR.zip
 
 The Qwen3-ASR-1.7B model is too large for a GitHub release asset, so it is
 fetched from ModelScope (preferred for Mainland China) or Hugging Face, using
@@ -53,7 +54,7 @@ from typing import Iterable, Optional
 ROOT_DIR = Path(__file__).resolve().parent.parent
 EXPERIMENTS_DIR = ROOT_DIR / "experiments"
 
-# Self-hosted release (only romajiASR lives here now).
+# All ONNX models are published as assets on this self-hosted release.
 GITHUB_REPO = "AntheaLaffy/Vocal2Midi-for-linux"
 RELEASE_TAG = "v0.1.0"
 
@@ -78,30 +79,30 @@ class GithubModel:
 GITHUB_MODELS: list[GithubModel] = [
     GithubModel(
         name="game",
-        repo="openvpi/GAME",
-        tag="v1.0.3",
+        repo=GITHUB_REPO,
+        tag=RELEASE_TAG,
         asset="GAME-1.0.3-medium-onnx.zip",
         target=EXPERIMENTS_DIR / "GAME-1.0.3-medium-onnx",
         marker="encoder.onnx",
-        label="openvpi/GAME v1.0.3",
+        label=f"{GITHUB_REPO} {RELEASE_TAG}",
     ),
     GithubModel(
         name="hfa",
-        repo="wolfgitpr/HubertFA",
-        tag="v0.0.7",
+        repo=GITHUB_REPO,
+        tag=RELEASE_TAG,
         asset="1218_hfa_model_new_dict.zip",
         target=EXPERIMENTS_DIR / "1218_hfa_model_new_dict",
         marker="model.onnx",
-        label="wolfgitpr/HubertFA v0.0.7",
+        label=f"{GITHUB_REPO} {RELEASE_TAG}",
     ),
     GithubModel(
         name="rmvpe",
-        repo="yxlllc/RMVPE",
-        tag="230917",
-        asset="rmvpe-onnx.zip",
+        repo=GITHUB_REPO,
+        tag=RELEASE_TAG,
+        asset="RMVPE.zip",
         target=EXPERIMENTS_DIR / "RMVPE",
         marker="rmvpe.onnx",
-        label="yxlllc/RMVPE 230917",
+        label=f"{GITHUB_REPO} {RELEASE_TAG}",
     ),
     GithubModel(
         name="romaji",
