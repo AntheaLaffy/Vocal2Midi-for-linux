@@ -130,6 +130,13 @@ cached/
 *.onnx
 *.msgpack
 *.arrow
+*.incomplete
+
+# Qwen3-ASR model artifacts fetched by scripts/download_models.py
+# (large tokenizer files + modelscope's .gitattributes that forces LFS filters)
+experiments/Qwen3-ASR-1.7B/.gitattributes
+experiments/Qwen3-ASR-1.7B/merges.txt
+experiments/Qwen3-ASR-1.7B/vocab.json
 
 # Source/archive patterns — allow tracked project assets like release tarballs
 # and pre-built packages intended for distribution.
