@@ -154,6 +154,7 @@ experiments/Qwen3-ASR-1.7B/vocab.json
 # Local settings overrides
 settings/*.local.ini
 *.local.ini
+settings/vocal2midi.ini
 
 # 压缩包
 *.zip
