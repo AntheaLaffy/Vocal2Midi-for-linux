@@ -51,7 +51,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional
 
-ROOT_DIR = Path(__file__).resolve().parent.parent
+ROOT_DIR = Path(__file__).resolve().parent
 EXPERIMENTS_DIR = ROOT_DIR / "experiments"
 
 # All ONNX models are published as assets on this self-hosted release.
@@ -255,7 +255,6 @@ def extract_zip(zip_path: Path, target_dir: Path) -> None:
     with zipfile.ZipFile(zip_path) as zf:
         names = zf.namelist()
 
-    # Detect a single shared top-level directory inside the archive.
     top_levels = {n.split("/", 1)[0] for n in names if n}
     single_top = (
         len(top_levels) == 1

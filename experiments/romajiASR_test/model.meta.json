@@ -1,0 +1,21 @@
+{
+  "checkpoint": "checkpoints\\exp12_mora_ambiguity_from_exp8_e\\best",
+  "onnx_path": "checkpoints\\exp12_mora_ambiguity_from_exp8_e\\best\\model_dynb2_ids_fp16.onnx",
+  "sample_rate": 16000,
+  "input_names": [
+    "input_values"
+  ],
+  "output_names": [
+    "pred_ids"
+  ],
+  "vocab_path": "checkpoints\\exp12_mora_ambiguity_from_exp8_e\\best\\phoneme_vocab.json",
+  "blank_id": 0,
+  "opset": 17,
+  "dynamic_time": true,
+  "dynamic_batch": true,
+  "batch_size": 2,
+  "dummy_num_samples": 160000,
+  "export_mode": "minimal_pred_ids",
+  "fp16": true,
+  "fp16_io": false
+}

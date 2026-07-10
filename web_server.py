@@ -42,13 +42,13 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 # Enable CORS for all routes
 CORS(app)
 
-# Initialize SocketIO with threading mode (required for ONNX Runtime compatibility)
+# Initialize SocketIO with eventlet mode for better WebSocket support
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode='threading',
-    ping_timeout=60,
-    ping_interval=25,
+    async_mode='eventlet',
+    ping_timeout=300,
+    ping_interval=60,
 )
 
 # Global task manager instance
@@ -428,7 +428,10 @@ def handle_connect():
 @socketio.on('disconnect')
 def handle_disconnect():
     """Handle WebSocket disconnection."""
-    print(f'[WebSocket] Client disconnected: {request.sid}')
+    try:
+        print(f'[WebSocket] Client disconnected: {request.sid}')
+    except Exception:
+        pass
 
 
 @socketio.on('join_task')
