@@ -18,5 +18,3 @@ soundfile
 textgrid
 tqdm
 pyopenjtalk; platform_system == "Windows"
-flask_socketio
-flask_cors
