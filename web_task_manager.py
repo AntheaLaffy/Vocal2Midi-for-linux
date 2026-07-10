@@ -41,6 +41,7 @@ class Task:
     output_files: List[str] = field(default_factory=list)
     thread: Optional[Any] = None  # threading.Thread
     stop_event: Optional[Any] = None  # threading.Event
+    logs: List[dict] = field(default_factory=list)
 
 
 class TaskManager:
@@ -174,13 +175,15 @@ class TaskManager:
         try:
             # Define callback functions for real-time logging
             def log_callback(message: str, level: str = 'info'):
+                log_entry = {
+                    'task_id': task.id,
+                    'message': message,
+                    'level': level,
+                    'timestamp': datetime.now().isoformat()
+                }
+                task.logs.append(log_entry)
                 try:
-                    socketio.emit('log', {
-                        'task_id': task.id,
-                        'message': message,
-                        'level': level,
-                        'timestamp': datetime.now().isoformat()
-                    }, room=task.id)
+                    socketio.emit('log', log_entry, room=task.id)
                 except Exception as e:
                     print(f"[WebSocket Error] Failed to emit log: {e}")
 

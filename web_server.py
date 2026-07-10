@@ -42,11 +42,11 @@ app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
 # Enable CORS for all routes
 CORS(app)
 
-# Initialize SocketIO with eventlet mode for better WebSocket support
+# Initialize SocketIO with threading mode (required for ONNX Runtime compatibility)
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode='eventlet',
+    async_mode='threading',
     ping_timeout=300,
     ping_interval=60,
 )
@@ -457,6 +457,13 @@ def on_join_task(data):
                 'stage': task.stage,
                 'error': task.error
             })
+            
+            # Send backlogs if any
+            if task.logs:
+                emit('backlogs', {
+                    'task_id': task.id,
+                    'logs': task.logs
+                })
     else:
         emit('error', {'message': 'Missing task_id'})
 
@@ -490,6 +497,17 @@ def on_stop_task(data):
             'success': success,
             'message': 'Stop request sent' if success else 'Failed to stop task'
         }, room=request.sid)
+        
+        # Also emit status_change to all clients in the task room
+        task = task_manager.get_task(task_id)
+        if task:
+            emit('status_change', {
+                'task_id': task.id,
+                'status': task.status,
+                'progress': task.progress,
+                'stage': task.stage,
+                'error': task.error
+            }, room=task_id)
 
 
 # ==================== Error Handlers ====================

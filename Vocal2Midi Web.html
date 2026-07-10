@@ -1200,16 +1200,23 @@
         function initWebSocket() {
             try {
                 socket = io({
-                    transports: ['websocket', 'polling'],
+                    transports: ['polling', 'websocket'],
                     reconnection: true,
-                    reconnectionAttempts: 5,
-                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 10,
+                    reconnectionDelay: 2000,
+                    reconnectionDelayMax: 10000,
+                    timeout: 30000,
                 });
 
                 socket.on('connect', () => {
                     console.log('[WebSocket] Connected to server');
                     updateConnectionStatus(true);
                     showToast('已连接到服务器', 'success');
+                    
+                    if (currentTaskId && isRunning) {
+                        console.log(`[WebSocket] Re-joining task room: ${currentTaskId}`);
+                        socket.emit('join_task', { task_id: currentTaskId });
+                    }
                 });
 
                 socket.on('disconnect', () => {
@@ -1242,6 +1249,24 @@
                 // Handle join confirmation
                 socket.on('joined', (data) => {
                     console.log(`[WebSocket] Joined task room: ${data.task_id}`);
+                });
+
+                // Handle backlogs (replay missed logs when reconnecting)
+                socket.on('backlogs', (data) => {
+                    console.log(`[WebSocket] Received ${data.logs.length} backlogs for task ${data.task_id}`);
+                    data.logs.forEach(log => {
+                        addLog(log.message, log.level);
+                    });
+                });
+
+                // Handle stop response
+                socket.on('stop_response', (data) => {
+                    console.log(`[WebSocket] Stop response for task ${data.task_id}: ${data.success}`);
+                    if (data.success) {
+                        addLog('✓ 停止请求已发送，等待任务完成当前操作...', 'warning');
+                    } else {
+                        addLog('✗ 无法停止任务', 'error');
+                    }
                 });
 
             } catch (error) {
