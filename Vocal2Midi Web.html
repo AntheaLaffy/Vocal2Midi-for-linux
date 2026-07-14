@@ -597,6 +597,168 @@
             gap: var(--spacing-md) var(--spacing-xl);
         }
 
+        .model-dashboard {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: var(--spacing-md);
+            margin-bottom: var(--spacing-lg);
+        }
+
+        .model-stat {
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-bg-neutral);
+        }
+
+        .model-stat-value {
+            display: block;
+            font-size: 24px;
+            font-weight: 700;
+            line-height: 1.1;
+            color: var(--color-text-primary);
+        }
+
+        .model-stat-label {
+            display: block;
+            margin-top: var(--spacing-xs);
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .model-controls {
+            display: grid;
+            grid-template-columns: minmax(180px, 240px) minmax(180px, 240px) minmax(260px, 1fr);
+            gap: var(--spacing-md);
+            align-items: end;
+        }
+
+        .model-action-row {
+            display: flex;
+            grid-column: 1 / -1;
+            justify-content: flex-end;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+        }
+
+        .proxy-url-control.disabled {
+            opacity: 0.55;
+        }
+
+        .model-list {
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-sm);
+        }
+
+        .model-row {
+            display: grid;
+            grid-template-columns: 28px minmax(0, 1fr) auto;
+            gap: var(--spacing-md);
+            align-items: center;
+            padding: var(--spacing-md);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-bg-card);
+            transition: all var(--transition-fast);
+        }
+
+        .model-row:hover {
+            border-color: rgba(0, 120, 212, 0.35);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .model-row.installed {
+            background: linear-gradient(0deg, rgba(16, 124, 16, 0.04), rgba(16, 124, 16, 0.04)), var(--color-bg-card);
+        }
+
+        .model-checkbox {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--color-primary);
+        }
+
+        .model-row-main {
+            min-width: 0;
+        }
+
+        .model-title-line {
+            display: flex;
+            align-items: center;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            margin-bottom: var(--spacing-xs);
+        }
+
+        .model-title {
+            font-size: 14px;
+            font-weight: 650;
+            color: var(--color-text-primary);
+        }
+
+        .model-role {
+            color: var(--color-text-secondary);
+            font-size: 13px;
+        }
+
+        .model-meta {
+            display: grid;
+            grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+            gap: var(--spacing-sm) var(--spacing-lg);
+            color: var(--color-text-tertiary);
+            font-family: var(--font-family-mono);
+            font-size: 11px;
+        }
+
+        .model-meta span {
+            overflow-wrap: anywhere;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 64px;
+            padding: 3px 8px;
+            border-radius: 999px;
+            border: 1px solid var(--color-border);
+            font-size: 12px;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        .status-pill.installed {
+            color: var(--color-success);
+            border-color: rgba(16, 124, 16, 0.25);
+            background: rgba(16, 124, 16, 0.08);
+        }
+
+        .status-pill.missing {
+            color: var(--color-warning);
+            border-color: rgba(255, 140, 0, 0.3);
+            background: rgba(255, 140, 0, 0.08);
+        }
+
+        .status-pill.running {
+            color: var(--color-primary);
+            border-color: rgba(0, 120, 212, 0.3);
+            background: rgba(0, 120, 212, 0.08);
+        }
+
+        .model-log-panel {
+            min-height: 180px;
+            max-height: 360px;
+        }
+
+        .model-empty-state {
+            padding: var(--spacing-xl);
+            text-align: center;
+            color: var(--color-text-secondary);
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-bg-neutral);
+        }
+
         .toast {
             position: fixed;
             top: var(--spacing-lg);
@@ -798,8 +960,28 @@
             }
 
             .params-grid,
-            .advanced-grid {
+            .advanced-grid,
+            .model-dashboard,
+            .model-controls,
+            .model-meta {
                 grid-template-columns: 1fr;
+            }
+
+            .model-action-row {
+                justify-content: stretch;
+            }
+
+            .model-action-row .btn {
+                flex: 1;
+            }
+
+            .model-row {
+                grid-template-columns: 28px minmax(0, 1fr);
+            }
+
+            .model-row .status-pill {
+                grid-column: 2;
+                justify-self: flex-start;
             }
 
             .card {
@@ -837,6 +1019,11 @@
                 <a href="#extract" class="nav-item active" data-page="extract" aria-label="自动提取与灌注" title="自动提取与灌注">
                     <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                         <path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/>
+                    </svg>
+                </a>
+                <a href="#models" class="nav-item" data-page="models" aria-label="模型下载" title="模型下载">
+                    <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M5 20h14v-2H5v2zm14-9h-4V3H9v8H5l7 7 7-7z"/>
                     </svg>
                 </a>
                 <a href="#settings" class="nav-item nav-item-bottom" data-page="settings" aria-label="全局设置" title="全局设置">
@@ -1029,6 +1216,102 @@
                     </div>
                 </section>
 
+                <!-- Model Download Page -->
+                <section id="page-models" class="page" aria-labelledby="models-title">
+                    <div class="settings-header">
+                        <h2 id="models-title" class="page-title" style="margin-bottom: 0;">模型下载</h2>
+                        <button type="button" class="btn btn-secondary" onclick="loadModelStatus()">刷新状态</button>
+                    </div>
+
+                    <div class="card">
+                        <div class="model-dashboard">
+                            <div class="model-stat">
+                                <span class="model-stat-value" id="modelInstalledCount">0</span>
+                                <span class="model-stat-label">已就绪模型</span>
+                            </div>
+                            <div class="model-stat">
+                                <span class="model-stat-value" id="modelMissingCount">0</span>
+                                <span class="model-stat-label">缺失模型</span>
+                            </div>
+                            <div class="model-stat">
+                                <span class="model-stat-value" id="modelDownloadState">空闲</span>
+                                <span class="model-stat-label">下载任务状态</span>
+                            </div>
+                        </div>
+
+                        <div class="model-controls">
+                            <div class="param-item">
+                                <label class="form-label" for="qwenDownloadSource">Qwen 下载源</label>
+                                <select class="form-control" id="qwenDownloadSource">
+                                    <option value="auto">auto: ModelScope 后备 Hugging Face</option>
+                                    <option value="modelscope">ModelScope</option>
+                                    <option value="huggingface">Hugging Face</option>
+                                </select>
+                            </div>
+
+                            <div class="param-item">
+                                <label class="form-label" for="downloadProxyMode">代理模式</label>
+                                <select class="form-control" id="downloadProxyMode" onchange="updateProxyControls()">
+                                    <option value="system">系统代理</option>
+                                    <option value="manual">手动代理</option>
+                                    <option value="none">无代理</option>
+                                </select>
+                            </div>
+
+                            <div class="param-item proxy-url-control disabled" id="manualProxyGroup">
+                                <label class="form-label" for="manualProxyUrl">手动代理地址</label>
+                                <input
+                                    type="text"
+                                    class="form-control"
+                                    id="manualProxyUrl"
+                                    placeholder="http://127.0.0.1:7890"
+                                    disabled
+                                >
+                            </div>
+
+                            <div class="model-action-row">
+                                <div class="switch-group" style="margin-right: auto;">
+                                    <span class="form-label" style="margin-bottom: 0;">强制重新下载</span>
+                                    <div class="switch" id="switchModelForce" onclick="toggleSwitch(this); updateModelDownloadButtons()" role="switch" aria-checked="false" tabindex="0"></div>
+                                </div>
+                                <button type="button" class="btn btn-secondary" onclick="selectMissingModels()">只选缺失</button>
+                                <button type="button" class="btn btn-secondary" onclick="selectAllModels()">选择全部</button>
+                                <button type="button" class="btn btn-primary" id="btnDownloadMissing" onclick="startModelDownload('missing')">下载缺失模型</button>
+                                <button type="button" class="btn btn-secondary" id="btnDownloadSelected" onclick="startModelDownload('selected')">下载所选</button>
+                                <button type="button" class="btn btn-danger" id="btnStopModelDownload" onclick="stopModelDownload()" disabled>停止下载</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress-container hidden" id="modelDownloadProgressContainer">
+                        <div class="progress-header">
+                            <span class="progress-stage" id="modelDownloadStage">准备中...</span>
+                            <span class="progress-percentage" id="modelDownloadPercentage">0%</span>
+                        </div>
+                        <div class="progress-bar-wrapper">
+                            <div class="progress-bar" id="modelDownloadProgressBar"></div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">模型清单</h3>
+                        </div>
+                        <div class="model-list" id="modelList">
+                            <div class="model-empty-state">正在读取模型状态...</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="log-toolbar">
+                            <strong>下载日志</strong>
+                            <div style="flex: 1;"></div>
+                            <button class="btn btn-secondary" style="padding: 2px 8px;" onclick="clearModelLogs()">清空</button>
+                        </div>
+                        <div class="log-panel model-log-panel" id="modelDownloadLogPanel" role="log" aria-live="polite"></div>
+                    </div>
+                </section>
+
                 <!-- Settings Page -->
                 <section id="page-settings" class="page" aria-labelledby="settings-title">
                     <div class="settings-header">
@@ -1181,6 +1464,9 @@
         let selectedFiles = [];
         let isRunning = false;
         let currentTaskId = null;
+        let modelDownloadTaskId = null;
+        let modelDownloadRunning = false;
+        let modelCatalog = [];
         let socket = null;
         let currentLogFilter = 'all';
 
@@ -1193,6 +1479,7 @@
             initKeyboardNav();
             initWebSocket();
             updateLyricVisibility();
+            updateProxyControls();
             loadSettings();
         });
 
@@ -1217,6 +1504,11 @@
                         console.log(`[WebSocket] Re-joining task room: ${currentTaskId}`);
                         socket.emit('join_task', { task_id: currentTaskId });
                     }
+
+                    if (modelDownloadTaskId && modelDownloadRunning) {
+                        console.log(`[WebSocket] Re-joining model download room: ${modelDownloadTaskId}`);
+                        socket.emit('join_task', { task_id: modelDownloadTaskId });
+                    }
                 });
 
                 socket.on('disconnect', () => {
@@ -1233,17 +1525,29 @@
 
                 // Handle real-time log messages
                 socket.on('log', (data) => {
-                    addLog(data.message, data.level || 'info');
+                    if (data.task_type === 'model_download') {
+                        addModelLog(data.message, data.level || 'info');
+                    } else {
+                        addLog(data.message, data.level || 'info');
+                    }
                 });
 
                 // Handle progress updates
                 socket.on('progress', (data) => {
-                    updateProgressBar(data.progress, data.stage);
+                    if (data.task_type === 'model_download') {
+                        updateModelDownloadProgress(data.progress, data.stage);
+                    } else {
+                        updateProgressBar(data.progress, data.stage);
+                    }
                 });
 
                 // Handle task status changes
                 socket.on('status_change', (data) => {
-                    handleStatusChange(data);
+                    if (data.task_type === 'model_download') {
+                        handleModelDownloadStatusChange(data);
+                    } else {
+                        handleStatusChange(data);
+                    }
                 });
 
                 // Handle join confirmation
@@ -1255,7 +1559,11 @@
                 socket.on('backlogs', (data) => {
                     console.log(`[WebSocket] Received ${data.logs.length} backlogs for task ${data.task_id}`);
                     data.logs.forEach(log => {
-                        addLog(log.message, log.level);
+                        if (data.task_type === 'model_download' || log.task_type === 'model_download') {
+                            addModelLog(log.message, log.level);
+                        } else {
+                            addLog(log.message, log.level);
+                        }
                     });
                 });
 
@@ -1263,9 +1571,17 @@
                 socket.on('stop_response', (data) => {
                     console.log(`[WebSocket] Stop response for task ${data.task_id}: ${data.success}`);
                     if (data.success) {
-                        addLog('✓ 停止请求已发送，等待任务完成当前操作...', 'warning');
+                        if (data.task_type === 'model_download') {
+                            addModelLog('停止请求已发送，等待下载进程退出...', 'warning');
+                        } else {
+                            addLog('✓ 停止请求已发送，等待任务完成当前操作...', 'warning');
+                        }
                     } else {
-                        addLog('✗ 无法停止任务', 'error');
+                        if (data.task_type === 'model_download') {
+                            addModelLog('无法停止下载任务', 'error');
+                        } else {
+                            addLog('✗ 无法停止任务', 'error');
+                        }
                     }
                 });
 
@@ -1290,6 +1606,23 @@
                 socket.emit('leave_task', { task_id: currentTaskId });
             }
             currentTaskId = null;
+        }
+
+        function connectToModelDownloadTask(taskId) {
+            if (!socket || !socket.connected) {
+                showToast('WebSocket 未连接，无法接收下载日志', 'warning');
+                return;
+            }
+
+            socket.emit('join_task', { task_id: taskId });
+            modelDownloadTaskId = taskId;
+        }
+
+        function disconnectFromModelDownloadTask() {
+            if (socket && modelDownloadTaskId && socket.connected) {
+                socket.emit('leave_task', { task_id: modelDownloadTaskId });
+            }
+            modelDownloadTaskId = null;
         }
 
         function updateConnectionStatus(isConnected) {
@@ -1390,6 +1723,8 @@
             // Load settings when navigating to settings page
             if (pageId === 'settings') {
                 loadSettings();
+            } else if (pageId === 'models') {
+                loadModelStatus();
             }
         }
 
@@ -1493,6 +1828,17 @@
                 showToast('Slice Min 不能大于 Slice Max', 'error');
                 document.getElementById('sliceMin').value = sliceMax;
             }
+        }
+
+        function updateProxyControls() {
+            const modeEl = document.getElementById('downloadProxyMode');
+            const proxyGroup = document.getElementById('manualProxyGroup');
+            const proxyInput = document.getElementById('manualProxyUrl');
+            if (!modeEl || !proxyGroup || !proxyInput) return;
+
+            const isManual = modeEl.value === 'manual';
+            proxyInput.disabled = !isManual;
+            proxyGroup.classList.toggle('disabled', !isManual);
         }
 
         // ==================== Pipeline Execution ====================
@@ -1716,6 +2062,309 @@
                 btnStop.disabled = true;
                 btnRun.innerHTML = '▶ 开始全自动提取';
             }
+        }
+
+        // ==================== Model Download Management ====================
+        async function loadModelStatus() {
+            try {
+                const data = await apiCall('/models/status');
+                if (!data.success) {
+                    throw new Error(data.error || '读取模型状态失败');
+                }
+
+                modelCatalog = data.models || [];
+                modelDownloadRunning = !!(data.active_task && ['pending', 'running', 'stopping'].includes(data.active_task.status));
+                if (data.active_task) {
+                    modelDownloadTaskId = data.active_task.task_id;
+                    if (modelDownloadRunning) {
+                        connectToModelDownloadTask(modelDownloadTaskId);
+                        updateModelDownloadProgress(data.active_task.progress || 0, data.active_task.stage || 'running');
+                    }
+                }
+
+                renderModelSummary(data);
+                renderModelList(modelCatalog);
+                updateModelDownloadButtons();
+            } catch (error) {
+                console.error('[Model Status Error]:', error);
+                showToast(error.message || '读取模型状态失败', 'error');
+                const listEl = document.getElementById('modelList');
+                if (listEl) {
+                    listEl.innerHTML = '<div class="model-empty-state">无法读取模型状态，请检查 Web 服务日志。</div>';
+                }
+            }
+        }
+
+        function renderModelSummary(data) {
+            const installedEl = document.getElementById('modelInstalledCount');
+            const missingEl = document.getElementById('modelMissingCount');
+            const stateEl = document.getElementById('modelDownloadState');
+            if (!installedEl || !missingEl || !stateEl) return;
+
+            installedEl.textContent = data.installed_count ?? 0;
+            missingEl.textContent = data.missing_count ?? 0;
+            stateEl.textContent = modelDownloadRunning ? '运行中' : '空闲';
+        }
+
+        function renderModelList(models) {
+            const listEl = document.getElementById('modelList');
+            if (!listEl) return;
+
+            if (!models.length) {
+                listEl.innerHTML = '<div class="model-empty-state">没有可下载模型。</div>';
+                return;
+            }
+
+            listEl.innerHTML = models.map(model => {
+                const statusClass = model.installed ? 'installed' : 'missing';
+                const statusText = model.installed ? '已就绪' : '缺失';
+                const checked = model.installed ? '' : 'checked';
+                const disabled = modelDownloadRunning ? 'disabled' : '';
+
+                return `
+                    <div class="model-row ${statusClass}">
+                        <input
+                            type="checkbox"
+                            class="model-checkbox"
+                            id="modelCheck-${escapeHtml(model.id)}"
+                            value="${escapeHtml(model.id)}"
+                            ${checked}
+                            ${disabled}
+                            onchange="updateModelDownloadButtons()"
+                            aria-label="选择 ${escapeHtml(model.name)}"
+                        >
+                        <div class="model-row-main">
+                            <div class="model-title-line">
+                                <span class="model-title">${escapeHtml(model.name)}</span>
+                                <span class="model-role">${escapeHtml(model.role || model.description || '')}</span>
+                            </div>
+                            <div class="model-meta">
+                                <span>路径: ${escapeHtml(model.target_path || '')}</span>
+                                <span>标记: ${escapeHtml(model.marker || '')}</span>
+                                <span>来源: ${escapeHtml(model.source || '')}</span>
+                                <span>ID: ${escapeHtml(model.id)}</span>
+                            </div>
+                        </div>
+                        <span class="status-pill ${statusClass}">${statusText}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function selectMissingModels() {
+            document.querySelectorAll('.model-checkbox').forEach(checkbox => {
+                const model = modelCatalog.find(item => item.id === checkbox.value);
+                checkbox.checked = !!model && !model.installed;
+            });
+            updateModelDownloadButtons();
+        }
+
+        function selectAllModels() {
+            document.querySelectorAll('.model-checkbox').forEach(checkbox => {
+                checkbox.checked = true;
+            });
+            updateModelDownloadButtons();
+        }
+
+        function getSelectedModelIds() {
+            return Array.from(document.querySelectorAll('.model-checkbox:checked'))
+                .map(checkbox => checkbox.value);
+        }
+
+        function getMissingModelIds() {
+            return modelCatalog.filter(model => !model.installed).map(model => model.id);
+        }
+
+        function updateModelDownloadButtons() {
+            const btnMissing = document.getElementById('btnDownloadMissing');
+            const btnSelected = document.getElementById('btnDownloadSelected');
+            const btnStop = document.getElementById('btnStopModelDownload');
+            const checkboxes = document.querySelectorAll('.model-checkbox');
+            const missingIds = getMissingModelIds();
+            const selectedIds = getSelectedModelIds();
+
+            checkboxes.forEach(checkbox => {
+                checkbox.disabled = modelDownloadRunning;
+            });
+
+            if (btnMissing) {
+                btnMissing.disabled = modelDownloadRunning || missingIds.length === 0;
+            }
+            if (btnSelected) {
+                btnSelected.disabled = modelDownloadRunning || selectedIds.length === 0;
+            }
+            if (btnStop) {
+                btnStop.disabled = !modelDownloadRunning;
+            }
+
+            const stateEl = document.getElementById('modelDownloadState');
+            if (stateEl) {
+                stateEl.textContent = modelDownloadRunning ? '运行中' : '空闲';
+            }
+        }
+
+        async function startModelDownload(mode) {
+            if (modelDownloadRunning) return;
+
+            const modelIds = mode === 'missing' ? getMissingModelIds() : getSelectedModelIds();
+            if (modelIds.length === 0) {
+                showToast(mode === 'missing' ? '没有缺失模型需要下载' : '请先选择模型', 'warning');
+                return;
+            }
+
+            const qwenSource = document.getElementById('qwenDownloadSource').value;
+            const force = document.getElementById('switchModelForce').classList.contains('active');
+            const proxyMode = document.getElementById('downloadProxyMode').value;
+            const proxyUrl = document.getElementById('manualProxyUrl').value.trim();
+
+            if (proxyMode === 'manual' && !proxyUrl) {
+                showToast('请输入手动代理地址', 'error');
+                return;
+            }
+            if (proxyMode === 'manual' && !proxyUrl.includes('://')) {
+                showToast('代理地址需要包含协议，例如 http://127.0.0.1:7890', 'error');
+                return;
+            }
+
+            try {
+                clearModelLogs();
+                addModelLog(`准备下载: ${modelIds.join(', ')}`, 'info');
+                addModelLog(`代理模式: ${proxyMode}${proxyMode === 'manual' ? ` (${proxyUrl})` : ''}`, 'info');
+                showModelDownloadProgress();
+                updateModelDownloadProgress(0, 'queued');
+                modelDownloadRunning = true;
+                updateModelDownloadButtons();
+
+                const result = await apiCall('/models/download', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        models: modelIds,
+                        qwen_source: qwenSource,
+                        force,
+                        proxy_mode: proxyMode,
+                        proxy_url: proxyUrl
+                    })
+                });
+
+                if (!result.success) {
+                    throw new Error(result.error || '启动下载失败');
+                }
+
+                modelDownloadTaskId = result.task_id;
+                connectToModelDownloadTask(modelDownloadTaskId);
+                addModelLog(`下载任务已启动 (${modelDownloadTaskId.substring(0, 8)}...)`, 'success');
+                showToast('模型下载已启动', 'success');
+            } catch (error) {
+                console.error('[Model Download Start Error]:', error);
+                addModelLog(`错误: ${error.message}`, 'error');
+                showToast(error.message || '启动下载失败', 'error');
+                modelDownloadRunning = false;
+                updateModelDownloadButtons();
+            }
+        }
+
+        async function stopModelDownload() {
+            if (!modelDownloadTaskId || !modelDownloadRunning) return;
+
+            try {
+                addModelLog('正在请求停止下载任务...', 'warning');
+                const result = await apiCall('/models/download/stop', {
+                    method: 'POST',
+                    body: JSON.stringify({ task_id: modelDownloadTaskId })
+                });
+                if (!result.success) {
+                    throw new Error(result.error || '停止下载失败');
+                }
+                addModelLog('停止请求已发送', 'warning');
+                showToast('已请求停止下载', 'warning');
+            } catch (error) {
+                console.error('[Model Download Stop Error]:', error);
+                addModelLog(`错误: ${error.message}`, 'error');
+                showToast(error.message || '停止下载失败', 'error');
+            }
+        }
+
+        function handleModelDownloadStatusChange(data) {
+            updateModelDownloadProgress(data.progress || 0, data.stage || data.status);
+
+            if (data.status === 'completed') {
+                modelDownloadRunning = false;
+                addModelLog('模型下载完成', 'success');
+                showToast('模型下载完成', 'success');
+                disconnectFromModelDownloadTask();
+                loadModelStatus();
+            } else if (data.status === 'failed') {
+                modelDownloadRunning = false;
+                addModelLog(data.error || '模型下载失败', 'error');
+                showToast(data.error || '模型下载失败', 'error');
+                disconnectFromModelDownloadTask();
+                loadModelStatus();
+            } else if (data.status === 'cancelled') {
+                modelDownloadRunning = false;
+                addModelLog('模型下载已取消', 'warning');
+                showToast('模型下载已取消', 'warning');
+                disconnectFromModelDownloadTask();
+                loadModelStatus();
+            } else {
+                modelDownloadRunning = true;
+                updateModelDownloadButtons();
+            }
+        }
+
+        function showModelDownloadProgress() {
+            const container = document.getElementById('modelDownloadProgressContainer');
+            if (container) {
+                container.classList.remove('hidden');
+            }
+        }
+
+        function updateModelDownloadProgress(progress, stage) {
+            const container = document.getElementById('modelDownloadProgressContainer');
+            const bar = document.getElementById('modelDownloadProgressBar');
+            const stageText = document.getElementById('modelDownloadStage');
+            const percentageText = document.getElementById('modelDownloadPercentage');
+            if (!container || !bar || !stageText || !percentageText) return;
+
+            container.classList.remove('hidden');
+            const pct = Math.max(0, Math.min(100, Math.round(progress || 0)));
+            bar.style.width = `${pct}%`;
+            bar.className = `progress-bar ${pct >= 100 ? 'stage-done' : 'stage-loading'}`;
+
+            const stageNames = {
+                queued: '等待下载...',
+                starting: '启动下载进程...',
+                done: '完成',
+                failed: '失败',
+                cancelled: '已取消'
+            };
+            stageText.textContent = stageNames[stage] || `下载中: ${stage}`;
+            percentageText.textContent = `${pct}%`;
+        }
+
+        function addModelLog(message, type = 'info') {
+            const logPanel = document.getElementById('modelDownloadLogPanel');
+            if (!logPanel) return;
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = message;
+            logPanel.appendChild(entry);
+            logPanel.scrollTop = logPanel.scrollHeight;
+        }
+
+        function clearModelLogs() {
+            const logPanel = document.getElementById('modelDownloadLogPanel');
+            if (logPanel) {
+                logPanel.innerHTML = '';
+            }
+        }
+
+        function escapeHtml(value) {
+            return String(value)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
 
         // ==================== Log Panel ====================
@@ -1953,6 +2602,7 @@
         // ==================== Cleanup on Page Unload ====================
         window.addEventListener('beforeunload', () => {
             disconnectFromTask();
+            disconnectFromModelDownloadTask();
             if (socket) {
                 socket.disconnect();
             }

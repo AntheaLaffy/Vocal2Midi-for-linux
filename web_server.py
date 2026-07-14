@@ -16,6 +16,7 @@ import json
 import tempfile
 import pathlib
 import copy
+import traceback
 from datetime import datetime
 
 from flask import Flask, request, jsonify, send_from_directory, send_file
@@ -29,6 +30,10 @@ if str(PROJECT_ROOT) not in sys.path:
 
 # Import task manager
 from web_task_manager import TaskManager
+from web_model_download_manager import (
+    ModelDownloadManager,
+    validate_model_request,
+)
 
 # Initialize Flask app
 app = Flask(
@@ -53,6 +58,7 @@ socketio = SocketIO(
 
 # Global task manager instance
 task_manager = TaskManager()
+model_download_manager = ModelDownloadManager()
 
 # Default settings (matching GlobalSettingsInterface defaults)
 DEFAULT_SETTINGS = {
@@ -389,6 +395,142 @@ def system_info():
     })
 
 
+# ==================== Model Download API ====================
+
+@app.route('/api/models/status')
+def model_status():
+    """Return known model assets and their local install status."""
+    models = model_download_manager.model_statuses()
+    active_task = model_download_manager.active_task()
+    installed_count = sum(1 for model in models if model['installed'])
+
+    return jsonify({
+        'success': True,
+        'models': models,
+        'installed_count': installed_count,
+        'missing_count': len(models) - installed_count,
+        'active_task': (
+            model_download_manager.serialize_task(active_task)
+            if active_task else None
+        ),
+    })
+
+
+@app.route('/api/models/download', methods=['POST'])
+def start_model_download():
+    """Start a background model download task."""
+    data = request.get_json(silent=True) or {}
+    force = bool(data.get('force', False))
+    qwen_source = data.get('qwen_source', 'auto')
+    proxy_mode = data.get('proxy_mode', 'system')
+    proxy_url = str(data.get('proxy_url', '') or '')
+
+    model_ids = data.get('models')
+    if model_ids is None:
+        # Default web behavior: download every missing model.
+        model_ids = [
+            model['id']
+            for model in model_download_manager.model_statuses()
+            if not model['installed']
+        ]
+
+    if not isinstance(model_ids, list) or not all(isinstance(m, str) for m in model_ids):
+        return jsonify({
+            'success': False,
+            'error': 'models must be a list of model ids'
+        }), 400
+
+    # Deduplicate while preserving UI order.
+    selected_models = list(dict.fromkeys(model_ids))
+    if not selected_models:
+        return jsonify({
+            'success': False,
+            'error': 'No models selected for download'
+        }), 400
+
+    validation_error = validate_model_request(
+        selected_models,
+        qwen_source,
+        proxy_mode=proxy_mode,
+        proxy_url=proxy_url,
+    )
+    if validation_error:
+        return jsonify({
+            'success': False,
+            'error': validation_error
+        }), 400
+
+    try:
+        task = model_download_manager.start_task(
+            selected_models=selected_models,
+            qwen_source=qwen_source,
+            force=force,
+            proxy_mode=proxy_mode,
+            proxy_url=proxy_url,
+            socketio_instance=socketio,
+        )
+    except RuntimeError as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 409
+
+    return jsonify({
+        'success': True,
+        'task_id': task.id,
+        'status': task.status,
+        'message': 'Model download task started',
+    })
+
+
+@app.route('/api/models/download/status/<task_id>')
+def get_model_download_status(task_id):
+    """Return status for a model download task."""
+    task = model_download_manager.get_task(task_id)
+    if not task:
+        return jsonify({
+            'success': False,
+            'error': 'Download task not found'
+        }), 404
+
+    return jsonify({
+        'success': True,
+        **model_download_manager.serialize_task(task),
+    })
+
+
+@app.route('/api/models/download/stop', methods=['POST'])
+def stop_model_download():
+    """Stop a running model download task."""
+    data = request.get_json(silent=True) or {}
+    task_id = data.get('task_id')
+    if not task_id:
+        return jsonify({
+            'success': False,
+            'error': 'Missing task_id parameter'
+        }), 400
+
+    if not model_download_manager.get_task(task_id):
+        return jsonify({
+            'success': False,
+            'error': 'Download task not found'
+        }), 404
+
+    success = model_download_manager.stop_task(task_id)
+    if not success:
+        task = model_download_manager.get_task(task_id)
+        return jsonify({
+            'success': False,
+            'error': f'Download task cannot be stopped (current status: {task.status})'
+        }), 400
+
+    return jsonify({
+        'success': True,
+        'status': 'stopping',
+        'message': 'Stop request sent'
+    })
+
+
 # ==================== Download API ====================
 
 @app.route('/api/download/<path:filepath>')
@@ -464,6 +606,16 @@ def on_join_task(data):
                     'task_id': task.id,
                     'logs': task.logs
                 })
+        else:
+            download_task = model_download_manager.get_task(task_id)
+            if download_task:
+                emit('status_change', model_download_manager.serialize_task(download_task))
+                if download_task.logs:
+                    emit('backlogs', {
+                        'task_id': download_task.id,
+                        'task_type': 'model_download',
+                        'logs': download_task.logs
+                    })
     else:
         emit('error', {'message': 'Missing task_id'})
 
@@ -492,8 +644,14 @@ def on_stop_task(data):
     task_id = data.get('task_id')
     if task_id:
         success = task_manager.stop_task(task_id)
+        task_type = 'pipeline'
+        if not success:
+            success = model_download_manager.stop_task(task_id)
+            if success:
+                task_type = 'model_download'
         emit('stop_response', {
             'task_id': task_id,
+            'task_type': task_type,
             'success': success,
             'message': 'Stop request sent' if success else 'Failed to stop task'
         }, room=request.sid)
@@ -508,6 +666,12 @@ def on_stop_task(data):
                 'stage': task.stage,
                 'error': task.error
             }, room=task_id)
+        else:
+            download_task = model_download_manager.get_task(task_id)
+            if download_task:
+                emit('status_change',
+                     model_download_manager.serialize_task(download_task),
+                     room=task_id)
 
 
 # ==================== Error Handlers ====================

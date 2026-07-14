@@ -19,7 +19,7 @@ if PROJECT_ROOT not in sys.path:
 @pytest.fixture
 def app():
     """Create and configure a test Flask application."""
-    from web_server import app, task_manager
+    from web_server import app, task_manager, model_download_manager
     
     # Configure for testing
     app.config['TESTING'] = True
@@ -27,6 +27,8 @@ def app():
     
     # Clear tasks before each test
     task_manager.tasks.clear()
+    model_download_manager.tasks.clear()
+    model_download_manager.active_task_id = None
     
     yield app
 
@@ -293,6 +295,309 @@ class TestSystemInfoAPI:
         assert 'device' in data
         assert 'available_devices' in data
         assert isinstance(data['available_devices'], list)
+
+
+class TestModelDownloadAPI:
+    """Test model download API endpoints."""
+
+    def test_model_status_returns_known_models(self, client):
+        """Test model status endpoint returns the expected model catalog."""
+        response = client.get('/api/models/status')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert 'models' in data
+        assert 'installed_count' in data
+        assert 'missing_count' in data
+
+        model_ids = {model['id'] for model in data['models']}
+        assert {'game', 'hfa', 'rmvpe', 'romaji', 'qwen'} <= model_ids
+        for model in data['models']:
+            assert 'target_path' in model
+            assert 'installed' in model
+
+    def test_start_model_download_with_valid_selection(self, client, monkeypatch):
+        """Test starting a model download with explicit models."""
+        import web_server
+
+        captured = {}
+
+        class FakeTask:
+            id = 'fake-download-task'
+            status = 'running'
+
+        def fake_start_task(
+            selected_models,
+            qwen_source,
+            force,
+            proxy_mode,
+            proxy_url,
+            socketio_instance,
+        ):
+            captured['selected_models'] = selected_models
+            captured['qwen_source'] = qwen_source
+            captured['force'] = force
+            captured['proxy_mode'] = proxy_mode
+            captured['proxy_url'] = proxy_url
+            captured['socketio_instance'] = socketio_instance
+            return FakeTask()
+
+        monkeypatch.setattr(
+            web_server.model_download_manager,
+            'start_task',
+            fake_start_task
+        )
+
+        response = client.post('/api/models/download', json={
+            'models': ['game', 'qwen'],
+            'qwen_source': 'huggingface',
+            'force': True,
+            'proxy_mode': 'manual',
+            'proxy_url': 'http://127.0.0.1:7890'
+        })
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert data['task_id'] == 'fake-download-task'
+        assert captured['selected_models'] == ['game', 'qwen']
+        assert captured['qwen_source'] == 'huggingface'
+        assert captured['force'] is True
+        assert captured['proxy_mode'] == 'manual'
+        assert captured['proxy_url'] == 'http://127.0.0.1:7890'
+
+    def test_start_model_download_defaults_to_missing_models(self, client, monkeypatch):
+        """Test omitting models downloads the missing set."""
+        import web_server
+
+        captured = {}
+
+        class FakeTask:
+            id = 'missing-download-task'
+            status = 'running'
+
+        monkeypatch.setattr(
+            web_server.model_download_manager,
+            'model_statuses',
+            lambda: [
+                {'id': 'game', 'installed': False},
+                {'id': 'hfa', 'installed': True},
+                {'id': 'qwen', 'installed': False},
+            ]
+        )
+
+        def fake_start_task(
+            selected_models,
+            qwen_source,
+            force,
+            proxy_mode,
+            proxy_url,
+            socketio_instance,
+        ):
+            captured['selected_models'] = selected_models
+            captured['proxy_mode'] = proxy_mode
+            captured['proxy_url'] = proxy_url
+            return FakeTask()
+
+        monkeypatch.setattr(
+            web_server.model_download_manager,
+            'start_task',
+            fake_start_task
+        )
+
+        response = client.post('/api/models/download', json={})
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert captured['selected_models'] == ['game', 'qwen']
+        assert captured['proxy_mode'] == 'system'
+        assert captured['proxy_url'] == ''
+
+    def test_start_model_download_rejects_unknown_model(self, client):
+        """Test unknown model IDs return 400."""
+        response = client.post('/api/models/download', json={
+            'models': ['does-not-exist']
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'unknown model' in data['error'].lower()
+
+    def test_start_model_download_rejects_invalid_qwen_source(self, client):
+        """Test invalid qwen_source returns 400."""
+        response = client.post('/api/models/download', json={
+            'models': ['qwen'],
+            'qwen_source': 'invalid-source'
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'qwen_source' in data['error']
+
+    def test_start_model_download_rejects_invalid_proxy_mode(self, client):
+        """Test invalid proxy_mode returns 400."""
+        response = client.post('/api/models/download', json={
+            'models': ['qwen'],
+            'proxy_mode': 'bad-proxy-mode'
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'proxy_mode' in data['error']
+
+    def test_start_model_download_requires_manual_proxy_url(self, client):
+        """Test manual proxy mode requires a proxy URL."""
+        response = client.post('/api/models/download', json={
+            'models': ['qwen'],
+            'proxy_mode': 'manual',
+            'proxy_url': ''
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'proxy_url' in data['error']
+
+    def test_start_model_download_requires_proxy_scheme(self, client):
+        """Test manual proxy URL must include a scheme."""
+        response = client.post('/api/models/download', json={
+            'models': ['qwen'],
+            'proxy_mode': 'manual',
+            'proxy_url': '127.0.0.1:7890'
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'scheme' in data['error']
+
+    def test_start_model_download_conflict_when_running(self, client, monkeypatch):
+        """Test starting a second download returns 409."""
+        import web_server
+
+        def fake_start_task(
+            selected_models,
+            qwen_source,
+            force,
+            proxy_mode,
+            proxy_url,
+            socketio_instance,
+        ):
+            raise RuntimeError('A model download task is already running.')
+
+        monkeypatch.setattr(
+            web_server.model_download_manager,
+            'start_task',
+            fake_start_task
+        )
+
+        response = client.post('/api/models/download', json={
+            'models': ['game']
+        })
+
+        assert response.status_code == 409
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'already running' in data['error']
+
+    def test_get_model_download_status_not_found(self, client):
+        """Test getting a nonexistent download task returns 404."""
+        response = client.get('/api/models/download/status/not-a-task')
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data['success'] is False
+
+    def test_stop_model_download(self, client):
+        """Test stopping an existing running download task."""
+        from web_server import model_download_manager
+
+        task = model_download_manager.create_task(['game'], 'auto', False)
+        task.status = 'running'
+
+        response = client.post('/api/models/download/stop', json={
+            'task_id': task.id
+        })
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert data['status'] == 'stopping'
+
+    def test_stop_model_download_not_found(self, client):
+        """Test stopping a nonexistent download task returns 404."""
+        response = client.post('/api/models/download/stop', json={
+            'task_id': 'not-a-task'
+        })
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data['success'] is False
+
+
+class TestModelDownloadProxyEnv:
+    """Test proxy environment override behavior for model downloads."""
+
+    def test_system_proxy_inherits_environment(self, monkeypatch):
+        """System proxy mode leaves existing proxy env vars intact."""
+        from web_model_download_manager import ModelDownloadManager
+
+        monkeypatch.setenv('HTTP_PROXY', 'http://system-proxy:8080')
+        monkeypatch.setenv('NO_PROXY', 'localhost,127.0.0.1')
+
+        manager = ModelDownloadManager()
+        task = manager.create_task(['qwen'], 'auto', False, proxy_mode='system')
+        env = manager._build_process_env(task)
+
+        assert env['HTTP_PROXY'] == 'http://system-proxy:8080'
+        assert env['NO_PROXY'] == 'localhost,127.0.0.1'
+        assert env['PYTHONUNBUFFERED'] == '1'
+
+    def test_none_proxy_clears_proxy_environment(self, monkeypatch):
+        """No-proxy mode removes upper and lower case proxy env vars."""
+        from web_model_download_manager import ModelDownloadManager, PROXY_ENV_KEYS
+
+        for key in PROXY_ENV_KEYS:
+            monkeypatch.setenv(key, f'http://{key.lower()}:8080')
+
+        manager = ModelDownloadManager()
+        task = manager.create_task(['qwen'], 'auto', False, proxy_mode='none')
+        env = manager._build_process_env(task)
+
+        for key in PROXY_ENV_KEYS:
+            assert key not in env
+        assert env['PYTHONUNBUFFERED'] == '1'
+
+    def test_manual_proxy_overrides_proxy_environment(self, monkeypatch):
+        """Manual proxy mode replaces inherited proxy env vars."""
+        from web_model_download_manager import ModelDownloadManager
+
+        monkeypatch.setenv('HTTP_PROXY', 'http://old-proxy:8080')
+        monkeypatch.setenv('NO_PROXY', 'localhost,127.0.0.1')
+
+        manager = ModelDownloadManager()
+        task = manager.create_task(
+            ['qwen'],
+            'auto',
+            False,
+            proxy_mode='manual',
+            proxy_url='http://127.0.0.1:7890'
+        )
+        env = manager._build_process_env(task)
+
+        assert env['HTTP_PROXY'] == 'http://127.0.0.1:7890'
+        assert env['HTTPS_PROXY'] == 'http://127.0.0.1:7890'
+        assert env['ALL_PROXY'] == 'http://127.0.0.1:7890'
+        assert env['http_proxy'] == 'http://127.0.0.1:7890'
+        assert env['https_proxy'] == 'http://127.0.0.1:7890'
+        assert env['all_proxy'] == 'http://127.0.0.1:7890'
+        assert 'NO_PROXY' not in env
+        assert 'no_proxy' not in env
 
 
 class TestStaticFiles:
