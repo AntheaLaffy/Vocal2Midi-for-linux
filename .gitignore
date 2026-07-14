@@ -120,6 +120,10 @@ tmp/
 cache/
 cached/
 
+# Generated third-party source mirrors; keep only the regeneration notes tracked.
+third_party/*
+!third_party/README.md
+
 # Large model / inference artifacts (add if present locally)
 *.safetensors
 *.ckpt

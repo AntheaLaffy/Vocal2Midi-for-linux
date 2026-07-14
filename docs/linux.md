@@ -34,31 +34,34 @@ Do not mix them by accident:
 
 ## Recommended Python Environment
 
-If you manage Python with `uv`, create a dedicated Python 3.12 environment first.
-This avoids accidental use of a system Python or an existing Python 3.13 environment.
-
-Example:
+Use the repository-local `uv` environment. The project pins Python 3.12 in
+`.python-version` and locks dependencies in `uv.lock`.
 
 ```bash
 uv python install 3.12
-uv venv ~/.venv/vocal2midi --python 3.12
-source ~/.venv/vocal2midi/bin/activate.fish
-python --version
-```
-
-If you want to replace your existing `~/.venv` in place instead:
-
-```bash
-uv python install 3.12
-uv venv ~/.venv --python 3.12 --clear
-source ~/.venv/bin/activate.fish
-python --version
+uv python pin 3.12
+uv sync
+uv run python --version
 ```
 
 Target Python version on Linux:
 
-- recommended: Python 3.12
-- avoid using Python 3.13 for this repository unless you have already verified the full stack yourself
+- required by this repository: Python 3.12
+- avoid using Python 3.13+ for this repository unless you have already verified the full stack yourself
+
+The lock file selects the CPU PyTorch index so Linux installs do not pull CUDA
+runtime packages into the local environment.
+
+Vendored third-party sources are managed under `third_party/`. This includes
+Python sdists, upstream fallbacks for packages without sdists, native/FFI source
+trees, and vendored Rust crates for Python native extensions. Regenerate them
+after `uv sync`:
+
+```bash
+uv run python scripts/vendor_sources.py --force
+uv run python scripts/vendor_native_sources.py --force
+uv run python scripts/audit_vendored_sources.py
+```
 
 ## System Packages
 
@@ -101,45 +104,45 @@ If PyQt5 still fails to start, you may need extra distro-specific X11 or Wayland
 
 ## Install
 
-From the repository root, inside your Linux Python environment:
+From the repository root:
 
 ```bash
-pip install --upgrade pip setuptools wheel
-pip install -r requirements-linux.txt
+uv python pin 3.12
+uv sync
 ```
 
-`requirements-linux.txt` installs the base dependencies plus `qwen-asr`.
-`requirements.txt` still selects `onnxruntime` on non-Windows platforms.
-`pyopenjtalk` is optional on Linux and only needed for the Japanese G2P path.
+`uv.lock` installs the base dependencies plus `qwen-asr` for the official Linux
+Qwen backend. `pyopenjtalk` remains optional on Linux and is only needed for the
+Japanese G2P path.
 
 If you use the repository helper scripts:
 
 - `install.sh` and `run.sh` are `bash` scripts
-- they do not see your `fish` shell functions or aliases
-- if your Python is managed through `uv`, pass the real interpreter path with `PYTHON_BIN`
-- if your shell rewrites `python` and `pip`, prefer direct `pip install ...` commands instead of `python -m pip`
+- `install.sh` uses `uv sync` by default when `uv` is available
+- set `VENDOR_SOURCES=1` with `install.sh` to refresh and audit all `third_party/` source mirrors
+- explicit `PYTHON_BIN` / `PIP_BIN` values force the legacy pip fallback
 
 ```bash
 chmod +x install.sh run.sh
-PYTHON_BIN="$HOME/.venv/vocal2midi/bin/python" ./install.sh
+./install.sh
 ```
 
 ## Run
 
 ```bash
-PYTHON_BIN="$HOME/.venv/vocal2midi/bin/python" ./run.sh
+./run.sh
 ```
 
 Or:
 
 ```bash
-python app_fluent.py
+uv run python app_fluent.py
 ```
 
 ## CLI
 
 ```bash
-python scripts/slice_asr_cli.py <input_dir> <output_dir> \
+uv run python scripts/slice_asr_cli.py <input_dir> <output_dir> \
   --asr-model experiments/Qwen3-ASR-1.7B \
   --device cpu \
   --language zh
@@ -166,8 +169,8 @@ If the Japanese path is used without `pyopenjtalk`, the code falls back to a wea
 - `onnxruntime` import fails: reinstall in a clean virtual environment.
 - `ffmpeg` read errors: install `ffmpeg` and verify `ffmpeg -version`.
 - GUI opens but no models load: check the configured model paths in the settings panel.
-- `install.sh` or `run.sh` uses the wrong Python: pass `PYTHON_BIN=/path/to/python`.
-- `python --version` shows `3.13`: rebuild the environment with `uv venv ... --python 3.12`.
+- `install.sh` or `run.sh` uses the wrong Python: avoid setting `PYTHON_BIN`, or pass the exact interpreter path intentionally.
+- `python --version` shows `3.13+`: run commands through `uv run python`, or rebuild the environment with `uv sync`.
 - `fish: Unknown command: modelscope`: activate the venv with `source ~/.venv/bin/activate.fish`,
   add it with `fish_add_path -p ~/.venv/bin`, or call `~/.venv/bin/modelscope` directly.
 - Qwen3-ASR import fails on Linux: confirm `qwen-asr`, `torch`, and the official model directory are installed.

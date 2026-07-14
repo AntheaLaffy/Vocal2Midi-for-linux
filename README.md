@@ -75,32 +75,43 @@ tests/         automated tests
 
 ### 1. Install dependencies
 
-Use your preferred Python environment, then install:
+The repository is pinned for Python 3.12 and managed by `uv`:
 
 ```bash
-pip install -r requirements.txt
+uv python pin 3.12
+uv sync
 ```
 
 The main runtime dependencies are:
 
-- `onnxruntime-directml`
+- `onnxruntime` on Linux/macOS
+- `onnxruntime-directml` on Windows
 - `PyQt5`
 - `PyQt-Fluent-Widgets`
 - `librosa`
 - `soundfile`
 - `mido`
-- `pyopenjtalk`
+- `qwen-asr` on Linux/macOS
+- `pyopenjtalk` on Windows
 
 An `environment.yml` file is also included as a reference environment snapshot.
 
 Linux-specific setup notes live in [`docs/linux.md`](docs/linux.md).
 Official upstream Qwen3-ASR Linux setup lives in [`docs/qwen-linux.md`](docs/qwen-linux.md).
-On Linux, install from [`requirements-linux.txt`](requirements-linux.txt) so `qwen-asr`
-is included for the official Qwen backend.
+The `requirements*.txt` files remain as legacy pip inputs; the preferred Linux
+environment is locked by [`uv.lock`](uv.lock).
 
-On Linux, prefer a dedicated Python 3.12 environment. If you manage Python with
-`uv` or shell wrappers, verify which interpreter is actually used before running
-the repository scripts.
+Vendored third-party sources live under [`third_party`](third_party). Python
+sdists are kept in `third_party/sources`, no-sdist upstream fallbacks are kept in
+`third_party/upstream_sources`, native/FFI library sources are kept in
+`third_party/native_sources`, and Rust extension crates are kept in
+`third_party/cargo_vendor`. Regenerate all source mirrors with:
+
+```bash
+uv run python scripts/vendor_sources.py --force
+uv run python scripts/vendor_native_sources.py --force
+uv run python scripts/audit_vendored_sources.py
+```
 
 ### 2. Prepare model folders
 
@@ -122,7 +133,7 @@ You can change these paths in the GUI settings panel.
 For a normal developer environment:
 
 ```bash
-python app_fluent.py
+uv run python app_fluent.py
 ```
 
 ## GUI Workflow
