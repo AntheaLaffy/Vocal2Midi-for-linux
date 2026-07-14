@@ -5,9 +5,14 @@ Run with: pytest tests/test_web_api.py -v
 """
 
 import json
+import copy
 import os
+import pathlib
 import sys
 import tempfile
+import zipfile
+from urllib.parse import quote
+
 import pytest
 
 # Add project root to path for imports
@@ -17,13 +22,16 @@ if PROJECT_ROOT not in sys.path:
 
 
 @pytest.fixture
-def app():
+def app(tmp_path, monkeypatch):
     """Create and configure a test Flask application."""
+    import web_server
     from web_server import app, task_manager, model_download_manager
     
     # Configure for testing
     app.config['TESTING'] = True
     app.config['WTF_CSRF_ENABLED'] = False
+    monkeypatch.setattr(web_server, 'SETTINGS_FILE', tmp_path / 'web_settings.json')
+    web_server.current_settings = copy.deepcopy(web_server.DEFAULT_SETTINGS)
     
     # Clear tasks before each test
     task_manager.tasks.clear()
@@ -230,11 +238,15 @@ class TestSettingsAPI:
         assert 'models' in data
         assert 'params' in data
         assert 'debug' in data
+        assert 'pipeline' in data
+        assert 'downloads' in data
         
         # Check models has required fields
         assert 'game_model_path' in data['models']
         assert 'hfa_model_path' in data['models']
         assert 'asr_model_path' in data['models']
+        assert data['pipeline']['save_dir'] == './output'
+        assert data['downloads']['qwen_source'] == 'auto'
 
     def test_update_settings(self, client):
         """Test updating settings succeeds."""
@@ -257,6 +269,52 @@ class TestSettingsAPI:
         assert data['success'] is True
         assert 'message' in data
 
+    def test_update_settings_persists_to_disk(self, client):
+        """Test updating settings writes the persistent Web settings file."""
+        import web_server
+
+        response = client.put('/api/settings', json={
+            'pipeline': {
+                'language': 'ja',
+                'lyric_output_mode': 'kana',
+                'save_dir': './custom_output',
+                'export_ustx': True
+            },
+            'downloads': {
+                'qwen_source': 'huggingface',
+                'proxy_mode': 'manual',
+                'proxy_url': 'http://127.0.0.1:7890',
+                'force': True
+            }
+        })
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert web_server.SETTINGS_FILE.is_file()
+
+        saved = json.loads(web_server.SETTINGS_FILE.read_text(encoding='utf-8'))
+        assert saved['pipeline']['language'] == 'ja'
+        assert saved['pipeline']['save_dir'] == './custom_output'
+        assert saved['downloads']['qwen_source'] == 'huggingface'
+        assert saved['downloads']['proxy_url'] == 'http://127.0.0.1:7890'
+
+        web_server.current_settings = copy.deepcopy(web_server.DEFAULT_SETTINGS)
+        reloaded = web_server._load_settings_from_disk()
+        assert reloaded['pipeline']['lyric_output_mode'] == 'kana'
+        assert reloaded['downloads']['force'] is True
+
+    def test_update_settings_rejects_non_object_section(self, client):
+        """Test malformed settings sections return 400 instead of corrupting settings."""
+        response = client.put('/api/settings', json={
+            'pipeline': 'not-an-object'
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'pipeline' in data['error']
+
     def test_reset_settings(self, client):
         """Test resetting settings to defaults succeeds."""
         # First modify settings
@@ -275,6 +333,7 @@ class TestSettingsAPI:
         get_response = client.get('/api/settings')
         get_data = json.loads(get_response.data)
         assert get_data['params']['seg_threshold'] == 0.2  # Default value
+        assert get_data['pipeline']['save_dir'] == './output'
 
 
 class TestSystemInfoAPI:
@@ -599,6 +658,262 @@ class TestModelDownloadProxyEnv:
         assert 'NO_PROXY' not in env
         assert 'no_proxy' not in env
 
+    def test_popen_process_group_kwargs_posix(self, monkeypatch):
+        """POSIX downloads are started in a new session for group termination."""
+        import web_model_download_manager as manager_module
+        from web_model_download_manager import ModelDownloadManager
+
+        monkeypatch.setattr(manager_module.os, 'name', 'posix')
+        manager = ModelDownloadManager()
+
+        assert manager._popen_process_group_kwargs() == {'start_new_session': True}
+
+    def test_popen_process_group_kwargs_windows(self, monkeypatch):
+        """Windows downloads are started in a new process group."""
+        import web_model_download_manager as manager_module
+        from web_model_download_manager import ModelDownloadManager
+
+        monkeypatch.setattr(manager_module.os, 'name', 'nt')
+        monkeypatch.setattr(
+            manager_module.subprocess,
+            'CREATE_NEW_PROCESS_GROUP',
+            512,
+            raising=False,
+        )
+        manager = ModelDownloadManager()
+
+        assert manager._popen_process_group_kwargs() == {'creationflags': 512}
+
+    def test_terminate_process_tree_posix_uses_process_group(self, monkeypatch):
+        """POSIX termination targets the spawned process group."""
+        import signal
+        import web_model_download_manager as manager_module
+        from web_model_download_manager import ModelDownloadManager
+
+        calls = []
+
+        class FakeProcess:
+            pid = 12345
+
+            def poll(self):
+                return None
+
+            def terminate(self):
+                raise AssertionError('terminate should not be used on POSIX first')
+
+            def kill(self):
+                raise AssertionError('kill should not be used without fallback')
+
+        monkeypatch.setattr(manager_module.os, 'name', 'posix')
+        monkeypatch.setattr(
+            manager_module.os,
+            'killpg',
+            lambda pid, sig: calls.append((pid, sig)),
+        )
+
+        ModelDownloadManager()._terminate_process_tree(FakeProcess())
+
+        assert calls == [(12345, signal.SIGTERM)]
+
+    def test_terminate_process_tree_windows_uses_taskkill(self, monkeypatch):
+        """Windows termination targets the process tree with taskkill."""
+        import web_model_download_manager as manager_module
+        from web_model_download_manager import ModelDownloadManager
+
+        calls = []
+
+        class FakeProcess:
+            pid = 9876
+
+            def poll(self):
+                return None
+
+            def terminate(self):
+                raise AssertionError('terminate should not be used if taskkill works')
+
+            def kill(self):
+                raise AssertionError('kill should not be used if taskkill works')
+
+        def fake_run(command, stdout, stderr, check):
+            calls.append((command, stdout, stderr, check))
+
+        monkeypatch.setattr(manager_module.os, 'name', 'nt')
+        monkeypatch.setattr(manager_module.subprocess, 'run', fake_run)
+
+        ModelDownloadManager()._terminate_process_tree(FakeProcess(), force=True)
+
+        assert calls
+        assert calls[0][0] == ['taskkill', '/PID', '9876', '/T', '/F']
+
+
+class TestDownloadAPI:
+    """Test output file download authorization."""
+
+    def test_download_rejects_unregistered_repo_file(self, client):
+        """Existing source files are not downloadable unless registered outputs."""
+        response = client.get('/api/download/web_server.py')
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data['error'] == 'File not found'
+
+    def test_download_rejects_traversal_path(self, client):
+        """Directory traversal is rejected before path resolution."""
+        response = client.get('/api/download/..%2Fweb_server.py')
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data['error'] == 'File not found'
+
+    def test_download_rejects_windows_absolute_path(self, client):
+        """Windows drive-letter paths are rejected on every platform."""
+        response = client.get('/api/download/C:%5CUsers%5Cme%5Csecret.mid')
+
+        assert response.status_code == 404
+        data = json.loads(response.data)
+        assert data['error'] == 'File not found'
+
+    def test_download_allows_registered_output_file(self, client):
+        """A file listed on a task's output_files can be downloaded."""
+        from web_server import task_manager
+
+        root = pathlib.Path(PROJECT_ROOT)
+        with tempfile.TemporaryDirectory(prefix='pytest_output_', dir=root) as tmp:
+            output_path = pathlib.Path(tmp) / 'result.mid'
+            output_path.write_bytes(b'MThd')
+
+            task_id = task_manager.create_task({'save_dir': tmp}, 'audio.wav')
+            task = task_manager.get_task(task_id)
+            task.output_files.append(str(output_path))
+
+            rel_path = output_path.relative_to(root).as_posix()
+            response = client.get('/api/download/' + quote(rel_path, safe='/'))
+
+            assert response.status_code == 200
+            assert response.data == b'MThd'
+
+
+class TestServerBind:
+    """Test configurable Web server host/port."""
+
+    def test_get_server_bind_uses_env_port(self, monkeypatch):
+        import web_server
+
+        monkeypatch.setenv('V2M_WEB_HOST', '127.0.0.1')
+        monkeypatch.setenv('V2M_WEB_PORT', '5055')
+
+        assert web_server.get_server_bind() == ('127.0.0.1', 5055)
+
+    def test_get_server_bind_falls_back_on_invalid_port(self, monkeypatch):
+        import web_server
+
+        monkeypatch.setenv('V2M_WEB_PORT', 'not-a-port')
+
+        assert web_server.get_server_bind() == ('0.0.0.0', 5000)
+
+
+class TestFilesystemBrowserAPI:
+    """Test local filesystem browser endpoints used by path picker."""
+
+    def test_filesystem_roots_include_project_root(self, client):
+        response = client.get('/api/filesystem/roots')
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        assert data['success'] is True
+        assert any(root['label'] == '项目目录' for root in data['roots'])
+
+    def test_filesystem_list_directory_mode_lists_directories_only(self, client):
+        root = pathlib.Path(PROJECT_ROOT)
+        with tempfile.TemporaryDirectory(prefix='picker_', dir=root) as tmp:
+            tmp_path = pathlib.Path(tmp)
+            child_dir = tmp_path / 'child-model'
+            child_dir.mkdir()
+            (tmp_path / 'model.onnx').write_bytes(b'onnx')
+
+            rel_path = tmp_path.relative_to(root).as_posix()
+            response = client.get('/api/filesystem/list', query_string={
+                'path': rel_path,
+                'mode': 'directory',
+            })
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        names = {entry['name']: entry['type'] for entry in data['entries']}
+        assert names['child-model'] == 'directory'
+        assert 'model.onnx' not in names
+        assert data['input_path'] == rel_path
+
+    def test_filesystem_list_file_mode_filters_extensions(self, client):
+        root = pathlib.Path(PROJECT_ROOT)
+        with tempfile.TemporaryDirectory(prefix='picker_', dir=root) as tmp:
+            tmp_path = pathlib.Path(tmp)
+            (tmp_path / 'rmvpe.onnx').write_bytes(b'onnx')
+            (tmp_path / 'notes.txt').write_text('skip')
+
+            rel_path = tmp_path.relative_to(root).as_posix()
+            response = client.get('/api/filesystem/list', query_string={
+                'path': rel_path,
+                'mode': 'file',
+                'extensions': '.onnx,.bin',
+            })
+
+        assert response.status_code == 200
+        data = json.loads(response.data)
+        names = {entry['name']: entry['type'] for entry in data['entries']}
+        assert names['rmvpe.onnx'] == 'file'
+        assert 'notes.txt' not in names
+
+    def test_filesystem_list_rejects_invalid_mode(self, client):
+        response = client.get('/api/filesystem/list', query_string={
+            'mode': 'bad-mode',
+        })
+
+        assert response.status_code == 400
+        data = json.loads(response.data)
+        assert data['success'] is False
+        assert 'mode' in data['error']
+
+
+class TestModelZipExtraction:
+    """Test model zip extraction path safety."""
+
+    def test_extract_zip_merges_single_top_level_directory(self, tmp_path):
+        from download_models import extract_zip
+
+        archive = tmp_path / 'valid.zip'
+        target = tmp_path / 'target'
+        with zipfile.ZipFile(archive, 'w') as zf:
+            zf.writestr('model/encoder.onnx', b'onnx')
+
+        extract_zip(archive, target)
+
+        assert (target / 'encoder.onnx').read_bytes() == b'onnx'
+
+    def test_extract_zip_rejects_traversal_member(self, tmp_path):
+        from download_models import extract_zip
+
+        archive = tmp_path / 'bad.zip'
+        target = tmp_path / 'target'
+        with zipfile.ZipFile(archive, 'w') as zf:
+            zf.writestr('../evil.txt', b'bad')
+
+        with pytest.raises(ValueError):
+            extract_zip(archive, target)
+
+        assert not (tmp_path / 'evil.txt').exists()
+
+    def test_extract_zip_rejects_windows_absolute_member(self, tmp_path):
+        from download_models import extract_zip
+
+        archive = tmp_path / 'bad-windows.zip'
+        target = tmp_path / 'target'
+        with zipfile.ZipFile(archive, 'w') as zf:
+            zf.writestr('C:/Users/me/evil.txt', b'bad')
+
+        with pytest.raises(ValueError):
+            extract_zip(archive, target)
+
 
 class TestStaticFiles:
     """Test static file serving."""
@@ -609,6 +924,27 @@ class TestStaticFiles:
         
         assert response.status_code == 200
         assert b'Vocal2Midi' in response.data or b'<html' in response.data.lower()
+
+    def test_index_html_includes_log_copy_controls(self, client):
+        """Test that both log panels expose copy controls."""
+        response = client.get('/')
+        html = response.data.decode('utf-8')
+
+        assert "copyLogs('logPanel', '运行日志')" in html
+        assert "copyLogs('modelDownloadLogPanel', '下载日志')" in html
+        assert 'function copyLogs(panelId, label)' in html
+        assert "document.querySelectorAll('#logPanel .log-entry')" in html
+
+    def test_index_html_includes_path_picker_controls(self, client):
+        """Test that directory/file browse buttons use the path picker."""
+        response = client.get('/')
+        html = response.data.decode('utf-8')
+
+        assert "openPathPicker('saveDirectory', 'directory', '选择保存目录')" in html
+        assert "openPathPicker('gameModelPath', 'directory', '选择 GAME 模型目录')" in html
+        assert "openPathPicker('rmvpePath', 'file', '选择 RMVPE 模型文件'" in html
+        assert 'function openPathPicker(targetId' in html
+        assert '/filesystem/list?' in html
 
 
 class TestErrorHandling:

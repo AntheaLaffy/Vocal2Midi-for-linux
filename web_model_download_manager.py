@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import pathlib
 import re
+import signal
 import subprocess
 import sys
 import traceback
@@ -223,7 +224,7 @@ class ModelDownloadManager:
         process = task.process
         if process and process.poll() is None:
             try:
-                process.terminate()
+                self._terminate_process_tree(process)
             except OSError:
                 return False
         return True
@@ -264,17 +265,18 @@ class ModelDownloadManager:
                 text=True,
                 bufsize=0,
                 env=env,
+                **self._popen_process_group_kwargs(),
             )
             task.process = process
             self._read_process_output(task, socketio, process)
 
             if task.stop_event and task.stop_event.is_set():
                 if process.poll() is None:
-                    process.terminate()
+                    self._terminate_process_tree(process)
                     try:
                         process.wait(timeout=5)
                     except subprocess.TimeoutExpired:
-                        process.kill()
+                        self._terminate_process_tree(process, force=True)
                         process.wait(timeout=5)
                 task.status = "cancelled"
                 task.stage = "cancelled"
@@ -321,6 +323,49 @@ class ModelDownloadManager:
         if task.force:
             command.append("--force")
         return command
+
+    def _popen_process_group_kwargs(self) -> dict:
+        """Create a process boundary so stop kills child CLIs too."""
+        if os.name == "nt":
+            return {"creationflags": getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)}
+        return {"start_new_session": True}
+
+    def _terminate_process_tree(
+        self, process: subprocess.Popen, force: bool = False
+    ) -> None:
+        """Terminate the download process and its child processes."""
+        if process.poll() is not None:
+            return
+
+        if os.name == "nt":
+            command = ["taskkill", "/PID", str(process.pid), "/T"]
+            if force:
+                command.append("/F")
+            try:
+                subprocess.run(
+                    command,
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                    check=False,
+                )
+                return
+            except OSError:
+                if force:
+                    process.kill()
+                else:
+                    process.terminate()
+                return
+
+        sig = signal.SIGKILL if force else signal.SIGTERM
+        try:
+            os.killpg(process.pid, sig)
+        except ProcessLookupError:
+            return
+        except OSError:
+            if force:
+                process.kill()
+            else:
+                process.terminate()
 
     def _build_process_env(self, task: ModelDownloadTask) -> dict:
         """Build the subprocess environment with proxy overrides applied."""

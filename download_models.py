@@ -17,22 +17,22 @@ the official ``modelscope`` / ``huggingface_hub`` CLIs when available.
 Examples
 --------
     # download everything that is missing
-    python scripts/download_models.py
+    python download_models.py
 
     # only fetch a single model
-    python scripts/download_models.py --only rmvpe
-    python scripts/download_models.py --only game --only hfa
+    python download_models.py --only rmvpe
+    python download_models.py --only game --only hfa
 
     # re-download even if the target looks complete
-    python scripts/download_models.py --force
+    python download_models.py --force
 
     # choose the Qwen source explicitly
-    python scripts/download_models.py --qwen-source modelscope
-    python scripts/download_models.py --qwen-source huggingface
-    python scripts/download_models.py --qwen-source skip
+    python download_models.py --qwen-source modelscope
+    python download_models.py --qwen-source huggingface
+    python download_models.py --qwen-source skip
 
     # show what would be done without downloading
-    python scripts/download_models.py --list
+    python download_models.py --list
 """
 
 from __future__ import annotations
@@ -48,7 +48,7 @@ import urllib.error
 import urllib.request
 import zipfile
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Iterable, Optional
 
 ROOT_DIR = Path(__file__).resolve().parent
@@ -266,7 +266,7 @@ def extract_zip(zip_path: Path, target_dir: Path) -> None:
     with tempfile.TemporaryDirectory(prefix="v2m_extract_") as tmp:
         tmp_path = Path(tmp)
         with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(tmp_path)
+            _safe_extractall(zf, tmp_path)
 
         if single_top:
             root = tmp_path / next(iter(top_levels))
@@ -275,6 +275,33 @@ def extract_zip(zip_path: Path, target_dir: Path) -> None:
                 return
 
         _merge_tree(tmp_path, target_dir)
+
+
+def _safe_extractall(zf: zipfile.ZipFile, destination: Path) -> None:
+    """Extract zip members after rejecting paths that escape destination."""
+    destination = destination.resolve()
+    for member in zf.infolist():
+        member_path = _validated_zip_member_path(member.filename)
+        target = (destination / Path(*member_path.parts)).resolve()
+        if not target.is_relative_to(destination):
+            raise ValueError(f"Unsafe zip member path: {member.filename!r}")
+    zf.extractall(destination)
+
+
+def _validated_zip_member_path(name: str) -> PurePosixPath:
+    if not name or "\x00" in name or "\\" in name:
+        raise ValueError(f"Unsafe zip member path: {name!r}")
+
+    posix_path = PurePosixPath(name)
+    windows_path = PureWindowsPath(name)
+    if (
+        posix_path.is_absolute()
+        or windows_path.is_absolute()
+        or windows_path.drive
+        or ".." in posix_path.parts
+    ):
+        raise ValueError(f"Unsafe zip member path: {name!r}")
+    return posix_path
 
 
 def _merge_tree(src: Path, dst: Path) -> None:
@@ -327,6 +354,9 @@ def download_github_model(model: GithubModel, force: bool) -> bool:
             extract_zip(tmp_zip, model.target)
         except zipfile.BadZipFile:
             fail(f"Corrupted zip archive: {model.asset} (re-run with --force to retry)")
+            return False
+        except ValueError as e:
+            fail(f"Unsafe zip archive layout in {model.asset}: {e}")
             return False
 
         # Layer 2: verify the marker file appeared after extraction.

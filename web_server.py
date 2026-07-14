@@ -5,6 +5,7 @@ web-based Vocal2MIDI UI.
 
 Usage:
     python web_server.py
+    V2M_WEB_PORT=5001 python web_server.py
 
     # Or with gunicorn for production:
     gunicorn --worker-class eventlet -w 1 -b 0.0.0.0:5000 web_server:app
@@ -17,7 +18,10 @@ import tempfile
 import pathlib
 import copy
 import traceback
+import re
+import string
 from datetime import datetime
+from typing import List, Optional
 
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
@@ -86,12 +90,74 @@ DEFAULT_SETTINGS = {
         'export_chunks': False,
         'pitch_format': 'name',
         'round_pitch': True
+    },
+    'pipeline': {
+        'slicing_method': 'auto',
+        'language': 'zh',
+        'lyric_output_mode': 'pinyin',
+        'device': 'dml',
+        'tempo': 120,
+        'save_dir': './output',
+        'quantize_precision': 'none',
+        'quantize_algorithm': 'dev',
+        'enable_lyrics_match': False,
+        'output_lyrics': True,
+        'export_ustx': False,
+        'output_pitch_curve': True
+    },
+    'downloads': {
+        'qwen_source': 'auto',
+        'proxy_mode': 'system',
+        'proxy_url': '',
+        'force': False
     }
 }
 
-# In-memory settings storage (would use DB/file in production)
-# Use deepcopy to avoid modifying DEFAULT_SETTINGS when updating
-current_settings = copy.deepcopy(DEFAULT_SETTINGS)
+SETTINGS_FILE = pathlib.Path(
+    os.environ.get('V2M_WEB_SETTINGS_FILE', PROJECT_ROOT / 'settings' / 'web_settings.json')
+)
+
+
+def _merge_settings(defaults: dict, overrides: dict) -> dict:
+    """Merge a settings file over defaults while keeping unknown keys out."""
+    merged = copy.deepcopy(defaults)
+    if not isinstance(overrides, dict):
+        return merged
+
+    for section, default_value in defaults.items():
+        override_value = overrides.get(section)
+        if isinstance(default_value, dict):
+            if isinstance(override_value, dict):
+                merged[section].update(override_value)
+        elif override_value is not None:
+            merged[section] = override_value
+    return merged
+
+
+def _load_settings_from_disk() -> dict:
+    """Load persisted Web settings, falling back to defaults on any problem."""
+    if not SETTINGS_FILE.is_file():
+        return copy.deepcopy(DEFAULT_SETTINGS)
+
+    try:
+        payload = json.loads(SETTINGS_FILE.read_text(encoding='utf-8'))
+    except (OSError, ValueError) as e:
+        print(f"[Warning] Failed to load web settings from {SETTINGS_FILE}: {e}")
+        return copy.deepcopy(DEFAULT_SETTINGS)
+    return _merge_settings(DEFAULT_SETTINGS, payload)
+
+
+def _save_settings_to_disk(settings: dict) -> None:
+    """Persist settings atomically so a crash does not leave a half-written file."""
+    SETTINGS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = SETTINGS_FILE.with_name(f"{SETTINGS_FILE.name}.tmp")
+    payload = json.dumps(settings, ensure_ascii=False, indent=2) + "\n"
+    temp_path.write_text(payload, encoding='utf-8')
+    temp_path.replace(SETTINGS_FILE)
+
+
+# In-memory settings storage backed by settings/web_settings.json.
+current_settings = _load_settings_from_disk()
 
 
 # ==================== Static File Serving ====================
@@ -165,12 +231,21 @@ def start_pipeline():
                 'error': f'Invalid configuration JSON: {str(e)}'
             }), 400
 
-        # Merge with current settings (model paths, params, debug options)
+        # Merge with persisted settings first, then let request config override
+        # per-run options from the extract page.
+        settings_debug = {
+            'debug_txt': current_settings['debug'].get('export_txt', False),
+            'debug_csv': current_settings['debug'].get('export_csv', False),
+            'debug_chunks': current_settings['debug'].get('export_chunks', False),
+            'pitch_format': current_settings['debug'].get('pitch_format', 'name'),
+            'round_pitch': current_settings['debug'].get('round_pitch', True),
+        }
         merged_config = {
-            **config,
+            **current_settings['pipeline'],
             **current_settings['models'],
-            **{f'_{k}': v for k, v in current_settings['params'].items()},
-            **current_settings['debug']
+            **current_settings['params'],
+            **settings_debug,
+            **config,
         }
 
         # Create and start task
@@ -323,15 +398,17 @@ def update_settings():
         }), 400
 
     try:
-        # Update each section if provided
-        if 'models' in data:
-            current_settings['models'].update(data['models'])
+        # Update each known section if provided.
+        for section in DEFAULT_SETTINGS:
+            if section in data:
+                if not isinstance(data[section], dict):
+                    return jsonify({
+                        'success': False,
+                        'error': f'{section} must be an object'
+                    }), 400
+                current_settings[section].update(data[section])
 
-        if 'params' in data:
-            current_settings['params'].update(data['params'])
-
-        if 'debug' in data:
-            current_settings['debug'].update(data['debug'])
+        _save_settings_to_disk(current_settings)
 
         return jsonify({
             'success': True,
@@ -356,11 +433,163 @@ def reset_settings():
     global current_settings
     # Use deepcopy to ensure complete isolation from DEFAULT_SETTINGS
     current_settings = copy.deepcopy(DEFAULT_SETTINGS)
+    _save_settings_to_disk(current_settings)
 
     return jsonify({
         'success': True,
         'message': 'Settings reset to defaults',
         'settings': current_settings
+    })
+
+
+# ==================== Filesystem Browser API ====================
+
+def _resolve_picker_path(path_text: str) -> pathlib.Path:
+    """Resolve a browser picker path against the project root."""
+    text = (path_text or "").strip()
+    if not text:
+        return PROJECT_ROOT
+
+    expanded = pathlib.Path(os.path.expanduser(text))
+    if not expanded.is_absolute():
+        expanded = PROJECT_ROOT / expanded
+    return expanded.resolve()
+
+
+def _input_value_for_path(path: pathlib.Path) -> str:
+    """Prefer project-relative paths for values written back to the UI."""
+    resolved = path.resolve()
+    try:
+        rel = resolved.relative_to(PROJECT_ROOT)
+    except ValueError:
+        return str(resolved)
+    return "." if str(rel) == "." else rel.as_posix()
+
+
+def _filesystem_root_entry(label: str, path: pathlib.Path) -> Optional[dict]:
+    try:
+        resolved = path.resolve()
+    except OSError:
+        return None
+    if not resolved.exists() or not resolved.is_dir():
+        return None
+    return {
+        "label": label,
+        "path": str(resolved),
+        "input_path": _input_value_for_path(resolved),
+    }
+
+
+def _filesystem_roots() -> List[dict]:
+    roots: List[dict] = []
+    seen: set[str] = set()
+
+    candidates = [
+        ("项目目录", PROJECT_ROOT),
+        ("用户目录", pathlib.Path.home()),
+    ]
+    if os.name == "nt":
+        for drive in string.ascii_uppercase:
+            candidates.append((f"{drive}:\\", pathlib.Path(f"{drive}:\\")))
+    else:
+        candidates.append(("系统根目录", pathlib.Path("/")))
+
+    for label, path in candidates:
+        entry = _filesystem_root_entry(label, path)
+        if not entry or entry["path"] in seen:
+            continue
+        seen.add(entry["path"])
+        roots.append(entry)
+    return roots
+
+
+def _parse_extensions(raw_extensions: str) -> set[str]:
+    extensions = set()
+    for item in (raw_extensions or "").split(","):
+        ext = item.strip().lower()
+        if not ext:
+            continue
+        extensions.add(ext if ext.startswith(".") else f".{ext}")
+    return extensions
+
+
+def _filesystem_entry(entry: os.DirEntry, mode: str, extensions: set[str]) -> Optional[dict]:
+    try:
+        is_dir = entry.is_dir(follow_symlinks=False)
+        is_file = entry.is_file(follow_symlinks=False)
+    except OSError:
+        return None
+
+    if not is_dir and not (mode == "file" and is_file):
+        return None
+
+    path = pathlib.Path(entry.path)
+    if is_file and extensions and path.suffix.lower() not in extensions:
+        return None
+
+    return {
+        "name": entry.name,
+        "type": "directory" if is_dir else "file",
+        "path": str(path.resolve()),
+        "input_path": _input_value_for_path(path),
+    }
+
+
+@app.route('/api/filesystem/roots')
+def filesystem_roots():
+    """Return useful filesystem roots for the local path picker."""
+    return jsonify({
+        'success': True,
+        'separator': os.sep,
+        'roots': _filesystem_roots(),
+    })
+
+
+@app.route('/api/filesystem/list')
+def filesystem_list():
+    """List child directories or model files for the local path picker."""
+    mode = request.args.get('mode', 'directory')
+    if mode not in {'directory', 'file'}:
+        return jsonify({
+            'success': False,
+            'error': 'mode must be directory or file'
+        }), 400
+
+    current_path = _resolve_picker_path(request.args.get('path', ''))
+    if not current_path.exists():
+        return jsonify({
+            'success': False,
+            'error': 'Path does not exist'
+        }), 404
+    if not current_path.is_dir():
+        current_path = current_path.parent
+
+    extensions = _parse_extensions(request.args.get('extensions', ''))
+    entries = []
+    try:
+        with os.scandir(current_path) as iterator:
+            for entry in iterator:
+                item = _filesystem_entry(entry, mode, extensions)
+                if item:
+                    entries.append(item)
+    except OSError as e:
+        return jsonify({
+            'success': False,
+            'error': f'Cannot read directory: {e}'
+        }), 400
+
+    entries.sort(key=lambda item: (item['type'] != 'directory', item['name'].lower()))
+    parent = current_path.parent if current_path.parent != current_path else None
+
+    return jsonify({
+        'success': True,
+        'mode': mode,
+        'path': str(current_path),
+        'input_path': _input_value_for_path(current_path),
+        'parent': str(parent) if parent else None,
+        'parent_input_path': _input_value_for_path(parent) if parent else None,
+        'entries': entries,
+        'roots': _filesystem_roots(),
     })
 
 
@@ -533,19 +762,57 @@ def stop_model_download():
 
 # ==================== Download API ====================
 
+WINDOWS_DRIVE_RE = re.compile(r"^[a-zA-Z]:[\\/]")
+
+
+def _safe_requested_download_path(filepath: str) -> pathlib.Path | None:
+    """Resolve a URL path to a project-relative file path, rejecting traversal."""
+    if not filepath or "\x00" in filepath or "\\" in filepath:
+        return None
+    if WINDOWS_DRIVE_RE.match(filepath):
+        return None
+
+    requested = pathlib.PurePosixPath(filepath)
+    if requested.is_absolute() or ".." in requested.parts:
+        return None
+
+    return (PROJECT_ROOT / pathlib.Path(*requested.parts)).resolve()
+
+
+def _authorized_output_file(filepath: str) -> pathlib.Path | None:
+    """Return the requested file only if it is registered as a task output."""
+    requested_path = _safe_requested_download_path(filepath)
+    if requested_path is None or not requested_path.is_file():
+        return None
+
+    with task_manager._lock:
+        tasks = list(task_manager.tasks.values())
+
+    for task in tasks:
+        for output_file in task.output_files:
+            output_path = pathlib.Path(output_file)
+            if not output_path.is_absolute():
+                output_path = PROJECT_ROOT / output_path
+            try:
+                if output_path.resolve() == requested_path:
+                    return requested_path
+            except OSError:
+                continue
+    return None
+
+
 @app.route('/api/download/<path:filepath>')
 def download_file(filepath):
     """Download an output file.
 
     Args:
-        filepath: Relative path to the file within output directory
+        filepath: Relative path to a file registered on a task
 
     Returns:
         File download response
     """
-    # Security: prevent directory traversal attacks
-    safe_path = pathlib.Path(filepath).resolve()
-    if '..' in str(filepath) or not safe_path.is_file():
+    safe_path = _authorized_output_file(filepath)
+    if not safe_path:
         return jsonify({'error': 'File not found'}), 404
 
     return send_file(
@@ -707,12 +974,25 @@ def too_large(error):
 
 # ==================== Main Entry Point ====================
 
+def get_server_bind() -> tuple[str, int]:
+    """Return host/port for the development server."""
+    host = os.environ.get('V2M_WEB_HOST', '0.0.0.0')
+    raw_port = os.environ.get('V2M_WEB_PORT', os.environ.get('PORT', '5000'))
+    try:
+        port = int(raw_port)
+    except ValueError:
+        print(f"[Warning] Invalid V2M_WEB_PORT/PORT value: {raw_port!r}; using 5000")
+        port = 5000
+    return host, port
+
+
 if __name__ == '__main__':
-    print("""
+    server_host, server_port = get_server_bind()
+    print(f"""
 ╔═══════════════════════════════════════════════════════════╗
 ║          Vocal2Midi Web Server v1.0.0                    ║
 ║                                                          ║
-║   Starting server at http://0.0.0.0:5000               ║
+║   Starting server at http://{server_host}:{server_port:<15}║
 ║   Press CTRL+C to stop                                  ║
 ╚═══════════════════════════════════════════════════════════╝
     """)
@@ -720,8 +1000,8 @@ if __name__ == '__main__':
     # Run the server
     socketio.run(
         app,
-        host='0.0.0.0',
-        port=5000,
+        host=server_host,
+        port=server_port,
         debug=True,
         use_reloader=False,  # Disable reloader for stability
         log_output=True

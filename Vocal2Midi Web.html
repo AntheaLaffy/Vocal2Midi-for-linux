@@ -838,6 +838,90 @@
             margin-bottom: var(--spacing-md);
         }
 
+        .path-picker-modal {
+            max-width: 720px;
+            max-height: min(720px, calc(100vh - 48px));
+            display: flex;
+            flex-direction: column;
+            gap: var(--spacing-md);
+        }
+
+        .path-picker-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: var(--spacing-md);
+        }
+
+        .path-picker-header .modal-title {
+            margin-bottom: 0;
+        }
+
+        .path-picker-roots,
+        .path-picker-current {
+            display: flex;
+            gap: var(--spacing-sm);
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .path-picker-current .form-control {
+            flex: 1 1 280px;
+            min-width: 0;
+            font-family: var(--font-family-mono);
+            font-size: 12px;
+        }
+
+        .path-picker-list {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            background: var(--color-bg-neutral);
+            min-height: 220px;
+            max-height: 360px;
+            overflow-y: auto;
+            padding: var(--spacing-xs);
+        }
+
+        .path-picker-row {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 72px minmax(0, 1fr);
+            gap: var(--spacing-sm);
+            align-items: center;
+            padding: var(--spacing-sm);
+            border: 1px solid transparent;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--color-text-primary);
+            text-align: left;
+            cursor: pointer;
+            font: inherit;
+        }
+
+        .path-picker-row:hover,
+        .path-picker-row.selected {
+            background: var(--color-bg-card);
+            border-color: var(--color-border);
+        }
+
+        .path-picker-type {
+            color: var(--color-text-tertiary);
+            font-size: 12px;
+        }
+
+        .path-picker-name {
+            min-width: 0;
+            overflow-wrap: anywhere;
+            font-family: var(--font-family-mono);
+            font-size: 12px;
+        }
+
+        .path-picker-empty {
+            padding: var(--spacing-lg);
+            color: var(--color-text-secondary);
+            text-align: center;
+        }
+
         .modal-body {
             color: var(--color-text-secondary);
             margin-bottom: var(--spacing-lg);
@@ -876,6 +960,7 @@
             gap: var(--spacing-sm);
             margin-bottom: var(--spacing-sm);
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .log-filter-btn {
@@ -892,6 +977,12 @@
             background: var(--color-primary);
             color: white;
             border-color: var(--color-primary);
+        }
+
+        .log-action-btn {
+            padding: 2px 8px;
+            min-height: 28px;
+            white-space: nowrap;
         }
 
         .hidden {
@@ -1174,7 +1265,7 @@
                             <label class="form-label" for="saveDirectory">保存目录:</label>
                             <div class="path-input-group">
                                 <input type="text" class="form-control" id="saveDirectory" placeholder="输入或浏览选择保存目录..." value="./output">
-                                <button type="button" class="btn btn-secondary" onclick="showToast('浏览器环境无法直接访问文件系统，请手动输入路径', 'warning')">浏览</button>
+                                <button type="button" class="btn btn-secondary" onclick="openPathPicker('saveDirectory', 'directory', '选择保存目录')">浏览</button>
                             </div>
                         </div>
                     </div>
@@ -1210,7 +1301,8 @@
                             <button class="log-filter-btn" onclick="filterLog('success')" data-level="success">成功</button>
                             <button class="log-filter-btn" onclick="filterLog('warning')" data-level="warning">警告</button>
                             <button class="log-filter-btn" onclick="filterLog('error')" data-level="error">错误</button>
-                            <button class="btn btn-secondary" style="padding: 2px 8px;" onclick="clearLogs()">清空</button>
+                            <button class="btn btn-secondary log-action-btn" onclick="copyLogs('logPanel', '运行日志')">复制</button>
+                            <button class="btn btn-secondary log-action-btn" onclick="clearLogs()">清空</button>
                         </div>
                         <div class="log-panel" id="logPanel" role="log" aria-live="polite"></div>
                     </div>
@@ -1306,7 +1398,8 @@
                         <div class="log-toolbar">
                             <strong>下载日志</strong>
                             <div style="flex: 1;"></div>
-                            <button class="btn btn-secondary" style="padding: 2px 8px;" onclick="clearModelLogs()">清空</button>
+                            <button class="btn btn-secondary log-action-btn" onclick="copyLogs('modelDownloadLogPanel', '下载日志')">复制</button>
+                            <button class="btn btn-secondary log-action-btn" onclick="clearModelLogs()">清空</button>
                         </div>
                         <div class="log-panel model-log-panel" id="modelDownloadLogPanel" role="log" aria-live="polite"></div>
                     </div>
@@ -1327,7 +1420,7 @@
                             <label class="form-label" for="gameModelPath">GAME 模型路径:</label>
                             <div class="path-input-group">
                                 <input type="text" class="form-control" id="gameModelPath" value="">
-                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                                <button type="button" class="btn btn-secondary" onclick="openPathPicker('gameModelPath', 'directory', '选择 GAME 模型目录')">浏览</button>
                             </div>
                         </div>
 
@@ -1335,7 +1428,7 @@
                             <label class="form-label" for="hfaModelPath">HubertFA 模型路径:</label>
                             <div class="path-input-group">
                                 <input type="text" class="form-control" id="hfaModelPath" value="">
-                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                                <button type="button" class="btn btn-secondary" onclick="openPathPicker('hfaModelPath', 'directory', '选择 HubertFA 模型目录')">浏览</button>
                             </div>
                         </div>
 
@@ -1343,7 +1436,7 @@
                             <label class="form-label" for="asrModelPath">Qwen3-ASR 模型路径:</label>
                             <div class="path-input-group">
                                 <input type="text" class="form-control" id="asrModelPath" value="">
-                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                                <button type="button" class="btn btn-secondary" onclick="openPathPicker('asrModelPath', 'directory', '选择 Qwen3-ASR 模型目录')">浏览</button>
                             </div>
                         </div>
 
@@ -1351,7 +1444,7 @@
                             <label class="form-label" for="phonemeAsrPath">音素 ASR 模型路径:</label>
                             <div class="path-input-group">
                                 <input type="text" class="form-control" id="phonemeAsrPath" value="">
-                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                                <button type="button" class="btn btn-secondary" onclick="openPathPicker('phonemeAsrPath', 'directory', '选择音素 ASR 模型目录')">浏览</button>
                             </div>
                         </div>
 
@@ -1359,7 +1452,7 @@
                             <label class="form-label" for="rmvpePath">RMVPE 模型文件路径:</label>
                             <div class="path-input-group">
                                 <input type="text" class="form-control" id="rmvpePath" value="">
-                                <button type="button" class="btn btn-secondary" onclick="showToast('请手动输入模型路径', 'info')">浏览</button>
+                                <button type="button" class="btn btn-secondary" onclick="openPathPicker('rmvpePath', 'file', '选择 RMVPE 模型文件', '.onnx,.pt,.pth,.bin')">浏览</button>
                             </div>
                         </div>
                     </div>
@@ -1469,15 +1562,20 @@
         let modelCatalog = [];
         let socket = null;
         let currentLogFilter = 'all';
+        let pathPickerState = null;
+        let settingsLoaded = false;
+        let settingsSaveTimer = null;
 
         // API Base URL
         const API_BASE = '/api';
+        const SETTINGS_AUTOSAVE_DELAY_MS = 600;
 
         // ==================== Initialization ====================
         document.addEventListener('DOMContentLoaded', function() {
             initNavigation();
             initKeyboardNav();
             initWebSocket();
+            setupSettingsAutosave();
             updateLyricVisibility();
             updateProxyControls();
             loadSettings();
@@ -1780,6 +1878,7 @@
             } else if (switchId === 'switchExportUstx') {
                 togglePitchCurve();
             }
+            scheduleSettingsSave();
         }
 
         function updateLyricVisibility() {
@@ -1806,9 +1905,10 @@
             pitchCurveSwitch.style.pointerEvents = isUstxEnabled ? 'auto' : 'none';
         }
 
-        function updateLyricOptions() {
+        function updateLyricOptions(preferredValue = null) {
             const lang = document.getElementById('targetLanguage').value;
             const formatSelect = document.getElementById('lyricOutputFormat');
+            const previousValue = preferredValue || formatSelect.value;
 
             formatSelect.innerHTML = '';
             if (lang === 'zh') {
@@ -1818,6 +1918,11 @@
                 formatSelect.innerHTML += '<option value="romaji">罗马音</option>';
                 formatSelect.innerHTML += '<option value="kana">假名</option>';
             }
+
+            if ([...formatSelect.options].some(option => option.value === previousValue)) {
+                formatSelect.value = previousValue;
+            }
+            scheduleSettingsSave();
         }
 
         function validateSliceBounds() {
@@ -1828,6 +1933,7 @@
                 showToast('Slice Min 不能大于 Slice Max', 'error');
                 document.getElementById('sliceMin').value = sliceMax;
             }
+            scheduleSettingsSave();
         }
 
         function updateProxyControls() {
@@ -1839,6 +1945,15 @@
             const isManual = modeEl.value === 'manual';
             proxyInput.disabled = !isManual;
             proxyGroup.classList.toggle('disabled', !isManual);
+            scheduleSettingsSave();
+        }
+
+        function redactProxyUrl(proxyUrl) {
+            if (!proxyUrl || !proxyUrl.includes('@')) return proxyUrl;
+            const schemeIndex = proxyUrl.indexOf('://');
+            const atIndex = proxyUrl.lastIndexOf('@');
+            if (schemeIndex === -1 || atIndex <= schemeIndex + 2) return proxyUrl;
+            return `${proxyUrl.slice(0, schemeIndex + 3)}***@${proxyUrl.slice(atIndex + 1)}`;
         }
 
         // ==================== Pipeline Execution ====================
@@ -1867,6 +1982,8 @@
 
                 // Collect form data as config
                 const config = collectConfig();
+                clearTimeout(settingsSaveTimer);
+                await saveSettingsSilently();
 
                 // Create FormData for file upload
                 const formData = new FormData();
@@ -1944,12 +2061,23 @@
                 device: document.getElementById('computeDevice').value,
                 tempo: parseFloat(document.getElementById('tempoBPM').value),
                 save_dir: document.getElementById('saveDirectory').value,
+                quantize_precision: document.getElementById('quantizePrecision').value,
+                quantize_algorithm: document.getElementById('quantizeAlgorithm').value,
                 enable_lyrics_match: document.getElementById('switchMatchLyrics').classList.contains('active'),
                 lyrics: document.getElementById('lyricsInput').value,
                 lyric_output_mode: document.getElementById('lyricOutputFormat').value,
                 output_lyrics: document.getElementById('switchOutputLyrics').classList.contains('active'),
                 export_ustx: document.getElementById('switchExportUstx').classList.contains('active'),
                 output_pitch_curve: document.getElementById('switchPitchCurve').classList.contains('active'),
+                seg_threshold: parseFloat(document.getElementById('segThreshold').value),
+                seg_radius: parseFloat(document.getElementById('segRadius').value),
+                est_threshold: parseFloat(document.getElementById('estThreshold').value),
+                t0: parseFloat(document.getElementById('t0Value').value),
+                nsteps: parseInt(document.getElementById('nstepsValue').value),
+                game_batch: parseInt(document.getElementById('gameBatch').value),
+                asr_batch: parseInt(document.getElementById('asrBatch').value),
+                slice_min: parseFloat(document.getElementById('sliceMin').value),
+                slice_max: parseFloat(document.getElementById('sliceMax').value),
                 debug_txt: document.getElementById('switchDebugTxt').classList.contains('active'),
                 debug_csv: document.getElementById('switchDebugCsv').classList.contains('active'),
                 debug_chunks: document.getElementById('switchDebugChunks').classList.contains('active'),
@@ -2229,7 +2357,7 @@
             try {
                 clearModelLogs();
                 addModelLog(`准备下载: ${modelIds.join(', ')}`, 'info');
-                addModelLog(`代理模式: ${proxyMode}${proxyMode === 'manual' ? ` (${proxyUrl})` : ''}`, 'info');
+                addModelLog(`代理模式: ${proxyMode}${proxyMode === 'manual' ? ` (${redactProxyUrl(proxyUrl)})` : ''}`, 'info');
                 showModelDownloadProgress();
                 updateModelDownloadProgress(0, 'queued');
                 modelDownloadRunning = true;
@@ -2346,6 +2474,7 @@
             if (!logPanel) return;
             const entry = document.createElement('div');
             entry.className = `log-entry ${type}`;
+            entry.dataset.level = type;
             entry.textContent = message;
             logPanel.appendChild(entry);
             logPanel.scrollTop = logPanel.scrollHeight;
@@ -2365,6 +2494,226 @@
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
+        }
+
+        // ==================== Path Picker ====================
+        function openPathPicker(targetId, mode = 'directory', title = '选择路径', extensions = '') {
+            const targetInput = document.getElementById(targetId);
+            if (!targetInput) return;
+
+            document.getElementById('pathPickerOverlay')?.remove();
+            pathPickerState = {
+                targetId,
+                mode,
+                title,
+                extensions,
+                currentInputPath: targetInput.value || '.',
+                selectedInputPath: '',
+                selectedPath: ''
+            };
+
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay path-picker-overlay';
+            overlay.id = 'pathPickerOverlay';
+            overlay.onclick = function(e) {
+                if (e.target === overlay) closePathPicker();
+            };
+
+            const chooseText = mode === 'file' ? '选择文件' : '选择此目录';
+            overlay.innerHTML = `
+                <div class="modal path-picker-modal" role="dialog" aria-modal="true" aria-labelledby="pathPickerTitle">
+                    <div class="path-picker-header">
+                        <h3 class="modal-title" id="pathPickerTitle">${escapeHtml(title)}</h3>
+                        <button type="button" class="btn btn-secondary log-action-btn" onclick="closePathPicker()">关闭</button>
+                    </div>
+                    <div class="path-picker-roots" id="pathPickerRoots"></div>
+                    <div class="path-picker-current">
+                        <input type="text" class="form-control" id="pathPickerInput" aria-label="当前路径">
+                        <button type="button" class="btn btn-secondary" onclick="loadPathPickerFromInput()">打开</button>
+                    </div>
+                    <div class="path-picker-list" id="pathPickerList">
+                        <div class="path-picker-empty">正在读取目录...</div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closePathPicker()">取消</button>
+                        <button type="button" class="btn btn-primary" id="pathPickerChoose" onclick="confirmPathPicker()">${chooseText}</button>
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(overlay);
+            const input = document.getElementById('pathPickerInput');
+            input.addEventListener('keydown', event => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    loadPathPickerFromInput();
+                }
+            });
+            loadPathPickerPath(pathPickerState.currentInputPath);
+        }
+
+        function closePathPicker() {
+            document.getElementById('pathPickerOverlay')?.remove();
+            pathPickerState = null;
+        }
+
+        function loadPathPickerFromInput() {
+            const input = document.getElementById('pathPickerInput');
+            loadPathPickerPath(input?.value || '.');
+        }
+
+        async function loadPathPickerPath(path) {
+            if (!pathPickerState) return;
+
+            const listEl = document.getElementById('pathPickerList');
+            if (listEl) {
+                listEl.innerHTML = '<div class="path-picker-empty">正在读取目录...</div>';
+            }
+
+            const params = new URLSearchParams({
+                path: path || '.',
+                mode: pathPickerState.mode
+            });
+            if (pathPickerState.extensions) {
+                params.set('extensions', pathPickerState.extensions);
+            }
+
+            try {
+                const data = await apiCall(`/filesystem/list?${params.toString()}`);
+                renderPathPicker(data);
+            } catch (error) {
+                if (listEl) {
+                    listEl.innerHTML = `<div class="path-picker-empty">${escapeHtml(error.message || '无法读取目录')}</div>`;
+                }
+            }
+        }
+
+        function renderPathPicker(data) {
+            if (!pathPickerState) return;
+
+            pathPickerState.currentInputPath = data.input_path;
+            pathPickerState.selectedInputPath = pathPickerState.mode === 'directory' ? data.input_path : '';
+            pathPickerState.selectedPath = pathPickerState.mode === 'directory' ? data.path : '';
+
+            const input = document.getElementById('pathPickerInput');
+            if (input) {
+                input.value = data.input_path;
+            }
+
+            renderPathPickerRoots(data.roots || []);
+            renderPathPickerEntries(data);
+            updatePathPickerChooseButton();
+        }
+
+        function renderPathPickerRoots(roots) {
+            const rootsEl = document.getElementById('pathPickerRoots');
+            if (!rootsEl) return;
+
+            rootsEl.innerHTML = '';
+            roots.forEach(root => {
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'btn btn-secondary log-action-btn';
+                button.textContent = root.label;
+                button.dataset.path = root.path;
+                button.onclick = () => loadPathPickerPath(button.dataset.path);
+                rootsEl.appendChild(button);
+            });
+        }
+
+        function renderPathPickerEntries(data) {
+            const listEl = document.getElementById('pathPickerList');
+            if (!listEl) return;
+
+            listEl.innerHTML = '';
+            if (data.parent) {
+                listEl.appendChild(createPathPickerRow({
+                    name: '..',
+                    type: 'directory',
+                    path: data.parent,
+                    input_path: data.parent_input_path || data.parent,
+                    parent: true
+                }));
+            }
+
+            (data.entries || []).forEach(entry => {
+                listEl.appendChild(createPathPickerRow(entry));
+            });
+
+            if (!listEl.children.length) {
+                const empty = document.createElement('div');
+                empty.className = 'path-picker-empty';
+                empty.textContent = pathPickerState.mode === 'file'
+                    ? '当前目录没有可选模型文件'
+                    : '当前目录没有子目录';
+                listEl.appendChild(empty);
+            }
+        }
+
+        function createPathPickerRow(entry) {
+            const row = document.createElement('button');
+            row.type = 'button';
+            row.className = `path-picker-row ${entry.type}`;
+            row.dataset.path = entry.path;
+            row.dataset.inputPath = entry.input_path;
+            row.dataset.type = entry.type;
+            row.innerHTML = `
+                <span class="path-picker-type">${entry.type === 'directory' ? '目录' : '文件'}</span>
+                <span class="path-picker-name">${escapeHtml(entry.name)}</span>
+            `;
+
+            if (entry.type === 'directory') {
+                row.onclick = () => loadPathPickerPath(entry.path);
+            } else {
+                row.onclick = () => selectPathPickerFile(row);
+                row.ondblclick = () => {
+                    selectPathPickerFile(row);
+                    confirmPathPicker();
+                };
+            }
+            return row;
+        }
+
+        function selectPathPickerFile(row) {
+            if (!pathPickerState || row.dataset.type !== 'file') return;
+
+            document.querySelectorAll('#pathPickerList .path-picker-row').forEach(item => {
+                item.classList.toggle('selected', item === row);
+            });
+            pathPickerState.selectedPath = row.dataset.path;
+            pathPickerState.selectedInputPath = row.dataset.inputPath;
+            updatePathPickerChooseButton();
+        }
+
+        function updatePathPickerChooseButton() {
+            const button = document.getElementById('pathPickerChoose');
+            if (!button || !pathPickerState) return;
+
+            if (pathPickerState.mode === 'file') {
+                button.disabled = !pathPickerState.selectedInputPath;
+                button.textContent = pathPickerState.selectedInputPath ? '选择文件' : '先选择文件';
+            } else {
+                button.disabled = !pathPickerState.selectedInputPath;
+                button.textContent = '选择此目录';
+            }
+        }
+
+        function confirmPathPicker() {
+            if (!pathPickerState) return;
+
+            const value = pathPickerState.selectedInputPath;
+            if (!value) {
+                showToast(pathPickerState.mode === 'file' ? '请先选择模型文件' : '请先选择目录', 'warning');
+                return;
+            }
+
+            const targetInput = document.getElementById(pathPickerState.targetId);
+            if (targetInput) {
+                targetInput.value = value;
+                targetInput.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+            showToast(pathPickerState.mode === 'file' ? '已选择文件' : '已选择目录', 'success');
+            closePathPicker();
         }
 
         // ==================== Log Panel ====================
@@ -2390,6 +2739,58 @@
             logPanel.innerHTML = '';
         }
 
+        function getVisibleLogText(panelId) {
+            const logPanel = document.getElementById(panelId);
+            if (!logPanel) return '';
+
+            return Array.from(logPanel.querySelectorAll('.log-entry'))
+                .filter(entry => entry.offsetParent !== null && entry.style.display !== 'none')
+                .map(entry => entry.textContent)
+                .join('\n')
+                .trim();
+        }
+
+        async function copyTextToClipboard(text) {
+            if (navigator.clipboard && window.isSecureContext) {
+                try {
+                    await navigator.clipboard.writeText(text);
+                    return;
+                } catch (error) {
+                    console.warn('[Clipboard] Clipboard API failed, using fallback:', error);
+                }
+            }
+
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            textarea.setAttribute('readonly', '');
+            textarea.style.position = 'fixed';
+            textarea.style.top = '-1000px';
+            textarea.style.left = '-1000px';
+            document.body.appendChild(textarea);
+            textarea.select();
+            const copied = document.execCommand('copy');
+            textarea.remove();
+            if (!copied) {
+                throw new Error('copy command failed');
+            }
+        }
+
+        async function copyLogs(panelId, label) {
+            const text = getVisibleLogText(panelId);
+            if (!text) {
+                showToast(`${label}为空，暂无可复制内容`, 'warning');
+                return;
+            }
+
+            try {
+                await copyTextToClipboard(text);
+                showToast(`${label}已复制`, 'success');
+            } catch (error) {
+                console.error('[Clipboard] Failed to copy logs:', error);
+                showToast('复制失败，请手动选择日志内容', 'error');
+            }
+        }
+
         function filterLog(level) {
             currentLogFilter = level;
             
@@ -2399,7 +2800,7 @@
             });
 
             // Filter visible entries
-            const entries = document.querySelectorAll('.log-entry');
+            const entries = document.querySelectorAll('#logPanel .log-entry');
             entries.forEach(entry => {
                 if (level === 'all' || entry.dataset.level === level) {
                     entry.style.display = 'block';
@@ -2410,81 +2811,239 @@
         }
 
         // ==================== Settings Management ====================
+        function setupSettingsAutosave() {
+            const inputIds = [
+                'slicingMethod',
+                'targetLanguage',
+                'lyricOutputFormat',
+                'computeDevice',
+                'tempoBPM',
+                'quantizePrecision',
+                'quantizeAlgorithm',
+                'saveDirectory',
+                'qwenDownloadSource',
+                'downloadProxyMode',
+                'manualProxyUrl',
+                'gameModelPath',
+                'hfaModelPath',
+                'asrModelPath',
+                'phonemeAsrPath',
+                'rmvpePath',
+                'segThreshold',
+                'segRadius',
+                'estThreshold',
+                't0Value',
+                'nstepsValue',
+                'gameBatch',
+                'asrBatch',
+                'sliceMin',
+                'sliceMax',
+                'pitchFormat'
+            ];
+
+            inputIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (!el) return;
+                el.addEventListener('change', scheduleSettingsSave);
+                if (el.tagName === 'INPUT') {
+                    el.addEventListener('input', scheduleSettingsSave);
+                }
+            });
+        }
+
+        function scheduleSettingsSave() {
+            if (!settingsLoaded) return;
+            clearTimeout(settingsSaveTimer);
+            settingsSaveTimer = setTimeout(() => {
+                saveSettingsSilently();
+            }, SETTINGS_AUTOSAVE_DELAY_MS);
+        }
+
+        async function saveSettingsSilently() {
+            if (!settingsLoaded) return;
+            try {
+                await apiCall('/settings', {
+                    method: 'PUT',
+                    body: JSON.stringify(collectSettingsData())
+                });
+            } catch (error) {
+                console.warn('[Settings] Autosave failed:', error.message);
+            }
+        }
+
+        function flushSettingsBeforeUnload() {
+            if (!settingsLoaded) return;
+            clearTimeout(settingsSaveTimer);
+            try {
+                fetch(`${API_BASE}/settings`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(collectSettingsData()),
+                    keepalive: true
+                });
+            } catch (error) {
+                console.warn('[Settings] Final save failed:', error.message);
+            }
+        }
+
+        function setInputValue(inputId, value) {
+            const el = document.getElementById(inputId);
+            if (!el || value === undefined || value === null) return;
+            el.value = value;
+        }
+
+        function setSelectValue(selectId, value) {
+            const el = document.getElementById(selectId);
+            if (!el || value === undefined || value === null) return;
+            const textValue = String(value);
+            if ([...el.options].some(option => option.value === textValue)) {
+                el.value = textValue;
+            }
+        }
+
+        function numberValue(inputId, fallback) {
+            const value = parseFloat(document.getElementById(inputId).value);
+            return Number.isFinite(value) ? value : fallback;
+        }
+
+        function integerValue(inputId, fallback) {
+            const value = parseInt(document.getElementById(inputId).value, 10);
+            return Number.isFinite(value) ? value : fallback;
+        }
+
+        function collectSettingsData() {
+            return {
+                models: {
+                    game_model_path: document.getElementById('gameModelPath').value,
+                    hfa_model_path: document.getElementById('hfaModelPath').value,
+                    asr_model_path: document.getElementById('asrModelPath').value,
+                    phoneme_asr_model_path: document.getElementById('phonemeAsrPath').value,
+                    rmvpe_model_path: document.getElementById('rmvpePath').value
+                },
+                params: {
+                    seg_threshold: numberValue('segThreshold', 0.2),
+                    seg_radius: numberValue('segRadius', 0.02),
+                    est_threshold: numberValue('estThreshold', 0.2),
+                    t0: numberValue('t0Value', 0.0),
+                    nsteps: integerValue('nstepsValue', 8),
+                    game_batch: integerValue('gameBatch', 1),
+                    asr_batch: integerValue('asrBatch', 2),
+                    slice_min: numberValue('sliceMin', 8.0),
+                    slice_max: numberValue('sliceMax', 22.0)
+                },
+                debug: {
+                    export_txt: document.getElementById('switchDebugTxt').classList.contains('active'),
+                    export_csv: document.getElementById('switchDebugCsv').classList.contains('active'),
+                    export_chunks: document.getElementById('switchDebugChunks').classList.contains('active'),
+                    pitch_format: document.getElementById('pitchFormat').value,
+                    round_pitch: document.getElementById('switchRoundPitch').classList.contains('active')
+                },
+                pipeline: {
+                    slicing_method: document.getElementById('slicingMethod').value,
+                    language: document.getElementById('targetLanguage').value,
+                    lyric_output_mode: document.getElementById('lyricOutputFormat').value,
+                    device: document.getElementById('computeDevice').value,
+                    tempo: numberValue('tempoBPM', 120),
+                    save_dir: document.getElementById('saveDirectory').value,
+                    quantize_precision: document.getElementById('quantizePrecision').value,
+                    quantize_algorithm: document.getElementById('quantizeAlgorithm').value,
+                    enable_lyrics_match: document.getElementById('switchMatchLyrics').classList.contains('active'),
+                    output_lyrics: document.getElementById('switchOutputLyrics').classList.contains('active'),
+                    export_ustx: document.getElementById('switchExportUstx').classList.contains('active'),
+                    output_pitch_curve: document.getElementById('switchPitchCurve').classList.contains('active')
+                },
+                downloads: {
+                    qwen_source: document.getElementById('qwenDownloadSource').value,
+                    proxy_mode: document.getElementById('downloadProxyMode').value,
+                    proxy_url: document.getElementById('manualProxyUrl').value.trim(),
+                    force: document.getElementById('switchModelForce').classList.contains('active')
+                }
+            };
+        }
+
+        function applySettingsData(data) {
+            // Populate model paths
+            setInputValue('gameModelPath', data.models?.game_model_path || '');
+            setInputValue('hfaModelPath', data.models?.hfa_model_path || '');
+            setInputValue('asrModelPath', data.models?.asr_model_path || '');
+            setInputValue('phonemeAsrPath', data.models?.phoneme_asr_model_path || '');
+            setInputValue('rmvpePath', data.models?.rmvpe_model_path || '');
+
+            // Populate params
+            if (data.params) {
+                setInputValue('segThreshold', data.params.seg_threshold ?? 0.2);
+                setInputValue('segRadius', data.params.seg_radius ?? 0.02);
+                setInputValue('estThreshold', data.params.est_threshold ?? 0.2);
+                setInputValue('t0Value', data.params.t0 ?? 0.0);
+                setInputValue('nstepsValue', data.params.nsteps ?? 8);
+                setInputValue('gameBatch', data.params.game_batch ?? 1);
+                setInputValue('asrBatch', data.params.asr_batch ?? 2);
+                setInputValue('sliceMin', data.params.slice_min ?? 8.0);
+                setInputValue('sliceMax', data.params.slice_max ?? 22.0);
+            }
+
+            // Populate debug options
+            if (data.debug) {
+                setSwitchState('switchDebugTxt', data.debug.export_txt || false);
+                setSwitchState('switchDebugCsv', data.debug.export_csv || false);
+                setSwitchState('switchDebugChunks', data.debug.export_chunks || false);
+                setSelectValue('pitchFormat', data.debug.pitch_format || 'name');
+                setSwitchState('switchRoundPitch', data.debug.round_pitch !== false);
+            }
+
+            // Populate extract page options
+            if (data.pipeline) {
+                setSelectValue('slicingMethod', data.pipeline.slicing_method || 'auto');
+                setSelectValue('targetLanguage', data.pipeline.language || 'zh');
+                updateLyricOptions(data.pipeline.lyric_output_mode || null);
+                setSelectValue('computeDevice', data.pipeline.device || 'dml');
+                setInputValue('tempoBPM', data.pipeline.tempo ?? 120);
+                setInputValue('saveDirectory', data.pipeline.save_dir || './output');
+                setSelectValue('quantizePrecision', data.pipeline.quantize_precision || 'none');
+                setSelectValue('quantizeAlgorithm', data.pipeline.quantize_algorithm || 'dev');
+                setSwitchState('switchMatchLyrics', data.pipeline.enable_lyrics_match || false);
+                setSwitchState('switchOutputLyrics', data.pipeline.output_lyrics !== false);
+                setSwitchState('switchExportUstx', data.pipeline.export_ustx || false);
+                setSwitchState('switchPitchCurve', data.pipeline.output_pitch_curve !== false);
+                updateLyricVisibility();
+                togglePitchCurve();
+            }
+
+            // Populate model download options
+            if (data.downloads) {
+                setSelectValue('qwenDownloadSource', data.downloads.qwen_source || 'auto');
+                setSelectValue('downloadProxyMode', data.downloads.proxy_mode || 'system');
+                setInputValue('manualProxyUrl', data.downloads.proxy_url || '');
+                setSwitchState('switchModelForce', data.downloads.force || false);
+                updateProxyControls();
+                updateModelDownloadButtons();
+            }
+        }
+
         async function loadSettings() {
+            settingsLoaded = false;
             try {
                 const data = await apiCall('/settings');
                 
                 if (data.success) {
-                    // Populate model paths
-                    document.getElementById('gameModelPath').value = data.models?.game_model_path || '';
-                    document.getElementById('hfaModelPath').value = data.models?.hfa_model_path || '';
-                    document.getElementById('asrModelPath').value = data.models?.asr_model_path || '';
-                    document.getElementById('phonemeAsrPath').value = data.models?.phoneme_asr_model_path || '';
-                    document.getElementById('rmvpePath').value = data.models?.rmvpe_model_path || '';
-
-                    // Populate params
-                    if (data.params) {
-                        document.getElementById('segThreshold').value = data.params.seg_threshold ?? 0.2;
-                        document.getElementById('segRadius').value = data.params.seg_radius ?? 0.02;
-                        document.getElementById('estThreshold').value = data.params.est_threshold ?? 0.2;
-                        document.getElementById('t0Value').value = data.params.t0 ?? 0.0;
-                        document.getElementById('nstepsValue').value = data.params.nsteps ?? 8;
-                        document.getElementById('gameBatch').value = data.params.game_batch ?? 1;
-                        document.getElementById('asrBatch').value = data.params.asr_batch ?? 2;
-                        document.getElementById('sliceMin').value = data.params.slice_min ?? 8.0;
-                        document.getElementById('sliceMax').value = data.params.slice_max ?? 22.0;
-                    }
-
-                    // Populate debug options
-                    if (data.debug) {
-                        setSwitchState('switchDebugTxt', data.debug.export_txt || false);
-                        setSwitchState('switchDebugCsv', data.debug.export_csv || false);
-                        setSwitchState('switchDebugChunks', data.debug.export_chunks || false);
-                        document.getElementById('pitchFormat').value = data.debug.pitch_format || 'name';
-                        setSwitchState('switchRoundPitch', data.debug.round_pitch !== false);
-                    }
-
+                    applySettingsData(data);
                     console.log('[Settings] Loaded successfully');
                 }
             } catch (error) {
                 console.warn('[Settings] Failed to load:', error.message);
                 // Use defaults on error - don't show toast to avoid annoyance
+            } finally {
+                settingsLoaded = true;
             }
         }
 
         async function saveSettings() {
             try {
-                const settingsData = {
-                    models: {
-                        game_model_path: document.getElementById('gameModelPath').value,
-                        hfa_model_path: document.getElementById('hfaModelPath').value,
-                        asr_model_path: document.getElementById('asrModelPath').value,
-                        phoneme_asr_model_path: document.getElementById('phonemeAsrPath').value,
-                        rmvpe_model_path: document.getElementById('rmvpePath').value
-                    },
-                    params: {
-                        seg_threshold: parseFloat(document.getElementById('segThreshold').value),
-                        seg_radius: parseFloat(document.getElementById('segRadius').value),
-                        est_threshold: parseFloat(document.getElementById('estThreshold').value),
-                        t0: parseFloat(document.getElementById('t0Value').value),
-                        nsteps: parseInt(document.getElementById('nstepsValue').value),
-                        game_batch: parseInt(document.getElementById('gameBatch').value),
-                        asr_batch: parseInt(document.getElementById('asrBatch').value),
-                        slice_min: parseFloat(document.getElementById('sliceMin').value),
-                        slice_max: parseFloat(document.getElementById('sliceMax').value)
-                    },
-                    debug: {
-                        export_txt: document.getElementById('switchDebugTxt').classList.contains('active'),
-                        export_csv: document.getElementById('switchDebugCsv').classList.contains('active'),
-                        export_chunks: document.getElementById('switchDebugChunks').classList.contains('active'),
-                        pitch_format: document.getElementById('pitchFormat').value,
-                        round_pitch: document.getElementById('switchRoundPitch').classList.contains('active')
-                    }
-                };
-
                 const result = await apiCall('/settings', {
                     method: 'PUT',
-                    body: JSON.stringify(settingsData)
+                    body: JSON.stringify(collectSettingsData())
                 });
 
                 if (result.success) {
@@ -2601,6 +3160,7 @@
 
         // ==================== Cleanup on Page Unload ====================
         window.addEventListener('beforeunload', () => {
+            flushSettingsBeforeUnload();
             disconnectFromTask();
             disconnectFromModelDownloadTask();
             if (socket) {
