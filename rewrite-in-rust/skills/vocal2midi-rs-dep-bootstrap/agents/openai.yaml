@@ -1,0 +1,4 @@
+interface:
+  display_name: "V2M Dep"
+  short_description: "Align dependencies and bootstrap seams"
+  default_prompt: "Use $vocal2midi-rs-dep-bootstrap for the selected Vocal2Midi Rust migration unit."

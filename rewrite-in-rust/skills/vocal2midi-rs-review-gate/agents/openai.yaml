@@ -1,0 +1,4 @@
+interface:
+  display_name: "V2M Review"
+  short_description: "Review Vocal2Midi Rust migration gates"
+  default_prompt: "Use $vocal2midi-rs-review-gate to review a completed Vocal2Midi Rust migration unit."

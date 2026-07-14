@@ -1,0 +1,95 @@
+//! Shared control-plane primitives for the Vocal2Midi Rust rewrite.
+//!
+//! This crate is intentionally not wired into the Python runtime. It gives the
+//! rewrite workspace a small independently testable Rust surface before any
+//! business migration unit is promoted.
+
+/// Manifest states accepted by `rewrite-in-rust/manifest.yaml`.
+pub const STATUS_VALUES: &[&str] = &[
+    "planned",
+    "active",
+    "reimplemented",
+    "verified",
+    "promoted",
+    "optimized",
+    "blocked",
+];
+
+/// Migration status for one independently verifiable rewrite unit.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MigrationStatus {
+    Planned,
+    Active,
+    Reimplemented,
+    Verified,
+    Promoted,
+    Optimized,
+    Blocked,
+}
+
+impl MigrationStatus {
+    /// Returns the string value used in the YAML manifest.
+    pub const fn as_manifest_str(self) -> &'static str {
+        match self {
+            Self::Planned => "planned",
+            Self::Active => "active",
+            Self::Reimplemented => "reimplemented",
+            Self::Verified => "verified",
+            Self::Promoted => "promoted",
+            Self::Optimized => "optimized",
+            Self::Blocked => "blocked",
+        }
+    }
+
+    /// Parses a manifest status value.
+    pub fn from_manifest_str(value: &str) -> Option<Self> {
+        match value {
+            "planned" => Some(Self::Planned),
+            "active" => Some(Self::Active),
+            "reimplemented" => Some(Self::Reimplemented),
+            "verified" => Some(Self::Verified),
+            "promoted" => Some(Self::Promoted),
+            "optimized" => Some(Self::Optimized),
+            "blocked" => Some(Self::Blocked),
+            _ => None,
+        }
+    }
+
+    /// Returns true when this status is a runtime-owner promotion state.
+    pub const fn is_runtime_owner_state(self) -> bool {
+        matches!(self, Self::Promoted | Self::Optimized)
+    }
+}
+
+/// Returns true when a status value is accepted by the rewrite manifest.
+pub fn is_known_status(value: &str) -> bool {
+    MigrationStatus::from_manifest_str(value).is_some()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn status_values_round_trip() {
+        for value in STATUS_VALUES {
+            let status = MigrationStatus::from_manifest_str(value).unwrap();
+            assert_eq!(status.as_manifest_str(), *value);
+        }
+    }
+
+    #[test]
+    fn unknown_status_is_rejected() {
+        assert!(!is_known_status("done"));
+        assert!(!is_known_status(""));
+        assert!(!is_known_status("verified "));
+    }
+
+    #[test]
+    fn only_promoted_states_own_runtime() {
+        assert!(!MigrationStatus::Planned.is_runtime_owner_state());
+        assert!(!MigrationStatus::Verified.is_runtime_owner_state());
+        assert!(MigrationStatus::Promoted.is_runtime_owner_state());
+        assert!(MigrationStatus::Optimized.is_runtime_owner_state());
+    }
+}

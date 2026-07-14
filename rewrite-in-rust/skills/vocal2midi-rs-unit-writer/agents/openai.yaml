@@ -1,0 +1,4 @@
+interface:
+  display_name: "V2M Writer"
+  short_description: "Implement one Vocal2Midi Rust migration unit"
+  default_prompt: "Use $vocal2midi-rs-unit-writer to implement the selected Vocal2Midi Rust migration unit."

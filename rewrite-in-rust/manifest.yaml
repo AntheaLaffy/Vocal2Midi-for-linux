@@ -1,0 +1,136 @@
+version: 1
+
+project:
+  name: Vocal2Midi
+  mission: "Gradually rewrite Python library layers into Rust while preserving current Python workflows."
+  architecture_doc: "docs/architecture.md"
+  contributing_doc: "docs/contributing.md"
+  resources_doc: "rewrite-in-rust/resources.md"
+  records_dir: "rewrite-in-rust/records"
+  glossary_doc: "rewrite-in-rust/reference/glossary.md"
+
+policy:
+  scope_boundary: "library-first"
+  current_runtime_owner: "legacy-python"
+  target_runtime_owner: "rust"
+  bridge_policy: "No Python/Rust bridge until a migration unit reaches promotion planning."
+  dependency_policy: "Align by capability coverage, not by Python package name."
+  dependency_expansion_policy: "Python dependency expansion is uncertain; every planned unit is provisional until dependency/capability discovery confirms or re-cuts it."
+  fallback_implementation_policy: "When Rust dependency coverage is poor, prefer a narrow hand-written Rust implementation against fixtures over forced package parity."
+  unit_inventory_policy: "The units list is a working hypothesis and may be substantially rewritten after discovery."
+  review_cadence: "Run one R0 behavior review per stage after 3-5 reimplemented units; run other reviews only for high-risk units or before promotion."
+  python_environment: "Use uv Python 3.12.x; do not use the system python binary for project verification."
+  rust_environment: "Use Rust Edition 2024 for new workspace crates."
+
+status_values:
+  - planned
+  - active
+  - reimplemented
+  - verified
+  - promoted
+  - optimized
+  - blocked
+
+stage_review_batches:
+  - id: stage0_foundation
+    objective: "Establish control plane, resources, and independent Rust test workspace."
+    status: active
+    verification:
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+      - "uv run pytest tests/test_web_api.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    required_reviews:
+      - "none before initial scaffold; R0 starts after first implementation batch"
+
+  - id: stage0_dependency_discovery
+    objective: "Expand Python dependencies and source references enough to confirm, split, merge, or replace the provisional unit inventory."
+    status: planned
+    verification:
+      - "uv run python scripts/audit_vendored_sources.py"
+      - "per-unit dependency records under rewrite-in-rust/dependencies/"
+    required_reviews:
+      - dependency_bootstrap_reviewer
+
+units:
+  - id: slice_bounds_validation
+    title: "Application slice duration bounds"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "application/config.py"
+    public_interface_policy: "Preserve validate_slice_bounds accepted values, exception type, and error messages until a promotion record changes them."
+    required_reviews:
+      - stage_behavior_reviewer
+    verification:
+      - "Add Python/Rust parity fixtures for valid and invalid slice_min_sec/slice_max_sec pairs."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slice_bounds"
+    rollback: "Keep application.config.validate_slice_bounds as the runtime owner."
+
+  - id: runtime_device_normalization
+    title: "Runtime device name normalization"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/device_utils.py"
+    public_interface_policy: "Preserve normalize_runtime_device aliases and platform default behavior before any bridge is introduced."
+    required_reviews:
+      - stage_behavior_reviewer
+    verification:
+      - "Add cross-platform fixture cases for None, empty string, cuda, directml, dml, gpu, and cpu."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml device"
+    rollback: "Keep inference.device_utils.normalize_runtime_device as the runtime owner."
+
+  - id: game_word_note_alignment
+    title: "GAME word/note alignment utilities"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/game/alignment_utils.py"
+    public_interface_policy: "Preserve validate_phones, parse_words, merge_consecutive_uv_words, and align_notes_to_words behavior for fixture inputs."
+    required_reviews:
+      - stage_behavior_reviewer
+    verification:
+      - "Add fixture pairs covering empty inputs, unvoiced merge, snapped boundaries, and rest insertion."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml alignment"
+    rollback: "Keep inference.game.alignment_utils as the runtime owner."
+
+  - id: note_text_csv_export_core
+    title: "TXT/CSV note export core"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/io/note_io.py"
+    public_interface_policy: "Preserve finite-note filtering, pitch formatting policy, lyric column inclusion, and row ordering for TXT/CSV export."
+    required_reviews:
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add golden TXT/CSV outputs for notes with lyrics, without lyrics, invalid notes, rounded pitches, and numeric pitches."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml export"
+    rollback: "Keep inference.io.note_io as the runtime owner."
+
+  - id: quantization_core_later
+    title: "Quantization algorithm core"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+    public_interface_policy: "Do not migrate until smaller units have established fixture and parity workflow."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - rust_style_reviewer
+    verification:
+      - "Use golden note sequences and compare quantized onset/offset values within exact tick-derived expectations."
+      - "Add benchmark only after behavior parity is established."
+    rollback: "Keep inference.quant.quantization as the runtime owner."
