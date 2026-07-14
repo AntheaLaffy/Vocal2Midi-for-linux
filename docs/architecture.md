@@ -29,6 +29,11 @@ gui/
   global_settings_view.py
   fluent_worker.py
 
+web_server.py
+web_task_manager.py
+web_model_download_manager.py
+web_stream_redirector.py
+
 inference/
   API/
   HubertFA/
@@ -72,6 +77,26 @@ The GUI is the primary interactive entrypoint. It collects user settings, launch
 - `application/pipeline.py`
 
 `run_auto_lyric_job()` is the main application-layer boundary used by the GUI. It validates required model paths and then dispatches into the hybrid inference pipeline.
+
+### Web backend
+
+- `web_server.py`
+- `web_task_manager.py`
+- `web_model_download_manager.py`
+- `web_stream_redirector.py`
+
+The Web backend exposes a Flask REST API and SocketIO event stream for the browser UI.
+It should follow the same dependency direction as the desktop GUI:
+
+```text
+web -> application -> inference
+```
+
+`web_server.py` owns HTTP request parsing, settings persistence, filesystem picker responses, and SocketIO room management.
+`web_task_manager.py` owns the pipeline task lifecycle and translates pipeline stdout/stderr into WebSocket log events.
+`web_model_download_manager.py` owns cancellable background model download subprocesses.
+
+The Web API contract is documented in [`docs/web-api.md`](web-api.md).
 
 ### Hybrid pipeline
 
@@ -212,11 +237,24 @@ The export layer is responsible for writing:
 The pipeline is built to support:
 
 - background execution from the GUI worker thread
+- background execution from the Web task manager thread
 - cancellation via `cancel_checker`
 - chunk batching for ASR and GAME
 - runtime reuse for batch CLI flows
 
 Memory cleanup is currently lightweight and mostly centered on releasing cached model objects and running Python garbage collection.
+
+## Documentation map
+
+The repository keeps detailed maintenance documentation under `docs/` instead of expanding the root README for every internal detail.
+
+- [`docs/linux.md`](linux.md): supported Linux setup and runtime path.
+- [`docs/qwen-linux.md`](qwen-linux.md): standalone upstream Qwen3-ASR environment notes.
+- [`docs/web-api.md`](web-api.md): Flask and SocketIO API contract.
+- [`docs/contributing.md`](contributing.md): development workflow, documentation standard, and review checklist.
+
+When behavior changes, update the nearest owning document in the same change.
+Use Rust-style documentation discipline: describe the contract first, list errors and limits explicitly, and include copyable verification commands.
 
 ## Batch CLI path
 

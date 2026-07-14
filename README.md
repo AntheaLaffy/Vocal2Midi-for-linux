@@ -1,229 +1,143 @@
 # Vocal2Midi
 
-Vocal2Midi is a desktop tool and inference pipeline for turning vocal audio into lyric-aligned MIDI, USTX, and supporting editing artifacts.
+[English](README.md) | [日本語](README.ja.md) | [简体中文](README.zh-CN.md)
 
-The current runtime is **ONNX-first**:
+Vocal2Midi turns vocal recordings into lyric-aligned MIDI, USTX, TextGrid, and
+supporting editing artifacts. It includes a Fluent desktop GUI, a local Web UI,
+a batch slice + ASR CLI, and an ONNX-first inference pipeline.
 
-- Windows Qwen3-ASR uses the project-local ONNX encoder + GGUF/`llama.cpp` decoder path.
+## Project Status
+
+- The active runtime is ONNX-first.
+- Windows uses DirectML for ONNX models when available.
+- Windows Qwen3-ASR uses the project-local ONNX encoder + GGUF/`llama.cpp`
+  decoder path.
 - Linux and macOS Qwen3-ASR use the official `qwen-asr` Transformers backend.
-- Windows uses **DirectML** when available.
-- Linux and macOS use standard ONNX Runtime CPU execution for the non-Qwen ONNX models.
-- The main user-facing entrypoint is the Fluent GUI in [`app_fluent.py`](app_fluent.py).
+- Linux and macOS use standard ONNX Runtime CPU execution for the non-Qwen
+  ONNX models.
+- Model assets are expected to live under `experiments/` or another configured
+  local path.
+- Some legacy function names and compatibility branches remain while the
+  codebase is being cleaned up.
 
-## Highlights
+## For Users
 
-- End-to-end vocal-to-MIDI workflow in one project
-- Chinese and Japanese lyric handling
-- GUI workflow for interactive use
-- Batch slice + ASR CLI for folder processing
-- Portable-folder packaging flow for Windows distribution
-- ONNX-based inference stack for ASR, alignment, note extraction, and RMVPE
+### Install
 
-## What Vocal2Midi Does
-
-At a high level, the hybrid pipeline looks like this:
-
-```text
-audio
-  -> optional RMVPE pitch curve
-  -> slicing
-  -> ASR
-  -> lyric matching / .lab generation
-  -> HubertFA forced alignment
-  -> GAME note extraction
-  -> quantization
-  -> export
-```
-
-There is also a no-lyrics path:
-
-```text
-audio
-  -> optional RMVPE pitch curve
-  -> slicing
-  -> GAME pitch-only extraction
-  -> export
-```
-
-## Runtime Stack
-
-| Component | Current backend | Location |
-| --- | --- | --- |
-| Qwen3-ASR on Windows | ONNX Runtime + `llama.cpp` | `inference/qwen3asr_dml/` |
-| Qwen3-ASR on Linux/macOS | official `qwen-asr` / Transformers | `inference/API/asr_api.py` |
-| Japanese mora / romaji ASR | ONNX Runtime | `inference/romaji_asr/` |
-| HubertFA | ONNX Runtime | `inference/HubertFA/` |
-| GAME | ONNX Runtime | `inference/game/` |
-| RMVPE | ONNX Runtime | `inference/API/rmvpe_api.py` |
-| Device normalization | DirectML / CPU helpers | `inference/device_utils.py` |
-
-Some public function names still contain `_torch` for compatibility, but the active backend is ONNX-based.
-
-## Repository Layout
-
-```text
-application/   application-layer orchestration and config objects
-docs/          architecture notes and supporting docs
-experiments/   local model directories
-gui/           PyQt5 + qfluentwidgets desktop UI
-inference/     ASR, alignment, pitch extraction, slicing, quantization, export
-scripts/       batch CLI and portable build helpers
-tests/         automated tests
-```
-
-## Quick Start
-
-### 1. Install dependencies
-
-The repository is pinned for Python 3.12 and managed by `uv`:
+The preferred development environment uses Python 3.12 and `uv`:
 
 ```bash
+uv python install 3.12
 uv python pin 3.12
 uv sync
 ```
 
-The main runtime dependencies are:
-
-- `onnxruntime` on Linux/macOS
-- `onnxruntime-directml` on Windows
-- `PyQt5`
-- `PyQt-Fluent-Widgets`
-- `librosa`
-- `soundfile`
-- `mido`
-- `qwen-asr` on Linux/macOS
-- `pyopenjtalk` on Windows
-
-An `environment.yml` file is also included as a reference environment snapshot.
-
-Linux-specific setup notes live in [`docs/linux.md`](docs/linux.md).
-Official upstream Qwen3-ASR Linux setup lives in [`docs/qwen-linux.md`](docs/qwen-linux.md).
-The `requirements*.txt` files remain as legacy pip inputs; the preferred Linux
-environment is locked by [`uv.lock`](uv.lock).
-
-Vendored third-party sources live under [`third_party`](third_party). Python
-sdists are kept in `third_party/sources`, no-sdist upstream fallbacks are kept in
-`third_party/upstream_sources`, native/FFI library sources are kept in
-`third_party/native_sources`, and Rust extension crates are kept in
-`third_party/cargo_vendor`. Regenerate all source mirrors with:
+Platform helpers are also available:
 
 ```bash
-uv run python scripts/vendor_sources.py --force
-uv run python scripts/vendor_native_sources.py --force
-uv run python scripts/audit_vendored_sources.py
+./install.sh
+./run.sh
 ```
 
-### 2. Prepare model folders
+Windows portable setup:
 
-By default, the GUI expects models in these locations:
+```bat
+install.bat
+run.bat
+```
+
+Linux-specific setup notes are in [docs/linux.md](docs/linux.md). Standalone
+upstream Qwen3-ASR setup notes are in [docs/qwen-linux.md](docs/qwen-linux.md).
+
+### Download Models
+
+Show the model download plan:
+
+```bash
+uv run python download_models.py --list
+```
+
+Download missing model assets:
+
+```bash
+uv run python download_models.py
+```
+
+Choose the Qwen3-ASR source explicitly when needed:
+
+```bash
+uv run python download_models.py --qwen-source modelscope
+uv run python download_models.py --qwen-source huggingface
+```
+
+Default model paths:
 
 | Component | Default path |
 | --- | --- |
 | GAME | `experiments/GAME-1.0.3-medium-onnx` |
 | HubertFA | `experiments/1218_hfa_model_new_dict` |
-| Qwen3-ASR on Windows | `experiments/Qwen3-ASR-1.7B-dml` |
-| Qwen3-ASR on Linux/macOS | `experiments/Qwen3-ASR-1.7B` |
+| Qwen3-ASR on Linux/macOS/Web | `experiments/Qwen3-ASR-1.7B` |
+| Qwen3-ASR on Windows desktop | `experiments/Qwen3-ASR-1.7B-dml` |
 | Japanese mora ASR | `experiments/romajiASR` |
 | RMVPE | `experiments/RMVPE/rmvpe.onnx` |
 
-You can change these paths in the GUI settings panel.
+You can change model paths in the desktop GUI settings panel or the Web UI
+settings page.
 
-### 3. Launch the GUI
+### Desktop GUI
 
-For a normal developer environment:
+Start the desktop GUI:
 
 ```bash
 uv run python app_fluent.py
 ```
 
-## GUI Workflow
+The desktop GUI is the primary interactive workflow. It lets you choose model
+paths, select runtime device, configure slicing, set language and lyric mode,
+provide optional reference lyrics, and export MIDI/USTX/debug artifacts.
 
-The GUI is the main way to use Vocal2Midi interactively. It lets you:
+### Web UI
 
-- choose model paths
-- pick the runtime device
-- set slicing mode and slice length bounds
-- choose language and lyric output mode
-- provide optional reference lyrics
-- export MIDI, USTX, text, CSV, chunk audio, and alignment artifacts
-
-The application-layer job entrypoint is `run_auto_lyric_job()` in [`application/pipeline.py`](application/pipeline.py), which dispatches into the hybrid inference pipeline in [`inference/pipeline/auto_lyric_hybrid.py`](inference/pipeline/auto_lyric_hybrid.py).
-
-## Language Behavior
-
-### Chinese
-
-- Qwen3-ASR provides text transcription.
-- The lyric matcher and G2P path prepare `.lab` content for HubertFA.
-- Lyrics can be exported in Hanzi or pinyin-oriented forms depending on mode.
-
-### Japanese
-
-In the main hybrid lyric pipeline:
-
-- `romaji` and `kana` lyric modes use the dedicated **mora ASR** path
-- if the output mode is `romaji`, the pipeline uses mora ASR output directly
-- if the output mode is `kana`, the pipeline converts matched mora output to kana for display
-- if reference lyrics are provided, the reference text is processed through `pyopenjtalk`, converted to kana mora tokens, then converted again to romaji mora tokens for matching
-
-This keeps Japanese lyric matching consistent with the mora-based ASR path instead of routing through the old phoneme-ASR forced-alignment branch.
-
-## Runtime Device Rules
-
-Visible device options in the current UI are:
-
-- `dml`
-- `cpu`
-
-Notes:
-
-- `dml` is the default ONNX device
-- if DirectML is unavailable, ONNX Runtime falls back to CPU
-- legacy `cuda` values are still accepted by some public interfaces, but they are normalized to `dml`
-- on non-Windows systems, Qwen ASR ignores `dml` and uses the official CPU `qwen-asr` path
-
-## Slicing
-
-The user-facing slice duration settings currently support:
-
-- minimum slice length: `0` to `60` seconds
-- maximum slice length: `0` to `60` seconds
-
-Current defaults:
-
-- minimum: `8.0` seconds
-- maximum: `22.0` seconds
-
-Validation rules:
-
-- `slice_max_sec` must be greater than `0`
-- `slice_min_sec` must be less than or equal to `slice_max_sec`
-
-## Batch Slice + ASR CLI
-
-For folder-based batch ASR processing:
+Start the local Web backend:
 
 ```bash
-python scripts/slice_asr_cli.py <input_dir> <output_dir> \
+uv run python web_server.py
+```
+
+Then open:
+
+```text
+http://localhost:5000
+```
+
+Use a custom port when needed:
+
+```bash
+V2M_WEB_PORT=5001 uv run python web_server.py
+```
+
+The Web API contract is documented in [docs/web-api.md](docs/web-api.md).
+
+### Batch CLI
+
+Run folder-based slice + ASR processing:
+
+```bash
+uv run python scripts/slice_asr_cli.py <input_dir> <output_dir> \
+  --asr-model experiments/Qwen3-ASR-1.7B \
+  --device cpu \
+  --language zh
+```
+
+On Windows desktop setups, use the Windows Qwen path and DirectML device when
+that model directory is available:
+
+```bash
+uv run python scripts/slice_asr_cli.py <input_dir> <output_dir> \
   --asr-model experiments/Qwen3-ASR-1.7B-dml \
   --device dml \
   --language zh
 ```
-
-This CLI is focused on:
-
-- scanning input audio files
-- slicing audio or bypassing slicing
-- running local Qwen3-ASR
-- saving chunk audio and `.lab` outputs
-- optionally saving JSON timing / ASR metadata
-
-Supported input extensions currently include:
-
-- `.wav`
-- `.flac`
-- `.m4a`
-- `.mp3`
 
 Useful options:
 
@@ -240,33 +154,7 @@ Useful options:
 --no-skip-existing      force reprocessing of existing outputs
 ```
 
-Japanese whole-file example:
-
-```bash
-python scripts/slice_asr_cli.py input output \
-  --asr-model experiments/Qwen3-ASR-1.7B-dml \
-  --device dml \
-  --language ja \
-  --no-slice
-```
-
-
-
-## Platform Setup Scripts
-
-Windows:
-
-- [`install.bat`](install.bat)
-- [`run.bat`](run.bat)
-
-Linux/macOS:
-
-- [`install.sh`](install.sh)
-- [`run.sh`](run.sh)
-
-The Windows scripts remain for portable packaging. The shell scripts target a system Python environment.
-
-## Export Formats
+### Outputs
 
 Depending on the selected workflow, Vocal2Midi can export:
 
@@ -279,36 +167,74 @@ Depending on the selected workflow, Vocal2Midi can export:
 - `.lab`
 - ASR matching logs
 
-## Project Notes
+## For Developers
 
-- The repository has already migrated away from the earlier Torch-heavy runtime design for the main inference path.
-- Some historical function names remain for compatibility.
-- Model assets are expected to exist locally under `experiments/` or another user-provided path.
-- The codebase is still being cleaned up in places, so you may still see a few legacy names or UI strings from earlier iterations.
+### Architecture
+
+The intended dependency direction is:
+
+```text
+gui -> application -> inference
+web -> application -> inference
+```
+
+Key areas:
+
+- `application/`: application-layer configuration, validation, and job entrypoints
+- `gui/`: PyQt5 + qfluentwidgets desktop UI
+- `web_server.py`: Flask + SocketIO local Web backend
+- `inference/`: ASR, alignment, pitch extraction, slicing, quantization, export
+- `scripts/`: model/source maintenance and batch CLI helpers
+- `tests/`: automated tests
+
+Architecture notes are in [docs/architecture.md](docs/architecture.md).
+Development workflow and documentation rules are in
+[docs/contributing.md](docs/contributing.md).
+
+### Tests
+
+Run the focused Web/API test suite:
+
+```bash
+uv run pytest tests/test_web_api.py
+```
+
+Run all automated tests:
+
+```bash
+uv run pytest
+```
+
+Manual integration test. Start `web_server.py` first, then run:
+
+```bash
+uv run python tests/test_api_integration.py
+```
+
+### Source Mirrors
+
+Vendored third-party source mirrors live under `third_party/`. Refresh and audit
+them with:
+
+```bash
+uv run python scripts/vendor_sources.py --force
+uv run python scripts/vendor_native_sources.py --force
+uv run python scripts/audit_vendored_sources.py
+```
+
+## Documentation
+
+- Linux setup: [docs/linux.md](docs/linux.md)
+- Qwen3-ASR Linux notes: [docs/qwen-linux.md](docs/qwen-linux.md)
+- Architecture: [docs/architecture.md](docs/architecture.md)
+- Development guide: [docs/contributing.md](docs/contributing.md)
+- Web API contract: [docs/web-api.md](docs/web-api.md)
+- Third-party credits: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)
 
 ## License
 
-The overall Vocal2Midi repository is distributed under the **Apache License 2.0**. See [LICENSE](LICENSE).
+Vocal2Midi is distributed under the Apache License 2.0. See [LICENSE](LICENSE).
 
-Third-party components, vendored code, model assets, dictionaries, and other embedded materials may also carry their own original licenses, notices, or attribution requirements. Those original notices remain applicable to the corresponding materials. See [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md) and any embedded license files for details.
-
-## Development and Testing
-
-The repo includes a focused automated test suite under `tests/`.
-
-Examples:
-
-```bash
-python -m pytest tests/test_auto_lyric_hybrid_pipeline.py
-python -m pytest tests/test_asr_api.py tests/test_game_api.py tests/test_rmvpe_api.py
-python -m pytest tests/test_device_selection.py tests/test_hubertfa_decoder.py
-```
-
-For architecture details, see [docs/architecture.md](docs/architecture.md).
-
-## Related Files
-
-- Main GUI entrypoint: [`app_fluent.py`](app_fluent.py)
-- Architecture notes: [docs/architecture.md](docs/architecture.md)
-- Third-party credits: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)
-- License: [LICENSE](LICENSE)
+Third-party components, vendored code, model assets, dictionaries, and embedded
+materials may carry their own original licenses, notices, or attribution
+requirements. Those notices remain applicable to the corresponding materials.
