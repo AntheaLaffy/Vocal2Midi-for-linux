@@ -1,0 +1,56 @@
+unit: quantization_simple_grid_core
+status: done
+capabilities:
+  simple_grid_note_quantization:
+    legacy: "inference/quant/quantization.py::_quantize_notes_simple"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The selected boundary is deterministic note sorting and scalar tick snapping; it does not require NumPy arrays, dynamic programming, or runtime pipeline routing."
+  tick_conversion:
+    legacy: "inference/quant/quantization.py::_ticks_from_sec"
+    rust: "narrow half-even scalar conversion in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "Simple grid quantization depends on Python round half-even behavior when seconds convert to ticks and ticks snap to the requested grid."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/quantization_simple_grid_core.tsv must be the durable Python/Rust parity table."
+    - "Step <= 0 and empty note lists are no-ops."
+    - "Input notes are sorted in-place by onset when quantization runs."
+    - "Tick conversion and grid snapping use Python half-even rounding."
+    - "Half-even seconds-to-ticks ties and non-default positive tempo/step values are covered by fixtures."
+    - "Onsets are forced strictly monotonic by at least one quantization step."
+    - "Offsets glue to the next quantized onset when original notes touch within 1e-3 seconds."
+    - "Offsets are extended to at least one step after onset and clipped to the next onset when needed."
+    - "Pitch and lyric metadata are preserved with the sorted note objects."
+    - "Finite onset/offset values and positive finite tempo are documented as pre-promotion inputs; future bridge work must validate or map invalid numeric inputs before runtime ownership changes."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed only for _quantize_notes_simple and _ticks_from_sec behavior needed by simple mode. Public mode dispatch and smart/dp/bayes algorithms stay separate planned units."
+hand_written_replacements:
+  - capability: "simple grid note quantization"
+    reference_sources:
+      - "inference/quant/quantization.py"
+    reason: "A direct Rust implementation is smaller and more verifiable than replacing NumPy-backed quantization paths when this unit needs only scalar arithmetic, Python half-even rounding, sorting, and list mutation."
+legacy_kept:
+  - capability: "quantize_notes public dispatch"
+    reason: "Dispatch routes multiple algorithms and remains legacy-owned until each algorithm core is verified."
+  - capability: "quantization activation policy"
+    reason: "Already verified separately as quantization_activation_policy."
+  - capability: "smart duration DP"
+    reason: "Smart mode uses NumPy arrays and DP tie behavior that require separate data/algorithm review."
+  - capability: "candidate primitives"
+    reason: "Shared candidate helpers are planned separately before smart, phrase DP, and Bayesian migration."
+  - capability: "phrase DP/asymmetric quantization"
+    reason: "DP mode has segment-level dynamic programming and center-shift behavior outside simple grid snapping."
+  - capability: "Bayesian quantization"
+    reason: "Bayes mode has candidate filtering, priors, segmentation, and decode behavior outside this unit."
+  - capability: "GUI/Web/application quantization settings and runtime routing"
+    reason: "No Python/Rust bridge is introduced before promotion; production pipeline calls remain legacy-owned."
+  - capability: "invalid numeric input error mapping"
+    reason: "The current independent Rust unit is fixture-bound to finite timing values and positive finite tempo; Python-compatible NaN/infinity/zero-tempo error mapping belongs to a future bridge or promotion unit."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml simple_grid"
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_simple_grid_core.py"
+  - "uv run pytest tests/test_web_api.py"

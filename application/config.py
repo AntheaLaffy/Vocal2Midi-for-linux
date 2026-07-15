@@ -59,6 +59,9 @@ class PipelineConfig:
     tempo: float = 120.0
     quantization_step: int = 16
     quantization_mode: str = "bayes"
+    quantization_backend: str = ""
+    quantization_bridge_bin: str = ""
+    quantization_timeout_sec: float = 30.0
     pitch_format: str = "midi"
     round_pitch: bool = True
     seg_threshold: float = -40.0
@@ -94,6 +97,9 @@ class PipelineConfig:
             "tempo": self.tempo,
             "quantization_step": self.quantization_step,
             "quantization_mode": self.quantization_mode,
+            "quantization_backend": self.quantization_backend,
+            "quantization_bridge_bin": self.quantization_bridge_bin,
+            "quantization_timeout_sec": self.quantization_timeout_sec,
             "pitch_format": self.pitch_format,
             "round_pitch": self.round_pitch,
             "seg_threshold": self.seg_threshold,

@@ -1,0 +1,38 @@
+unit: runtime_device_normalization
+status: done
+capabilities:
+  runtime_device_name_normalization:
+    legacy: "inference/device_utils.py::normalize_runtime_device"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core"
+    reason: "The selected public boundary is pure string normalization plus platform default selection; it does not require ONNX Runtime provider discovery or DXGI adapter enumeration."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/runtime_device_normalization.tsv must be the durable Python/Rust parity table."
+    - "Linux/non-Windows default cases for None, empty string, and whitespace resolve to cpu."
+    - "Windows default cases for None, empty string, and whitespace resolve to dml."
+    - "Alias cases cuda, directml, dml, gpu, and cpu preserve exact lower-case output."
+    - "Unknown device names are stripped, lower-cased, and returned unchanged."
+    - "Explicit default values preserve Python's device-or-default behavior."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed only for normalize_runtime_device. The rest of inference/device_utils.py crosses onnxruntime, ctypes COM, and Windows DXGI boundaries and remains legacy-owned."
+hand_written_replacements:
+  - capability: "runtime device name normalization"
+    reference_sources:
+      - "inference/device_utils.py"
+    reason: "A direct Rust implementation is smaller and more verifiable than replacing onnxruntime or Windows adapter discovery for this string-only public boundary."
+legacy_kept:
+  - capability: "ONNX Runtime provider discovery"
+    reason: "resolve_onnx_providers depends on onnxruntime provider availability and is outside this unit's public boundary."
+  - capability: "Windows DXGI adapter enumeration and preferred adapter selection"
+    reason: "_enumerate_dxgi_adapters and select_preferred_gpu_adapter use ctypes COM calls and platform-native behavior that are not needed for device name normalization."
+  - capability: "runtime validation calls from GUI, Web, application, and inference pipeline"
+    reason: "No Python/Rust bridge is introduced before promotion; inference.device_utils.normalize_runtime_device remains the production owner."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml device"
+  - "uv run python rewrite-in-rust/bootstrap/check_runtime_device_normalization.py"
+  - "uv run pytest tests/test_web_api.py"

@@ -1,0 +1,22 @@
+# mode	step	expected
+__none__	-1	false
+__none__	0	false
+__none__	16	true
+__empty__	0	false
+__empty__	60	true
+simple	0	false
+simple	16	true
+SIMPLE	0	false
+SIMPLE	16	true
+smart	0	false
+smart	30	true
+bayes	0	false
+bayes	16	true
+unknown	0	false
+unknown	16	true
+dp	-1	true
+dp	0	true
+dp	16	true
+DP	0	true
+__padded_dp__	0	false
+__padded_dp__	16	true

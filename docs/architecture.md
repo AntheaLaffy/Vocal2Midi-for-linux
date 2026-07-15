@@ -46,6 +46,14 @@ inference/
   romaji_asr/
   slicer/
   device_utils.py
+
+rewrite-in-rust/
+  manifest.yaml
+  rust/
+    Cargo.toml
+    crates/
+      v2m-core/
+      v2m-quant-bridge/
 ```
 
 ## Main runtime model
@@ -62,6 +70,44 @@ The current runtime split is:
 Device normalization is centralized in `inference/device_utils.py`.
 
 The project accepts legacy `cuda` requests in some public interfaces, but those requests are normalized to `dml` in the current runtime path.
+
+## Rust migration architecture
+
+The Rust code is a nested Cargo workspace under `rewrite-in-rust/rust/`. It is
+not a second application entrypoint. It exists to migrate reusable Python
+library behavior behind fixture-backed compatibility seams.
+
+Current crates:
+
+- `v2m-core`: pure library behavior mirrored from Python. Current modules cover
+  slice validation, runtime device normalization, GAME alignment helpers,
+  TXT/CSV note export rendering, and quantization algorithms.
+- `v2m-quant-bridge`: a JSON stdin/stdout binary used only when Python selects
+  the explicit Rust quantization backend.
+
+The runtime owner rule is:
+
+```text
+legacy Python owns behavior until manifest evidence promotes a Rust unit.
+```
+
+For verified-but-not-promoted units, Rust parity exists but production callers
+still use the Python path unless a wrapper explicitly selects Rust. Promotion
+requires behavior evidence, required reviews, and a rollback route in
+`rewrite-in-rust/manifest.yaml`.
+
+The quantization seam is the first production-adjacent bridge:
+
+```text
+inference/pipeline/auto_lyric_hybrid.py
+  -> inference/quant/rust_bridge.py
+     -> rewrite-in-rust/rust/crates/v2m-quant-bridge
+        -> v2m-core::quant
+```
+
+The bridge is opt-in through configuration or environment selection. The
+default path remains legacy Python so packaging or bridge failures can be rolled
+back without changing user workflows.
 
 ## Main user entrypoints
 
@@ -252,6 +298,10 @@ The repository keeps detailed maintenance documentation under `docs/` instead of
 - [`docs/qwen-linux.md`](qwen-linux.md): standalone upstream Qwen3-ASR environment notes.
 - [`docs/web-api.md`](web-api.md): Flask and SocketIO API contract.
 - [`docs/contributing.md`](contributing.md): development workflow, documentation standard, and review checklist.
+- [`rewrite-in-rust/README.md`](../rewrite-in-rust/README.md): migration
+  control-plane rules and manifest workflow.
+- [`rewrite-in-rust/rust/README.md`](../rewrite-in-rust/rust/README.md): Rust
+  workspace commands, crate contracts, MSRV, and bridge contract.
 
 When behavior changes, update the nearest owning document in the same change.
 Use Rust-style documentation discipline: describe the contract first, list errors and limits explicitly, and include copyable verification commands.

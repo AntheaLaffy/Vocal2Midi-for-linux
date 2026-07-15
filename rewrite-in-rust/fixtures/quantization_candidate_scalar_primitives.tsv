@@ -1,0 +1,30 @@
+# case_id	kind	input_a	input_b	input_c	input_d	expected
+resolve_step_zero	resolve_dp_grid_step	0				30
+resolve_step_negative	resolve_dp_grid_step	-10				30
+resolve_step_positive	resolve_dp_grid_step	45				45
+shift_default_equal	resolve_segment_shift_candidates	30				0,60,120
+shift_default_below	resolve_segment_shift_candidates	20				0,60,120
+shift_scaled_even	resolve_segment_shift_candidates	120				0,30,60
+shift_scaled_odd	resolve_segment_shift_candidates	45				0,11,22
+nearest_basic	nearest_candidate	44.0	0,30,60			30
+nearest_tie_first	nearest_candidate	45.0	30,60			30
+nearest_unsorted_tie_order	nearest_candidate	45.0	60,30			60
+mod_wrap_short	mod_distance	10	470	480		20
+mod_direct	mod_distance	100	220	480		120
+mod_exact_wrap	mod_distance	0	480	480		0
+dist_grid_upper_half	dist_grid	77	30			13
+dist_grid_negative	dist_grid	-7	30			7
+dist_grid_on_grid	dist_grid	90	30			0
+candidate_half_even_up	candidate_values	45	3	30		-30,0,30,60,90,120,150
+candidate_half_even_down	candidate_values	15	3	30		-90,-60,-30,0,30,60,90
+candidate_custom_step	candidate_values	64	1	45		0,45,90
+candidate_negative_half_even	candidate_values	-45	2	30		-120,-90,-60,-30,0
+candidate_negative_radius	candidate_values	100	-1	30		
+duration_standard	duration_candidates	30	95			30,60,90,120,180
+duration_small_max	duration_candidates	60	10			60,120,180
+duration_zero_max	duration_candidates	30	0			30,60
+duration_large_cap	duration_candidates	30	900			30,60,90,120,180,240,360,480,720,960
+gap_standard	gap_candidates	30	95			0,30,60,90,120
+gap_small_max	gap_candidates	60	10			0,60,120
+gap_zero_max	gap_candidates	30	0			0,30,60
+gap_large_cap	gap_candidates	30	500			0,30,60,90,120,180,240

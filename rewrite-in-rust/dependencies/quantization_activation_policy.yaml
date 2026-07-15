@@ -1,0 +1,43 @@
+unit: quantization_activation_policy
+status: done
+capabilities:
+  quantization_activation_decision:
+    legacy: "inference/quant/quantization.py::should_apply_quantization"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The selected boundary is a pure mode/step predicate; it does not require NumPy, note mutation, dynamic programming, or pipeline routing."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/quantization_activation_policy.tsv must be the durable Python/Rust parity table."
+    - "None and empty modes behave like simple."
+    - "Mode matching lowercases input but does not trim whitespace."
+    - "Exact dp mode returns true even when quantization_step <= 0."
+    - "All non-dp modes return quantization_step > 0."
+inventory_impact:
+  decision: split
+  reason: "The provisional quantization_core_later unit grouped activation policy, public dispatch, simple grid snapping, smart duration DP, phrase DP, Bayesian priors/segmentation, NumPy helper behavior, and future pipeline promotion. The first independently verifiable behavior is only should_apply_quantization."
+hand_written_replacements:
+  - capability: "quantization activation policy"
+    reference_sources:
+      - "inference/quant/quantization.py"
+    reason: "A direct Rust predicate is smaller and more verifiable than replacing NumPy-backed quantization algorithms for this policy-only boundary."
+legacy_kept:
+  - capability: "quantize_notes public dispatch"
+    reason: "Dispatch calls note-mutating algorithms and should be migrated after individual algorithm cores have fixtures."
+  - capability: "simple grid quantization"
+    reason: "Simple mode mutates notes in place and has timing/rounding behavior that needs separate golden note fixtures."
+  - capability: "smart duration DP"
+    reason: "Smart mode uses NumPy arrays, dynamic programming, and argmin tie behavior; it requires a separate data/algorithm review."
+  - capability: "phrase DP/asymmetric quantization"
+    reason: "DP mode has segment-level dynamic programming and center-shift behavior, larger than the activation predicate."
+  - capability: "Bayesian quantization"
+    reason: "Bayes mode has candidate filtering, piece-specific priors, segmentation, and DP decode behavior that need separate fixtures and reviews."
+  - capability: "GUI/Web/application quantization settings and runtime routing"
+    reason: "No Python/Rust bridge is introduced before promotion; production pipeline calls remain legacy-owned."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml quant"
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_activation_policy.py"
+  - "uv run pytest tests/test_web_api.py"

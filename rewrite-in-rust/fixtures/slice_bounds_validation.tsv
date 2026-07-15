@@ -1,0 +1,18 @@
+# slice_min_sec	slice_max_sec	outcome	message
+0.0	0.1	ok	
+5.0	10.0	ok	
+60.0	60.0	ok	
+-0.5	10.0	err	slice_min_sec must be within 0-60 seconds
+60.5	60.0	err	slice_min_sec must be within 0-60 seconds
+5.0	-0.5	err	slice_max_sec must be within 0-60 seconds
+5.0	60.5	err	slice_max_sec must be within 0-60 seconds
+0.0	0.0	err	slice_max_sec must be greater than 0 seconds
+1.0	0.0	err	slice_max_sec must be greater than 0 seconds
+2.0	1.0	err	slice_min_sec must be less than or equal to slice_max_sec
+-1.0	-1.0	err	slice_min_sec must be within 0-60 seconds
+nan	nan	err	slice_min_sec must be within 0-60 seconds
+1.0	nan	err	slice_max_sec must be within 0-60 seconds
+inf	10.0	err	slice_min_sec must be within 0-60 seconds
+-inf	10.0	err	slice_min_sec must be within 0-60 seconds
+10.0	inf	err	slice_max_sec must be within 0-60 seconds
+10.0	-inf	err	slice_max_sec must be within 0-60 seconds

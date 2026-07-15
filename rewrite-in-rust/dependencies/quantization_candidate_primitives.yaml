@@ -1,0 +1,60 @@
+unit: quantization_candidate_primitives
+status: done
+capabilities:
+  dp_grid_resolution:
+    legacy: "inference/quant/quantization.py::_resolve_dp_grid_step and _resolve_segment_shift_candidates"
+    rust: "narrow scalar implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The helpers are deterministic integer policy functions used by later DP-style quantizers; they do not require NumPy arrays or runtime pipeline routing."
+  candidate_generation:
+    legacy: "inference/quant/quantization.py::_candidate_values and _build_candidate_pairs"
+    rust: "narrow list/set implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "Python behavior is sorted unique tick candidates and lexicographically sorted valid start/end pairs; std collections cover the required behavior."
+  distance_helpers:
+    legacy: "inference/quant/quantization.py::_nearest_candidate, _mod_distance, and _dist_grid"
+    rust: "narrow scalar implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "These helpers are pure scalar distance calculations; no package-level replacement is needed."
+  note_pair_preparation:
+    legacy: "inference/quant/quantization.py::_build_note_pair and _annotate_pairs_with_gap"
+    rust: "small Rust note-pair structs and conversion helpers in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The behavior is dictionary shape, duration clamping, lyric fallback, and previous-end gap annotation; a typed Rust struct is the narrowest equivalent for later algorithm units."
+  duration_gap_candidates:
+    legacy: "inference/quant/quantization.py::_build_duration_candidates and _build_gap_candidates"
+    rust: "narrow scalar ceil/multiplier implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The helpers only need NumPy ceil semantics over scalar values; Rust f64 ceil is sufficient for this fixture-bound boundary."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/quantization_candidate_scalar_primitives.tsv must cover scalar helper outputs."
+    - "rewrite-in-rust/fixtures/quantization_candidate_pair_primitives.tsv must cover note-pair, gap annotation, and candidate pair outputs."
+    - "Half-even candidate center rounding must be covered, including positive and negative ties."
+    - "Nearest-candidate tie behavior must preserve Python's first matching list item."
+    - "Duration and gap candidate lists must cover normal, zero, small, and large caps."
+    - "Pair fixtures must cover lyric fallback, minimum raw duration, overlapping gaps, and equal start/end candidate filtering."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed for pure helper primitives only. Bayesian candidate filtering, local costs, dynamic programming, segmentation, and runtime dispatch remain separate planned quantization units."
+hand_written_replacements:
+  - capability: "quantization candidate primitive helpers"
+    reference_sources:
+      - "inference/quant/quantization.py"
+    reason: "A direct Rust implementation is smaller and more verifiable than introducing NumPy or ndarray for scalar/list helpers."
+legacy_kept:
+  - capability: "Bayesian candidate filtering and Bayes-specific candidate construction"
+    reason: "_filter_bayes_candidate_pairs and _build_bayes_candidate_pairs include Bayes shift limits and fallback ranking; they belong to quantization_bayesian_core."
+  - capability: "metrical, note-value, duration-prior, and asymmetric local costs"
+    reason: "Cost functions feed DP/Bayesian algorithms and require separate algorithm fixtures."
+  - capability: "smart duration DP"
+    reason: "Smart mode combines duration/gap candidate lists with DP table costs and tie behavior outside this primitive unit."
+  - capability: "phrase DP/asymmetric quantization"
+    reason: "Phrase DP adds segmentation, center-shift candidates, segment switching, and overlap repair beyond primitive generation."
+  - capability: "Bayesian segmentation, priors, decode, and overlap repair"
+    reason: "Bayesian behavior needs its own golden sequence fixtures and data/algorithm review."
+  - capability: "GUI/Web/application quantization settings and runtime routing"
+    reason: "No Python/Rust bridge is introduced before promotion; production pipeline calls remain legacy-owned."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml quant_candidate"
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_candidate_primitives.py"
+  - "uv run pytest tests/test_web_api.py"

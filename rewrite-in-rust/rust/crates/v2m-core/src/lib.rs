@@ -4,6 +4,12 @@
 //! rewrite workspace a small independently testable Rust surface before any
 //! business migration unit is promoted.
 
+pub mod device;
+pub mod export;
+pub mod game;
+pub mod quant;
+pub mod slice_bounds;
+
 /// Manifest states accepted by `rewrite-in-rust/manifest.yaml`.
 pub const STATUS_VALUES: &[&str] = &[
     "planned",

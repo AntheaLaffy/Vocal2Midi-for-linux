@@ -1,0 +1,6 @@
+# case_id	file_format	pitch_format	round_pitch	notes	skipped	expected
+txt_name_lyrics	txt	name	false	0,0.5,60.25,la|0.5,1.0,61.75,__empty__	0	0.000\t0.500\tC4+25\tla\n0.500\t1.000\tD4-25\t\n
+txt_number_no_lyrics	txt	number	false	0,0.3333,60.1234,__empty__|0.3333,0.6666,62.9876,__empty__	0	0.000\t0.333\t60.123\n0.333\t0.667\t62.988\n
+csv_number_invalid	csv	number	true	0,1,60.5,lead|1,1,62,bad|nan,2,63,bad|1,2,inf,bad|2,3,61.5,__empty__	3	onset,offset,pitch,lyric\r\n0.000,1.000,60.000,lead\r\n2.000,3.000,62.000,\r\n
+csv_name_clamp_quote	csv	name	false	0,1,-2.25,low|1,2,128.75,hi,"q"	0	onset,offset,pitch,lyric\r\n0.000,1.000,C-1+0,low\r\n1.000,2.000,G9+0,"hi,""q"""\r\n
+txt_name_round_half_even	txt	name	true	0,1,60.5,__empty__|1,2,61.5,__empty__	0	0.000\t1.000\tC4\n1.000\t2.000\tD4\n

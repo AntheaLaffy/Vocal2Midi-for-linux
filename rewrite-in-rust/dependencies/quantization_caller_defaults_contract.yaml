@@ -1,0 +1,29 @@
+unit: quantization_caller_defaults_contract
+status: done
+capabilities:
+  public_quantization_dispatch_contract:
+    legacy: "inference/quant/quantization.py::should_apply_quantization and quantize_notes"
+    rust: "planned public parity contract before routing to Rust"
+    reason: "Public activation lowercases without trimming, dp always applies, unknown positive modes fall back to simple, and disabled non-dp modes do not call quantize_notes from the pipeline."
+  caller_defaults_contract:
+    legacy: "application/config.py, gui/auto_lyric_view.py, gui/fluent_utils.py, web_server.py, web_task_manager.py"
+    rust: "planned caller/default fixture and integration contract"
+    reason: "GUI, Web, and PipelineConfig currently disagree on visible and effective quantization defaults; this must be locked or intentionally changed before runtime ownership changes."
+seam:
+  kind: pipeline
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  implemented:
+    - "rewrite-in-rust/fixtures/quantization_caller_defaults_contract.tsv covers dispatch/activation fixtures for None, empty, simple, smart, bayes, dp, unknown, uppercase, whitespace-padded, and positive/zero/negative steps."
+    - "tests/test_quantization_caller_defaults_contract.py covers pipeline fake-note/export behavior including no-quantize gating, unknown positive-mode simple fallback, and dp step-zero export mutation; PipelineConfig defaults/pass-through; GUI disabled controls/parser mappings; and Web ignored quantize fields."
+inventory_impact:
+  decision: split
+  reason: "Caller/default behavior is a separate product compatibility surface from the Rust bridge. It must be proven before quantization_pipeline_promotion changes production routing."
+hand_written_replacements: []
+legacy_kept:
+  - capability: "production quantization caller routing"
+    reason: "Legacy runtime remains owner until caller defaults and bridge behavior are independently verified."
+verification:
+  - "uv run pytest tests/test_quantization_caller_defaults_contract.py"
+  - "uv run pytest tests/test_web_api.py"

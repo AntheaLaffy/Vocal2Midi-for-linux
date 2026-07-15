@@ -7,6 +7,9 @@ Vocal2Midi 可以把人声音频转换为带歌词对齐信息的 MIDI、USTX、
 ## 项目状态
 
 - 当前运行时以 ONNX 为主。
+- 渐进式 Rust 重写正在 `rewrite-in-rust/` 下进行。当前面向用户的应用仍由
+  Python 主导；已 `verified` 的 Rust 单元只有在明确的兼容性和回滚检查后才会
+  `promoted`。
 - Windows 在可用时会对 ONNX 模型使用 DirectML。
 - Windows Qwen3-ASR 使用项目内置的 ONNX encoder + GGUF/`llama.cpp` decoder 路径。
 - Linux 和 macOS Qwen3-ASR 使用官方 `qwen-asr` Transformers 后端。
@@ -177,6 +180,24 @@ web -> application -> inference
 - `tests/`：自动化测试
 
 架构说明见 [docs/architecture.md](docs/architecture.md)。开发工作流和文档规则见 [docs/contributing.md](docs/contributing.md)。
+
+### Rust Workspace
+
+Rust 迁移工作位于 [rewrite-in-rust/](rewrite-in-rust/)。Cargo workspace 有意嵌套在
+[rewrite-in-rust/rust/](rewrite-in-rust/rust/) 下，这样 Rust library units
+可以在不启动桌面 GUI、Web 后端或完整模型流水线的情况下独立测试。
+
+常用 Rust 检查：
+
+```bash
+cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+```
+
+Rust workspace README 记录了 MSRV、crate 边界、JSON bridge 契约和 migration-owner 规则：
+[rewrite-in-rust/rust/README.md](rewrite-in-rust/rust/README.md)。
 
 ### 测试
 

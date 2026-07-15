@@ -1,0 +1,7 @@
+# ph_seq	ph_dur	ph_num	uv_vocab	uv_cond	merge	expected_dur	expected_vuv
+a,b,c	0.1,0.2,0.3	1,2	__none__	all	false	0.1,0.5	1,1
+sil,a,b	0.1,0.2,0.3	2,1	sil	lead	false	0.3,0.3	0,1
+sil,a,pau	0.1,0.2,0.3	2,1	sil,pau	all	false	0.3,0.3	1,0
+sil,pau,a,br	0.1,0.2,0.3,0.4	1,1,1,1	sil,pau,br	all	true	0.30000000000000004,0.3,0.4	0,1,0
+		0	__none__	all	false	0	1
+			__none__	all	false		

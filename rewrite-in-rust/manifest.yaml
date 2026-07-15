@@ -44,7 +44,7 @@ stage_review_batches:
 
   - id: stage0_dependency_discovery
     objective: "Expand Python dependencies and source references enough to confirm, split, merge, or replace the provisional unit inventory."
-    status: planned
+    status: active
     verification:
       - "uv run python scripts/audit_vendored_sources.py"
       - "per-unit dependency records under rewrite-in-rust/dependencies/"
@@ -54,8 +54,8 @@ stage_review_batches:
 units:
   - id: slice_bounds_validation
     title: "Application slice duration bounds"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -64,14 +64,17 @@ units:
     required_reviews:
       - stage_behavior_reviewer
     verification:
-      - "Add Python/Rust parity fixtures for valid and invalid slice_min_sec/slice_max_sec pairs."
+      - "Python/Rust parity fixtures for valid and invalid slice_min_sec/slice_max_sec pairs are in rewrite-in-rust/fixtures/slice_bounds_validation.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_slice_bounds_validation.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slice_bounds"
+      - "rewrite-in-rust/reviews/2026-07-15-slice_bounds_validation-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-slice_bounds_validation-dependency_bootstrap_reviewer.md"
     rollback: "Keep application.config.validate_slice_bounds as the runtime owner."
 
   - id: runtime_device_normalization
     title: "Runtime device name normalization"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -80,30 +83,57 @@ units:
     required_reviews:
       - stage_behavior_reviewer
     verification:
-      - "Add cross-platform fixture cases for None, empty string, cuda, directml, dml, gpu, and cpu."
+      - "Cross-platform fixture cases for None, empty string, cuda, directml, dml, gpu, and cpu are in rewrite-in-rust/fixtures/runtime_device_normalization.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_runtime_device_normalization.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml device"
+      - "rewrite-in-rust/reviews/2026-07-15-runtime_device_normalization-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-runtime_device_normalization-dependency_bootstrap_reviewer.md"
     rollback: "Keep inference.device_utils.normalize_runtime_device as the runtime owner."
 
-  - id: game_word_note_alignment
-    title: "GAME word/note alignment utilities"
-    status: planned
-    inventory_status: provisional
+  - id: game_phone_word_parsing
+    title: "GAME phoneme-to-word parsing utilities"
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
       - "inference/game/alignment_utils.py"
-    public_interface_policy: "Preserve validate_phones, parse_words, merge_consecutive_uv_words, and align_notes_to_words behavior for fixture inputs."
+    public_interface_policy: "Preserve validate_phones, parse_words, and merge_consecutive_uv_words accepted inputs, return shapes, exact validation messages, uv flag behavior, and merge behavior for fixture inputs."
     required_reviews:
       - stage_behavior_reviewer
     verification:
-      - "Add fixture pairs covering empty inputs, unvoiced merge, snapped boundaries, and rest insertion."
-      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml alignment"
-    rollback: "Keep inference.game.alignment_utils as the runtime owner."
+      - "Fixture pairs covering valid and invalid phone spans, uv_vocab=None, uv_cond lead/all, empty inputs, and unvoiced merge behavior are in rewrite-in-rust/fixtures/game_phone_word_*.tsv and rewrite-in-rust/fixtures/game_parse_words.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_game_phone_word_parsing.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml phone_word"
+      - "rewrite-in-rust/reviews/2026-07-15-game_phone_word_parsing-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-game_phone_word_parsing-dependency_bootstrap_reviewer.md"
+    rollback: "Keep inference.game.alignment_utils validate_phones, parse_words, and merge_consecutive_uv_words as the runtime owner."
+
+  - id: game_note_word_alignment
+    title: "GAME note-to-word alignment"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/game/alignment_utils.py"
+    public_interface_policy: "Preserve align_notes_to_words boundary snapping, monotonic clamp, note slicing, rest insertion, apply_word_uv behavior, and slur flags for fixture inputs."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Fixture pairs covering empty inputs, exact boundaries, snapped boundaries, monotonic clamp, repeated note merge, rest insertion, apply_word_uv, and slur flags are in rewrite-in-rust/fixtures/game_note_word_alignment.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_game_note_word_alignment.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml note_word"
+      - "rewrite-in-rust/reviews/2026-07-15-game_note_word_alignment-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-game_note_word_alignment-data_algorithm_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-game_note_word_alignment-dependency_bootstrap_reviewer.md"
+    rollback: "Keep inference.game.alignment_utils.align_notes_to_words as the runtime owner."
 
   - id: note_text_csv_export_core
     title: "TXT/CSV note export core"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -113,24 +143,227 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add golden TXT/CSV outputs for notes with lyrics, without lyrics, invalid notes, rounded pitches, and numeric pitches."
+      - "Golden escaped TXT/CSV outputs for notes with lyrics, without lyrics, invalid notes, rounded pitches, and numeric pitches are in rewrite-in-rust/fixtures/note_text_csv_export_core.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_note_text_csv_export_core.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml export"
+      - "rewrite-in-rust/reviews/2026-07-15-note_text_csv_export_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-note_text_csv_export_core-error_tracing_reviewer.md"
     rollback: "Keep inference.io.note_io as the runtime owner."
 
-  - id: quantization_core_later
-    title: "Quantization algorithm core"
-    status: planned
-    inventory_status: provisional
+  - id: quantization_activation_policy
+    title: "Quantization activation policy"
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
       - "inference/quant/quantization.py"
-    public_interface_policy: "Do not migrate until smaller units have established fixture and parity workflow."
+      - "inference/pipeline/auto_lyric_hybrid.py"
+    public_interface_policy: "Preserve should_apply_quantization mode normalization and dp-vs-step activation behavior before any bridge is introduced."
+    required_reviews:
+      - stage_behavior_reviewer
+    verification:
+      - "Fixture pairs covering None, empty, simple, smart, bayes, unknown, dp, case-insensitive dp, and whitespace-padded dp are in rewrite-in-rust/fixtures/quantization_activation_policy.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_activation_policy.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml quant"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_activation_policy-behavior_reviewer.md"
+    rollback: "Keep inference.quant.quantization.should_apply_quantization as the runtime owner."
+
+  - id: quantization_simple_grid_core
+    title: "Simple grid quantization core"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+    public_interface_policy: "Preserve simple-mode sorting, half-even tick rounding, monotonic onset bumping, touching-note offset glue, minimum duration, and next-onset clipping."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Golden note-sequence fixtures comparing output onset/offset values and preserved note metadata are in rewrite-in-rust/fixtures/quantization_simple_grid_core.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_simple_grid_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml simple_grid"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_simple_grid_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_simple_grid_core-data_algorithm_reviewer.md"
+    rollback: "Keep inference.quant.quantization._quantize_notes_simple and quantize_notes mode dispatch as the runtime owner."
+
+  - id: quantization_candidate_primitives
+    title: "Quantization candidate primitives"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+    public_interface_policy: "Preserve candidate value generation, modular/grid distance helpers, note pair construction, gap annotation, and duration/gap candidate lists."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Helper-level scalar fixtures for grid resolution, shifts, nearest/mod/grid distances, candidate values, and duration/gap candidates are in rewrite-in-rust/fixtures/quantization_candidate_scalar_primitives.tsv."
+      - "Helper-level pair fixtures for note-pair construction, gap annotation, and candidate pair generation are in rewrite-in-rust/fixtures/quantization_candidate_pair_primitives.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_candidate_primitives.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml quant_candidate"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_candidate_primitives-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_candidate_primitives-data_algorithm_reviewer.md"
+    rollback: "Keep inference.quant.quantization helper functions as the runtime owner."
+
+  - id: quantization_smart_duration_dp
+    title: "Smart duration DP quantization"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+    public_interface_policy: "Preserve smart-mode duration candidates, DP cost/tie behavior, rest handling, and output onset/offset mutation."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Golden note-sequence fixtures covering no-op behavior, onset sorting, duration DP, first-min ties, rest handling, and metadata preservation are in rewrite-in-rust/fixtures/quantization_smart_duration_dp.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_smart_duration_dp.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml smart_duration"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_smart_duration_dp-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_smart_duration_dp-data_algorithm_reviewer.md"
+    rollback: "Keep inference.quant.quantization._quantize_notes_smart as the runtime owner."
+
+  - id: quantization_phrase_dp_core
+    title: "Phrase DP/asymmetric quantization"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+    public_interface_policy: "Preserve phrase segmentation, center-shift candidates, local asymmetric cost, segment switching, overlap fixing, and dp-mode behavior."
     required_reviews:
       - stage_behavior_reviewer
       - data_algorithm_reviewer
       - rust_style_reviewer
     verification:
-      - "Use golden note sequences and compare quantized onset/offset values within exact tick-derived expectations."
-      - "Add benchmark only after behavior parity is established."
-    rollback: "Keep inference.quant.quantization as the runtime owner."
+      - "Helper fixtures for local asymmetric cost, segment splitting, center adjustment, center decode, and selected-minimum tie behavior are in rewrite-in-rust/fixtures/quantization_phrase_dp_helpers.tsv."
+      - "Golden note-sequence fixtures covering internal-grid fallback, scaled centers, segmentation, tie behavior, overlap repair, center bonuses, segment switching, and metadata preservation are in rewrite-in-rust/fixtures/quantization_phrase_dp_core.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_phrase_dp_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml phrase_dp"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_phrase_dp_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_phrase_dp_core-data_algorithm_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_phrase_dp_core-rust_style_reviewer.md"
+    rollback: "Keep inference.quant.quantization._quantize_notes_dp_asym and _quantize_notes_phrase_hybrid as the runtime owner."
+
+  - id: quantization_bayesian_core
+    title: "Bayesian quantization core"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+    public_interface_policy: "Preserve Bayesian candidate filtering, segment splitting, piece-specific priors, phase-center estimation, local costs, decode, and overlap fixing."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - rust_style_reviewer
+    verification:
+      - "Helper fixtures for Bayes candidate filtering, phase-center estimation, segmentation, priors, local costs, and decode behavior are in rewrite-in-rust/fixtures/quantization_bayesian_helpers.tsv."
+      - "Golden note-sequence fixtures covering no-op behavior, sorting, short-note fine grid, repeated motif priors, phase pullback, segmentation, overlap repair, minimum end extension, and metadata preservation are in rewrite-in-rust/fixtures/quantization_bayesian_core.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_bayesian_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml bayesian"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_bayesian_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_bayesian_core-data_algorithm_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_bayesian_core-rust_style_reviewer.md"
+    rollback: "Keep inference.quant.quantization._quantize_notes_bayesian as the runtime owner."
+
+  - id: quantization_bridge_bootstrap
+    title: "Quantization Python/Rust bridge bootstrap"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    public_interface_policy: "Prove a Python-to-Rust quantization bridge contract while keeping legacy Python as the default runtime owner."
+    required_reviews:
+      - stage_behavior_reviewer
+      - architecture_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Versioned JSON bridge payload fixtures for public quantize_notes behavior across simple, smart, bayes, dp, disabled, uppercase, padded, null, and unknown-mode fallback paths are in rewrite-in-rust/fixtures/quantization_bridge_payloads.jsonl."
+      - "Bridge error mapping fixtures for invalid JSON/schema/type, invalid numeric inputs, overflow, child process failure, and fallback selection are in rewrite-in-rust/fixtures/quantization_bridge_errors.jsonl and rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py."
+      - "cargo build --manifest-path rewrite-in-rust/rust/Cargo.toml --bin v2m-quant-bridge"
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+      - "uv run pytest tests/test_web_api.py"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_bridge_bootstrap-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_bridge_bootstrap-architecture_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_bridge_bootstrap-error_tracing_reviewer.md"
+    rollback: "Keep inference.quant.quantization as the default runtime owner and select the legacy backend."
+
+  - id: quantization_caller_defaults_contract
+    title: "Quantization caller/defaults contract"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: legacy
+    source_refs:
+      - "inference/quant/quantization.py"
+      - "inference/pipeline/auto_lyric_hybrid.py"
+      - "application/config.py"
+      - "gui/auto_lyric_view.py"
+      - "gui/fluent_utils.py"
+      - "web_server.py"
+      - "web_task_manager.py"
+    public_interface_policy: "Lock or intentionally change public quantization dispatch, application defaults, GUI behavior, and Web settings before Rust owns runtime calls."
+    required_reviews:
+      - stage_behavior_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Activation/dispatch fixtures for None, empty, simple, smart, bayes, dp, unknown, uppercase, whitespace-padded, and positive/zero/negative steps are in rewrite-in-rust/fixtures/quantization_caller_defaults_contract.tsv."
+      - "tests/test_quantization_caller_defaults_contract.py covers public dispatch, pipeline no-quantize gating, unknown positive-mode simple fallback, dp step-zero quantization before export, PipelineConfig defaults/pass-through, GUI disabled/parser behavior, and Web ignored quantize fields."
+      - "uv run pytest tests/test_quantization_caller_defaults_contract.py"
+      - "uv run pytest tests/test_web_api.py"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_caller_defaults_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_caller_defaults_contract-product_ergonomics_reviewer.md"
+    rollback: "Keep all current Python caller behavior unchanged."
+
+  - id: quantization_pipeline_promotion
+    title: "Quantization runtime promotion"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/quant/quantization.py"
+      - "inference/quant/rust_bridge.py"
+      - "inference/pipeline/auto_lyric_hybrid.py"
+      - "application/config.py"
+      - "gui/auto_lyric_view.py"
+      - "gui/fluent_utils.py"
+      - "web_server.py"
+      - "web_task_manager.py"
+      - "rewrite-in-rust/rust/crates/v2m-quant-bridge/src/main.rs"
+    public_interface_policy: "Do not promote quantization runtime ownership until algorithm units, bridge bootstrap, and caller/default contracts are verified."
+    required_reviews:
+      - stage_behavior_reviewer
+      - architecture_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "rewrite-in-rust/dependencies/quantization_pipeline_promotion.yaml"
+      - "rewrite-in-rust/bootstrap/quantization_pipeline_promotion.md"
+      - "rewrite-in-rust/records/0014-confirm-quantization-pipeline-promotion-seam.md"
+      - "Require quantization_bridge_bootstrap to be verified before caller routing changes."
+      - "Require quantization_caller_defaults_contract to be verified before caller routing changes."
+      - "Resolve or explicitly preserve the verified caller/default contract follow-ups for visible-but-ignored GUI/Web quantization settings before treating those settings as user-effective."
+      - "tests/test_quantization_pipeline_promotion.py covers wrapper-based pipeline routing, explicit rust-json configuration, explicit legacy rollback, disabled activation, cancellation before export, backend env selection, bridge path errors, timeout, in-flight process cancellation, and non-reading child process timeout/cancellation."
+      - "uv run pytest tests/test_quantization_pipeline_promotion.py"
+      - "cargo build --manifest-path rewrite-in-rust/rust/Cargo.toml --bin v2m-quant-bridge"
+      - "uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_pipeline_promotion-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_pipeline_promotion-architecture_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-quantization_pipeline_promotion-product_ergonomics_reviewer.md"
+      - "Before user-facing default-Rust release, package/configure v2m-quant-bridge, improve GUI/Web bridge error wording if needed, and explicitly resolve or accept visible-but-ignored GUI/Web quantization controls."
+      - "Run cargo, Python parity, Web API, and pipeline integration checks before promotion."
+    rollback: "Keep inference.quant.quantization and all Python callers as runtime owners."

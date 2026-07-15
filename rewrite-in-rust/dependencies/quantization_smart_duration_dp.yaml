@@ -1,0 +1,47 @@
+unit: quantization_smart_duration_dp
+status: done
+capabilities:
+  smart_duration_dp:
+    legacy: "inference/quant/quantization.py::_quantize_notes_smart"
+    rust: "narrow Vec-backed dynamic programming implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The selected behavior is deterministic note sorting, scalar tick conversion, duration-candidate DP, rest quantization, and onset/offset mutation; it does not need NumPy array kernels or runtime bridge code."
+  tick_conversion:
+    legacy: "inference/quant/quantization.py::_ticks_from_sec"
+    rust: "existing half-even scalar conversion in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "Smart mode uses the same Python round half-even tick conversion already verified by quantization_simple_grid_core."
+  duration_candidates:
+    legacy: "inference/quant/quantization.py::_build_duration_candidates"
+    rust: "existing duration candidate helper in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "Candidate primitive fixtures already verify the multiplier table and scalar ceil cap behavior used by smart mode."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/quantization_smart_duration_dp.tsv must contain golden note-sequence outputs from legacy Python."
+    - "Fixture rows must cover empty/no-op inputs, step <= 0 no-op behavior, onset sorting, metadata preservation, half-even tick and grid rounding, zero-duration clamp, preferred duration penalties, np.argmin first-min tie behavior, a three-note traceback path with two nontrivial backpointers, short and rounded rests, overlap rest clamp, non-default tempo/step, and non-preferred duration penalties."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion confirms this unit should remain only _quantize_notes_smart. Phrase DP/asymmetric quantization, Bayesian quantization, public dispatch, and runtime promotion remain separate manifest units."
+hand_written_replacements:
+  - capability: "smart duration dynamic programming and rest placement"
+    reference_sources:
+      - "inference/quant/quantization.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "Python uses NumPy for small DP tables, inf, vectorized absolute values, and first-min argmin. A direct Vec-backed Rust implementation is narrower and more verifiable than adding ndarray or a NumPy bridge."
+legacy_kept:
+  - capability: "quantize_notes public mode dispatch"
+    reason: "Dispatch chooses among simple, smart, bayes, dp, and fallback modes; production routing remains legacy-owned until algorithm units and promotion behavior are verified."
+  - capability: "phrase DP/asymmetric quantization"
+    reason: "_quantize_notes_phrase_hybrid and _quantize_notes_dp_asym include segmentation, center shifts, local asymmetric cost, segment switching, and overlap repair; they belong to quantization_phrase_dp_core."
+  - capability: "Bayesian quantization"
+    reason: "_quantize_notes_bayesian includes candidate filtering, priors, segment phase estimates, Bayes local costs, decode, and overlap repair; it belongs to quantization_bayesian_core."
+  - capability: "GUI/Web/application quantization settings and runtime routing"
+    reason: "No Python/Rust bridge is introduced for this unit; production pipeline calls remain legacy-owned."
+  - capability: "invalid numeric input error mapping"
+    reason: "The independent Rust unit is fixture-bound to finite note timings and positive finite tempo when quantization runs. Promotion work must validate or map NaN, infinities, and non-positive tempo before Rust owns runtime calls."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_smart_duration_dp.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml smart_duration"
+  - "uv run pytest tests/test_web_api.py"

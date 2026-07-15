@@ -1,0 +1,62 @@
+unit: quantization_bayesian_core
+status: done
+capabilities:
+  bayesian_quantization:
+    legacy: "inference/quant/quantization.py::_quantize_notes_bayesian"
+    rust: "planned narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The selected behavior is deterministic note sorting, raw pair preparation, candidate filtering, prior construction, segmented dynamic programming, overlap repair, and onset/offset mutation. It does not require model runtime or a Python/Rust bridge."
+  bayes_candidate_filtering:
+    legacy: "inference/quant/quantization.py::_resolve_bayes_shift_limit, _filter_bayes_candidate_pairs, and _build_bayes_candidate_pairs"
+    rust: "planned scalar/list implementation reusing existing candidate pair helpers"
+    reason: "The helpers depend only on grid limits, sorted candidate pairs, short-note fine-grid policy, and deterministic fallback ranking."
+  bayes_phase_center:
+    legacy: "inference/quant/quantization.py::_estimate_segment_phase_center"
+    rust: "planned Vec-backed median/mean implementation"
+    reason: "The NumPy usage is limited to median, mean, and absolute differences over small in-memory vectors; a direct Vec implementation is narrower than adding ndarray or a NumPy bridge."
+  bayes_piece_priors:
+    legacy: "inference/quant/quantization.py::_build_piece_specific_priors"
+    rust: "planned grouped Vec/BTreeMap implementation"
+    reason: "The behavior is grouping by duration/gap/tie keys, motif-count thresholds, median preferred values, nearest-candidate selection, and strength capping."
+  bayes_local_cost_and_decode:
+    legacy: "inference/quant/quantization.py::_bayes_local_cost and _decode_segment_bayesian"
+    rust: "planned Vec-backed dynamic programming implementation"
+    reason: "The decode is a deterministic DP over sorted candidate pairs, with non-overlap previous filtering, fallback to overlapping predecessors, strict first-min tie behavior, and traceback."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "Add helper fixtures for Bayes shift-limit floor, cap, and half-even rounding behavior."
+    - "Add helper fixtures for candidate filtering covering accepted candidates, empty candidate lists, and fallback best-by-shift-then-duration ranking."
+    - "Add helper fixtures for Bayes candidate construction covering short-note half-grid candidate steps and normal full-grid candidate steps."
+    - "Add helper fixtures for phase-center estimation covering empty segments, normal median/spread strength, and late-pullback threshold behavior."
+    - "Add helper fixtures for Bayes segmentation covering empty input, raw_gap >= max(step * 3, 240), hard max 48 split, and lack of '-' lyric tie suppression."
+    - "Add helper fixtures for metrical position, note-value, and preferred-SV-duration penalties."
+    - "Add helper fixtures for piece-specific priors covering count below 6, exactly 6, strength cap, duration/gap/tie grouping, median preferred duration/gap/phase, and fallback prior shape."
+    - "Add helper fixtures for Bayes local cost covering Bayes asymmetry, metrical penalty, note-value penalty, preferred duration prior, segment-center penalty, and motif prior terms."
+    - "Add helper fixtures for Bayes decode covering non-overlap predecessor filtering, fallback to overlapping predecessors, strict first-min tie behavior, final min tie behavior, and traceback."
+    - "Add golden note-sequence fixtures for _quantize_notes_bayesian covering empty no-op, quantization_step <= 0 no-op, sorting and metadata preservation, short-note fine grid, prior-driven repeated motif, phase pullback, large-gap segmentation, overlap repair, minimum end extension, and non-default tempo/step."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed as one coherent Bayesian algorithm boundary. Its private helpers are tightly coupled to _quantize_notes_bayesian output behavior, while public dispatch and runtime promotion remain separate."
+hand_written_replacements:
+  - capability: "Bayesian quantization core"
+    reference_sources:
+      - "inference/quant/quantization.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "The active Bayes path uses NumPy only for small median, mean, abs, and scalar ceil operations already representable with Rust Vec/f64 helpers. Adding ndarray, PyO3, subprocess, or a NumPy bridge would be broader than the fixture-bound behavior."
+legacy_kept:
+  - capability: "public quantize_notes dispatch"
+    reason: "Dispatch chooses simple, smart, bayes, dp, and fallback paths; runtime routing remains legacy-owned until quantization_pipeline_promotion."
+  - capability: "GUI/Web/application quantization settings and pipeline routing"
+    reason: "No Python/Rust bridge is introduced for this unit; production callers remain unchanged."
+  - capability: "simple grid, candidate primitives, smart duration DP, and phrase DP"
+    reason: "Already covered by earlier verified quantization units and should be reused rather than re-owned."
+  - capability: "invalid numeric input error mapping"
+    reason: "The independent Rust unit is fixture-bound to finite note timings and positive finite tempo when quantization runs. Promotion work must validate or map NaN, infinities, overflow-sized ticks, and non-positive tempo before Rust owns runtime calls."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_bayesian_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml bayesian"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "uv run pytest tests/test_web_api.py"

@@ -92,12 +92,27 @@ rewrite-in-rust/
 `rust/` is an independent Cargo workspace. It must be possible to test it without
 starting the GUI, Web server, or full model pipeline.
 
+The Rust workspace follows the conventions expected by Rust maintainers:
+
+- crate contracts live in crate/module rustdoc
+- README commands are copyable from the repository root
+- MSRV is declared in `rust/Cargo.toml`
+- style, lint, tests, and docs are all part of the handoff gate
+- `unsafe` is avoided unless a migration record defines and reviews the
+  invariant
+
+See `rust/README.md` for workspace commands, crate ownership, and the
+quantization bridge JSON contract.
+
 ## Baseline Verification
 
 Run from the repository root:
 
 ```bash
+cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
 cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
 uv run pytest tests/test_web_api.py
 uv run python scripts/audit_vendored_sources.py
 ```

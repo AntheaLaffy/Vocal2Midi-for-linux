@@ -11,6 +11,8 @@ over memory when choosing migration units or dependencies.
 - `docs/contributing.md`: documentation style, environment assumptions, and
   verification commands.
 - `docs/web-api.md`: Web API behavior boundary when Web workflows are affected.
+- `rewrite-in-rust/rust/README.md`: Rust workspace toolchain, crate contracts,
+  bridge JSON contract, and Rust-specific verification commands.
 
 ## Dependency Evidence
 
@@ -113,7 +115,10 @@ Python dependency expansion reveals a better seam.
 Run from the repository root:
 
 ```bash
+cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
 cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
 uv run pytest tests/test_web_api.py
 uv run python scripts/audit_vendored_sources.py
 ```
@@ -131,3 +136,4 @@ uv run python tests/test_api_integration.py
 - System `python` may be a different version and must not be used for project
   verification.
 - Rust workspace uses Edition 2024.
+- Rust MSRV is 1.85.

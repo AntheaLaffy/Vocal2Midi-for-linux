@@ -16,6 +16,8 @@ The Linux development path is the primary target for this repository snapshot.
 
 - Python: `>=3.12,<3.13`
 - Environment manager: `uv`
+- Rust: stable toolchain with MSRV `1.85`
+- Cargo workspace: `rewrite-in-rust/rust/Cargo.toml`
 - GUI: PyQt5 / pyqt-fluent-widgets
 - Web backend: Flask + Flask-SocketIO
 - Inference runtime on Linux: ONNX Runtime CPU plus the official `qwen-asr`
@@ -41,6 +43,15 @@ Optional source mirror audit:
 uv run python scripts/vendor_sources.py --force
 uv run python scripts/vendor_native_sources.py --force
 uv run python scripts/audit_vendored_sources.py
+```
+
+Rust workspace setup:
+
+```bash
+rustup toolchain install stable
+rustup component add rustfmt clippy
+cargo --version
+rustc --version
 ```
 
 ## Run Locally
@@ -88,6 +99,38 @@ Keep these rules intact:
 When adding a new feature, prefer placing validation at the application boundary
 instead of duplicating it separately in every UI.
 
+## Rust Contributions
+
+Rust code lives under `rewrite-in-rust/rust/` and follows the same owner model
+as the migration manifest:
+
+- `v2m-core` holds pure, fixture-backed library behavior.
+- `v2m-quant-bridge` is a JSON stdin/stdout bridge for explicitly selected
+  quantization runs.
+- Python remains the default runtime owner until a manifest unit is promoted.
+- Public Rust APIs should document their compatibility source, accepted inputs,
+  return shape, and error behavior.
+- Use `Result<T, E>` for recoverable boundary failures; do not panic on caller
+  input.
+- Keep `unsafe` out of migration units unless a record explains the exact
+  invariant and review path.
+- Do not add business logic to `rewrite-in-rust/` control-plane documents,
+  skills, manifests, or review records.
+
+Run Rust commands from the repository root with `--manifest-path` so the nested
+workspace is explicit:
+
+```bash
+cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+```
+
+For changes crossing the Python/Rust seam, also run the narrow Python parity
+tests named by the manifest unit. Keep fixture updates, Rust code, Python seam
+code, and docs in the same change when public behavior changes.
+
 ## Documentation Standard
 
 For Markdown documents:
@@ -107,6 +150,17 @@ For public Python functions, classes, and dataclasses:
 - `Raises`: user-visible or boundary-crossing errors
 - mention cancellation, filesystem writes, subprocesses, or network access when
   the function performs them
+
+For public Rust modules, types, and functions:
+
+- start crate and module docs with the compatibility boundary
+- document the Python source being mirrored while Python remains runtime owner
+- include `# Errors` when a function returns `Result`
+- include `# Panics` only when panics are part of the contract; otherwise handle
+  caller input as data
+- include `# Examples` for stable public APIs when a short copyable example is
+  possible
+- avoid documenting future promotion as current default behavior
 
 For endpoints and event streams, document:
 
@@ -150,13 +204,32 @@ uv run python tests/test_api_integration.py
 The integration script uses real audio files under `tests/` and requires the
 server to be reachable at `http://localhost:5000` unless the script is changed.
 
+Rust migration checks:
+
+```bash
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py
+```
+
+Run the full Rust style gate before promoting or reviewing a Rust unit:
+
+```bash
+cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+```
+
 ## Review Checklist
 
 Before handing off a change:
 
 - run the narrowest relevant test command
+- run `cargo fmt`, `cargo clippy`, `cargo test`, and `cargo doc` for Rust
+  changes
 - update `docs/web-api.md` when REST or SocketIO behavior changes
 - update `docs/architecture.md` when a module boundary changes
 - update `docs/linux.md` when setup, model paths, or runtime assumptions change
+- update `rewrite-in-rust/manifest.yaml`, `rewrite-in-rust/records/`, and the
+  relevant review report when a Rust migration state changes
 - keep generated model files, local settings, and output artifacts out of review
 - do not weaken path traversal checks for filesystem or download endpoints

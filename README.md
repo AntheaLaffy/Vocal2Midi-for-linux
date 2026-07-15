@@ -9,6 +9,9 @@ a batch slice + ASR CLI, and an ONNX-first inference pipeline.
 ## Project Status
 
 - The active runtime is ONNX-first.
+- A gradual Rust rewrite is underway under `rewrite-in-rust/`. The current
+  user-facing application is still Python-led; verified Rust units are promoted
+  only behind explicit compatibility and rollback checks.
 - Windows uses DirectML for ONNX models when available.
 - Windows Qwen3-ASR uses the project-local ONNX encoder + GGUF/`llama.cpp`
   decoder path.
@@ -190,6 +193,26 @@ Key areas:
 Architecture notes are in [docs/architecture.md](docs/architecture.md).
 Development workflow and documentation rules are in
 [docs/contributing.md](docs/contributing.md).
+
+### Rust Workspace
+
+Rust migration work lives in [rewrite-in-rust/](rewrite-in-rust/). The Cargo
+workspace is intentionally nested at [rewrite-in-rust/rust/](rewrite-in-rust/rust/)
+so Rust library units can be tested without starting the desktop GUI, Web
+backend, or full model pipeline.
+
+Common Rust checks:
+
+```bash
+cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+```
+
+The Rust workspace README documents MSRV, crate boundaries, JSON bridge
+contracts, and migration-owner rules:
+[rewrite-in-rust/rust/README.md](rewrite-in-rust/rust/README.md).
 
 ### Tests
 

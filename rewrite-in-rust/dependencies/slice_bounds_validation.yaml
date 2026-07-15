@@ -1,0 +1,37 @@
+unit: slice_bounds_validation
+status: done
+capabilities:
+  slice_duration_bounds_validation:
+    legacy: "application/config.py::validate_slice_bounds"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core"
+    reason: "The behavior is pure float bounds validation with deterministic ValueError messages and no third-party package calls."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slice_bounds_validation.tsv is the durable Python/Rust parity table."
+    - "valid boundary pairs: (0.0, 0.1), (5.0, 10.0), (60.0, 60.0)"
+    - "invalid slice_min_sec below 0.0 and above 60.0 with exact message"
+    - "invalid slice_max_sec below 0.0 and above 60.0 with exact message"
+    - "slice_max_sec equal to 0.0 after range acceptance with exact message"
+    - "slice_min_sec greater than slice_max_sec with exact message"
+    - "NaN and infinity inputs preserve Python range-check ordering"
+inventory_impact:
+  decision: confirmed
+  reason: "application/config.py imports only stdlib dataclasses, pathlib, and typing; validate_slice_bounds does not depend on PipelineConfig, GUI, Web, inference, native, FFI, or third-party package behavior."
+hand_written_replacements:
+  - capability: "slice duration bounds validation"
+    reference_sources:
+      - "application/config.py"
+    reason: "A direct Rust implementation is smaller and more verifiable than adding any crate or bridge dependency for this stdlib-only validation."
+legacy_kept:
+  - capability: "runtime validation calls from GUI, Web, application, and inference pipeline"
+    reason: "No Python/Rust bridge is introduced before promotion; application.config.validate_slice_bounds remains the production owner."
+  - capability: "PipelineConfig dataclass and to_kwargs mapping"
+    reason: "This unit only covers validate_slice_bounds behavior."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slice_bounds"
+  - "uv run python rewrite-in-rust/bootstrap/check_slice_bounds_validation.py"
+  - "uv run pytest tests/test_web_api.py"

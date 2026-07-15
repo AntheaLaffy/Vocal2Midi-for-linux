@@ -1,0 +1,8 @@
+{"case_id":"invalid_json","stdin":"{\"version\":","error_code":"invalid_json"}
+{"case_id":"unsupported_version","request":{"version":2,"mode":"simple","tempo":120.0,"quantization_step":60,"notes":[]},"error_code":"unsupported_version"}
+{"case_id":"missing_notes","request":{"version":1,"mode":"simple","tempo":120.0,"quantization_step":60},"error_code":"invalid_json"}
+{"case_id":"notes_not_list","request":{"version":1,"mode":"simple","tempo":120.0,"quantization_step":60,"notes":"bad"},"error_code":"invalid_json"}
+{"case_id":"invalid_tempo_zero","request":{"version":1,"mode":"simple","tempo":0.0,"quantization_step":60,"notes":[]},"error_code":"invalid_tempo"}
+{"case_id":"invalid_json_nonstandard_infinity","stdin":"{\"version\":1,\"mode\":\"simple\",\"tempo\":120.0,\"quantization_step\":60,\"notes\":[{\"index\":0,\"onset\":Infinity,\"offset\":0.1,\"pitch\":60.0,\"lyric\":\"bad\"}]}","error_code":"invalid_json"}
+{"case_id":"tick_overflow","request":{"version":1,"mode":"simple","tempo":120.0,"quantization_step":60,"notes":[{"index":0,"onset":1000000000000.0,"offset":1000000000001.0,"pitch":60.0,"lyric":"big"}]},"error_code":"tick_overflow"}
+{"case_id":"step_overflow","request":{"version":1,"mode":"simple","tempo":120.0,"quantization_step":1000000001,"notes":[]},"error_code":"tick_overflow"}

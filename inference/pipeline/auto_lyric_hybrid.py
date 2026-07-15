@@ -16,7 +16,8 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from inference.API.slicer_api import slice_audio_with_custom_bounds as slice_audio
 from inference.io.note_io import _save_midi, _save_text
-from inference.quant.quantization import quantize_notes, should_apply_quantization
+from inference.quant.quantization import should_apply_quantization
+from inference.quant.rust_bridge import quantize_notes_with_backend
 
 from inference.API.asr_api import batch_transcribe_asr, batch_transcribe_romaji_asr
 from inference.API.asr_api import DEFAULT_QWEN_ASR_TIMEOUT_SEC
@@ -196,6 +197,9 @@ def auto_lyric_hybrid_pipeline(
     est_threshold: float,
     batch_size: int = 4,
     asr_batch_size: int = 4,
+    quantization_backend: str = "",
+    quantization_bridge_bin: str = "",
+    quantization_timeout_sec: float = 30.0,
     slice_min_sec: float = DEFAULT_SLICE_MIN_SEC,
     slice_max_sec: float = DEFAULT_SLICE_MAX_SEC,
     output_lyrics: bool = True,
@@ -441,7 +445,17 @@ def auto_lyric_hybrid_pipeline(
         log_path.write_text("\n".join(chunk_logs), encoding="utf-8")
 
     if should_apply_quantization(quantization_mode, quantization_step):
-        quantize_notes(all_notes, tempo, quantization_step, mode=quantization_mode)
+        quantize_notes_with_backend(
+            all_notes,
+            tempo,
+            quantization_step,
+            mode=quantization_mode,
+            backend=quantization_backend or None,
+            executable=quantization_bridge_bin or None,
+            timeout_sec=quantization_timeout_sec,
+            cancel_checker=cancel_checker,
+        )
+        _check_cancel()
     
     lyric_status = "with lyrics" if run_lyric_alignment else "without lyrics"
     print(f"Extracted {len(all_notes)} notes {lyric_status}.")

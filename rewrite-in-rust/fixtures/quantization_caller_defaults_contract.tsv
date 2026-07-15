@@ -1,0 +1,16 @@
+case_id	mode_value	quantization_step	expected_should_apply	expected_dispatch
+none_positive	null	60	true	simple
+none_zero	null	0	false	simple
+empty_positive	""	60	true	simple
+simple_positive	"simple"	60	true	simple
+simple_zero	"simple"	0	false	simple
+smart_positive	"smart"	60	true	smart
+bayes_positive	"bayes"	60	true	bayes
+bayes_negative	"bayes"	-1	false	bayes
+dp_zero	"dp"	0	true	dp
+dp_negative	"dp"	-1	true	dp
+unknown_positive	"unknown"	60	true	simple
+uppercase_dp	"DP"	0	true	dp
+uppercase_smart	"SMART"	60	true	smart
+padded_dp_zero	" dp "	0	false	simple
+padded_bayes_positive	" BAYES "	60	true	simple

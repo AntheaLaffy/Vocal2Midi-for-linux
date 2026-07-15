@@ -1,0 +1,36 @@
+# case_id	kind	input_a	input_b	input_c	input_d	input_e	expected
+shift_floor	resolve_bayes_shift_limit	30	1.0	60	180		60
+shift_round_half_even	resolve_bayes_shift_limit	75	1.0	60	180		75
+shift_cap	resolve_bayes_shift_limit	300	1.0	60	180		180
+filter_keeps_within_limits	filter_bayes_candidate_pairs	60	100,180,80,a	60,180|90,180|100,190|300,420			60,180|90,180|100,190
+filter_fallback_best	filter_bayes_candidate_pairs	60	1000,1100,100,a	0,60|240,360|480,600			480,600
+filter_fallback_first_min_tie	filter_bayes_candidate_pairs	60	1000,1100,100,a	0,100|2000,2100			0,100
+filter_empty_candidates	filter_bayes_candidate_pairs	60	100,180,80,a	__empty__			__empty__
+build_short_half_grid	build_bayes_candidate_pairs	120	100,130,30,s				0,60|0,120|0,180|0,240|60,120|60,180|60,240|120,180|120,240|180,240
+build_long_full_grid	build_bayes_candidate_pairs	120	100,240,140,l				0,120|0,240|0,360|120,240|120,360
+phase_empty	estimate_segment_phase_center	60	__empty__				0.000000000000,0.000000000000
+phase_normal	estimate_segment_phase_center	60	5,65,60,a|65,125,60,a|125,185,60,a				-5.000000000000,0.030000000000
+phase_late_pullback	estimate_segment_phase_center	60	50,100,50,a|55,105,50,b|58,108,50,c|52,102,50,d				-53.500000000000,0.070833333333
+segment_large_gap	segment_split_indices_bayesian	60	0,60,60,a|300,360,60,b				0,1|1,2
+segment_hard_max	segment_split_indices_bayesian	60	0,60,60,-|60,120,60,-|120,180,60,-|180,240,60,-|240,300,60,-|300,360,60,-|360,420,60,-|420,480,60,-|480,540,60,-|540,600,60,-|600,660,60,-|660,720,60,-|720,780,60,-|780,840,60,-|840,900,60,-|900,960,60,-|960,1020,60,-|1020,1080,60,-|1080,1140,60,-|1140,1200,60,-|1200,1260,60,-|1260,1320,60,-|1320,1380,60,-|1380,1440,60,-|1440,1500,60,-|1500,1560,60,-|1560,1620,60,-|1620,1680,60,-|1680,1740,60,-|1740,1800,60,-|1800,1860,60,-|1860,1920,60,-|1920,1980,60,-|1980,2040,60,-|2040,2100,60,-|2100,2160,60,-|2160,2220,60,-|2220,2280,60,-|2280,2340,60,-|2340,2400,60,-|2400,2460,60,-|2460,2520,60,-|2520,2580,60,-|2580,2640,60,-|2640,2700,60,-|2700,2760,60,-|2760,2820,60,-|2820,2880,60,-|2880,2940,60,-				0,48|48,49
+segment_tie_does_not_suppress	segment_split_indices_bayesian	60	0,60,60,-|300,360,60,-				0,1|1,2
+metrical_downbeat	metrical_position_penalty	0	60				0.000000000000
+metrical_halfbeat	metrical_position_penalty	240	60				2.400000000000
+metrical_quarter	metrical_position_penalty	120	60				6.000000000000
+metrical_sixty	metrical_position_penalty	60	60				12.000000000000
+metrical_other	metrical_position_penalty	45	60				25.200000000000
+metrical_30_grid	metrical_position_penalty	30	30				9.000000000000
+note_value_power_two	note_value_penalty	240	60				0.000000000000
+note_value_triple	note_value_penalty	180	60				3.000000000000
+note_value_other	note_value_penalty	300	60				9.600000000000
+preferred_sv_short	preferred_sv_duration	20	60				__none__
+preferred_sv_one	preferred_sv_duration	80	60				60
+preferred_sv_three	preferred_sv_duration	180	60				180
+preferred_sv_round	preferred_sv_duration	500	60				480
+priors_below_threshold	build_piece_specific_priors	60	0,60,60,a,0|60,120,60,a,0|120,180,60,a,0|180,240,60,a,0|240,300,60,a,0	60,120,180,240	0,60,120		1,0.000000000000,__none__,__none__,__none__|1,0.000000000000,__none__,__none__,__none__|1,0.000000000000,__none__,__none__,__none__|1,0.000000000000,__none__,__none__,__none__|1,0.000000000000,__none__,__none__,__none__
+priors_exact_six_phase_tie	build_piece_specific_priors	60	20,90,70,-,60|500,570,70,-,60|980,1050,70,-,60|1480,1550,70,-,60|1960,2030,70,-,60|2440,2510,70,-,60	60,120,180,240	0,60,120		6,0.180000000000,60,60,0|6,0.180000000000,60,60,0|6,0.180000000000,60,60,0|6,0.180000000000,60,60,0|6,0.180000000000,60,60,0|6,0.180000000000,60,60,0
+priors_strength_cap	build_piece_specific_priors	60	0,60,60,a,60|120,180,60,a,60|240,300,60,a,60|360,420,60,a,60|480,540,60,a,60|600,660,60,a,60|720,780,60,a,60|840,900,60,a,60|960,1020,60,a,60|1080,1140,60,a,60	60,120,180,240	0,60,120		10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120|10,0.650000000000,60,60,120
+bayes_local_base	bayes_local_cost	120	240	100,220,120,a,60	1,0.000000000000,__none__,__none__,__none__	60,__none__,__none__,0.0,0.0	11.279302000000
+bayes_local_with_prior_center	bayes_local_cost	180	300	100,220,120,a,60	6,0.180000000000,120,60,120	60,120,160,-20.0,0.05	84.969108000000
+decode_non_overlap_filter	decode_segment_bayesian	60	0,80,80,a,0|90,150,60,b,10	1,0.000000000000,__none__,__none__,__none__|1,0.000000000000,__none__,__none__,__none__			0,120|120,180;17.552337000000
+decode_overlap_fallback	decode_segment_bayesian	60	0,180,180,a,0|50,100,50,b,0	1,0.000000000000,__none__,__none__,__none__|1,0.000000000000,__none__,__none__,__none__			0,120|0,60;16.356750000000

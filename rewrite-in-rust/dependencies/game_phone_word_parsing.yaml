@@ -1,0 +1,37 @@
+unit: game_phone_word_parsing
+status: planned
+capabilities:
+  phone_word_validation_and_parsing:
+    legacy: "inference/game/alignment_utils.py::validate_phones, parse_words, merge_consecutive_uv_words"
+    rust: "planned narrow implementation in rewrite-in-rust/rust/crates/v2m-core"
+    reason: "These helpers are pure list/string/float operations and can be verified independently from note boundary alignment."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "validate_phones valid case returns (True, None)."
+    - "validate_phones phoneme/duration length mismatch preserves exact message."
+    - "validate_phones ph_num sum mismatch preserves Python list formatting in the exact message."
+    - "parse_words uv_vocab=None keeps all words voiced."
+    - "parse_words uv_cond=lead marks a word unvoiced when the leading phone is in uv_vocab."
+    - "parse_words uv_cond=all marks a word unvoiced only when all phones in the word are in uv_vocab."
+    - "parse_words empty input returns empty word duration and vuv lists."
+    - "merge_consecutive_uv_words covers empty input, no merge, leading/middle/trailing unvoiced runs, and float-sum preservation."
+inventory_impact:
+  decision: split
+  reason: "The original game_word_note_alignment unit mixed pure phoneme/word parsing helpers with align_notes_to_words, which has NumPy-style boundary timeline behavior and is the live GAME caller surface."
+hand_written_replacements:
+  - capability: "phoneme span validation and word duration/vuv parsing"
+    reference_sources:
+      - "inference/game/alignment_utils.py"
+    reason: "Direct Rust list operations are narrower and more verifiable than tying this unit to NumPy or GAME runtime dependencies."
+legacy_kept:
+  - capability: "align_notes_to_words note boundary alignment"
+    reason: "Split into game_note_word_alignment because it has separate timeline and snapping behavior."
+  - capability: "GAME ONNX inference, librosa note conversion, and production API integration"
+    reason: "These are outside the parsing helper boundary and remain legacy-owned."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml phone_word"
+  - "uv run python rewrite-in-rust/bootstrap/check_game_phone_word_parsing.py"

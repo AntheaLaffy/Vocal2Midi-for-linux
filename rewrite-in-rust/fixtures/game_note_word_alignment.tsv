@@ -1,0 +1,16 @@
+# case_id	word_dur	word_vuv	note_seq	note_dur	tol	apply_word_uv	expected_seq	expected_dur	expected_slur
+empty_word			C4	1.0	0.01	false			
+empty_note_dur	1.0	1	C4		0.01	false			
+empty_note_seq	1.0	1		1.0	0.01	false			
+exact_boundaries	0.5,0.5	1,1	C4,D4	0.5,0.5	0.01	false	C4,D4	0.5,0.5	0,0
+exact_boundary_multi_note_slur_reset	0.5,0.5	1,1	A,B,C	0.2,0.3,0.5	0.01	false	A,B,C	0.2,0.3,0.5	0,1,0
+multi_note_word_slur	1.0	1	C4,D4	0.4,0.6	0.01	false	C4,D4	0.4,0.6	0,1
+snap_within_tol	0.49,0.51	1,1	C4,D4	0.5,0.5	0.02	false	C4,D4	0.5,0.5	0,0
+no_snap_outside_tol	0.47,0.53	1,1	C4,D4	0.5,0.5	0.02	false	C4,C4,D4	0.47,0.030000000000000027,0.5	0,0,1
+repeated_note_merge	1.0	1	C4,C4,D4	0.2,0.3,0.5	0.01	false	C4,D4	0.5,0.5	0,1
+rest_insertion_after_note_timeline	0.5,0.5	1,1	C4	0.5	0.01	false	C4,rest	0.5,0.5	0,0
+rest_after_notes_exhausted	0.3,0.3,0.4	1,1,1	C4	0.3	0.01	false	C4,rest,rest	0.3,0.3,0.4	0,0,0
+apply_word_uv	0.5,0.5	1,0	C4,D4	0.5,0.5	0.01	true	C4,rest	0.5,0.5	0,0
+apply_word_uv_consumes_notes	0.4,0.4,0.2	1,0,1	C4,D4,E4	0.4,0.4,0.2	0.01	true	C4,rest,E4	0.4,0.4,0.2	0,0,0
+monotonic_clamp_lower	0.00005,0.99995	1,1	C4,D4	0.5,0.5	0.01	false	rest,C4,D4	0.0001,0.4999,0.5	0,0,1
+argmin_tie_first_boundary	1.0,1.0	1,1	A	2.0	1.0	false	rest,A	0.0001,1.9999	0,0

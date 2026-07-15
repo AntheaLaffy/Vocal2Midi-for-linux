@@ -1,0 +1,24 @@
+# case_id	kind	input_a	input_b	input_c	input_d	input_e	expected
+local_exact_on_grid	local_cost_asym	0	120	0,120,120,__empty__	__none__	__none__	0.000000000000
+local_start_early	local_cost_asym	90	120	100,120,20,__empty__	__none__	__none__	22.340000000000
+local_start_late_end_late	local_cost_asym	130	190	100,160,60,__empty__	__none__	__none__	11.679880000000
+local_gap_delta	local_cost_asym	240	360	210,330,120,__empty__	180	200	18.061530000000
+local_duration_delta	local_cost_asym	0	180	0,120,120,__empty__	__none__	__none__	3.466260000000
+local_grid_penalty	local_cost_asym	77	197	77,197,120,__empty__	__none__	__none__	27.303535000000
+segment_empty	segment_split_indices	30	__empty__				__empty__
+segment_large_gap	segment_split_indices	30	0,60,60,__empty__|120,180,60,__empty__				0,1|1,2
+segment_positive_non_tie_gap	segment_split_indices	60	0,60,60,a|70,130,60,b				0,1|1,2
+segment_prev_tie_suppresses_gap	segment_split_indices	60	0,60,60,-|70,130,60,b				0,2
+segment_cur_tie_suppresses_gap	segment_split_indices	60	0,60,60,a|70,130,60,-				0,2
+segment_overlap_no_split	segment_split_indices	60	0,100,100,a|80,140,60,b				0,2
+segment_hard_max_zero_gap	segment_split_indices	60	0,60,60,x|60,120,60,x|120,180,60,x|180,240,60,x|240,300,60,x|300,360,60,x|360,420,60,x|420,480,60,x|480,540,60,x|540,600,60,x|600,660,60,x|660,720,60,x|720,780,60,x|780,840,60,x|840,900,60,x|900,960,60,x|960,1020,60,x				0,16|16,17
+center_zero_penalty_only	center_adjustment	110	100,160,60,a	__none__	0		0.200000000000
+center_tie_zero_gap_bonus	center_adjustment	160	100,340,240,-	__none__	60		-0.900000000000
+center_prev_zero_gap_bonus	center_adjustment	160	100,160,60,a	100	60		-0.300000000000
+center_long_duration_bonus	center_adjustment	160	100,360,260,a	50	60		-0.200000000000
+center_120_bonus_scale	center_adjustment	220	100,360,260,-	100	120		-1.035000000000
+center_positive_gap_no_bonus	center_adjustment	160	100,160,60,a	80	60		0.000000000000
+decode_single_center0	decode_segment_with_center	60	0	0,100,100,a			0,120;1.155420000000
+decode_first_min_tie_center0	decode_segment_with_center	30	0	115,160,45,a			120,150;4.946750000000
+decode_two_center60_zero_gap	decode_segment_with_center	60	60	0,100,100,a|100,220,120,-			0,120|120,240;7.090400000000
+decode_two_center120_gap	decode_segment_with_center	60	120	0,240,240,a|260,390,130,b			0,240|240,360;20.586090000000

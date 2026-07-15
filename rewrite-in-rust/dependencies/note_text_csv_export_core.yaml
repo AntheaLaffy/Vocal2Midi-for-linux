@@ -1,0 +1,52 @@
+unit: note_text_csv_export_core
+status: done
+capabilities:
+  finite_note_filtering:
+    legacy: "inference/io/note_io.py::_finite_notes"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/export.rs"
+    reason: "TXT/CSV export only needs scalar finite checks and offset > onset filtering; it does not need NumPy array behavior."
+  text_csv_row_rendering:
+    legacy: "inference/io/note_io.py::_save_text"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/export.rs"
+    reason: "The selected behavior is deterministic string rendering for TXT and CSV outputs, preserving input row order and lyric-column selection."
+  pitch_formatting:
+    legacy: "inference/io/note_io.py::_save_text plus librosa.core.convert.midi_to_note"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/export.rs"
+    reason: "The Rust unit needs only C-major ASCII MIDI note names, 0..127 clipping, and Python/NumPy half-even rounding for this call site."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/note_text_csv_export_core.tsv must be the durable Python/Rust parity table."
+    - "TXT outputs with lyrics must include a lyric column for every valid row, including blank lyric cells."
+    - "TXT outputs without lyrics must omit the lyric column."
+    - "CSV outputs must use csv.DictWriter-compatible header order, CRLF row terminators, and quote escaping."
+    - "Invalid notes must be skipped when onset, offset, or pitch is non-finite, or offset <= onset."
+    - "Pitch formatting must cover numeric output, name output, clamping, cents, and half-even rounded pitches."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed only for _save_text TXT/CSV rendering and the helper behavior it calls. MIDI, USTX, TextGrid, pad_1d_arrays, file path creation, and production export routing stay legacy-owned."
+hand_written_replacements:
+  - capability: "TXT/CSV note export formatting"
+    reference_sources:
+      - "inference/io/note_io.py"
+      - "third_party/sources/librosa-0.11.0/librosa/core/convert.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "A direct Rust implementation is smaller and more verifiable than adding package parity for NumPy and Librosa when this unit needs only scalar finite checks, clipping, half-even rounding, and C-major MIDI note names."
+legacy_kept:
+  - capability: "MIDI export"
+    reason: "_save_midi depends on mido and tick/event semantics outside the TXT/CSV text-rendering boundary."
+  - capability: "USTX export"
+    reason: "USTX output is owned by the existing Python export layer and is not part of _save_text."
+  - capability: "TextGrid export and HFA artifacts"
+    reason: "TextGrid behavior crosses the forced-alignment artifact boundary and is outside deterministic TXT/CSV note rows."
+  - capability: "pad_1d_arrays"
+    reason: "The NumPy padding helper is used by GAME API data preparation, not TXT/CSV export."
+  - capability: "filesystem writes and production export routing"
+    reason: "No Python/Rust bridge is introduced before promotion; inference.io.note_io._save_text remains the production owner."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml export"
+  - "uv run python rewrite-in-rust/bootstrap/check_note_text_csv_export_core.py"
+  - "uv run pytest tests/test_web_api.py"

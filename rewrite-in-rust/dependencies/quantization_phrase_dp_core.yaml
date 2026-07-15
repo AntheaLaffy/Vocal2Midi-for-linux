@@ -1,0 +1,59 @@
+unit: quantization_phrase_dp_core
+status: done
+capabilities:
+  phrase_dp_quantization:
+    legacy: "inference/quant/quantization.py::_quantize_notes_phrase_hybrid and _quantize_notes_dp_asym"
+    rust: "planned narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The selected behavior is deterministic list/dict/numeric algorithm code: note sorting, tick conversion, candidate pair generation, segment splitting, center-shift decoding, segment-level center switching, overlap repair, and onset/offset mutation. It does not need model runtime, NumPy array kernels, or a Python/Rust bridge."
+  asymmetric_local_cost:
+    legacy: "inference/quant/quantization.py::_local_cost_asym"
+    rust: "planned scalar implementation using existing dist_grid"
+    reason: "The helper is pure scalar arithmetic over start/end shifts, predicted/raw gaps, duration error, and grid distances."
+  phrase_segment_splitting:
+    legacy: "inference/quant/quantization.py::_segment_split_indices"
+    rust: "planned list implementation over raw note pairs"
+    reason: "The behavior depends only on raw gaps, '-' tie lyrics, the configured grid step, and the fixed maximum segment size."
+  center_adjustment_and_decode:
+    legacy: "inference/quant/quantization.py::_center_adjustment and _decode_segment_with_center"
+    rust: "planned Vec/BTreeMap-backed dynamic programming implementation"
+    reason: "The decode is a small nested DP over candidate pairs and center candidates; explicit first-min scans can preserve Python min insertion-order behavior without adding ndarray."
+  segment_center_switching:
+    legacy: "inference/quant/quantization.py segment-level DP inside _quantize_notes_phrase_hybrid"
+    rust: "planned Vec-backed segment-option DP"
+    reason: "The second-level DP chooses per-segment center options with switch and second-order consistency penalties; it is part of phrase DP output behavior."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "Add helper fixtures for _local_cost_asym covering start early/late, end early/late, predicted/raw gap differences, duration error, grid120, and grid480 cost terms."
+    - "Add helper fixtures for _segment_split_indices covering empty input, large raw_gap >= max(step, 30), positive non-tie gap split, '-' lyric tie gap non-split, hard max segment split, and fallback grid step 30 when quantization_step <= 0."
+    - "Add helper fixtures for _center_adjustment covering positive/zero center, '-' lyric bonus, zero-gap bonus, long-duration bonus, and center >= 120 bonus scaling."
+    - "Add decode fixtures for _decode_segment_with_center covering candidate pair sorting, first-min tie behavior, previous-end gap cost, and center-specific option choice."
+    - "Add golden note-sequence fixtures for _quantize_notes_phrase_hybrid covering empty no-op, onset sorting, quantization_step <= 0 using the internal 30-tick grid, scaled center candidates for larger steps, segment splitting, segment center switching, overlap repair, minimum end extension, '-' tie lyric behavior, and metadata preservation."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit remains a coherent phrase-DP algorithm boundary. It is broader than scalar primitives, but the local cost, segment split, center decode, segment-option DP, and overlap repair are tightly coupled to the _quantize_notes_phrase_hybrid output. Splitting them again would create private-helper units without a durable promotion boundary."
+hand_written_replacements:
+  - capability: "phrase DP/asymmetric quantization"
+    reference_sources:
+      - "inference/quant/quantization.py"
+    reason: "A direct Rust implementation over existing note and candidate-pair data structures is smaller and more verifiable than adding NumPy, ndarray, PyO3, or a subprocess bridge. The phrase path itself uses Python scalar/list/dict behavior and already-verified helper semantics."
+legacy_kept:
+  - capability: "Bayesian quantization"
+    reason: "_quantize_notes_bayesian, Bayes candidate filtering, phase-center estimation, piece-specific priors, Bayes local cost, and Bayesian decode belong to quantization_bayesian_core."
+  - capability: "smart duration DP"
+    reason: "Already verified separately as quantization_smart_duration_dp."
+  - capability: "simple grid quantization"
+    reason: "Already verified separately as quantization_simple_grid_core."
+  - capability: "public quantize_notes mode dispatch"
+    reason: "Dispatch chooses simple, smart, bayes, dp, and fallback paths; production routing remains legacy-owned until algorithm units and promotion behavior are verified."
+  - capability: "GUI/Web/application quantization settings and runtime routing"
+    reason: "No Python/Rust bridge is introduced for this unit; production pipeline calls remain legacy-owned."
+  - capability: "invalid numeric input error mapping"
+    reason: "The future independent Rust unit should be fixture-bound to finite note timings. Promotion work must validate or map NaN, infinities, overflow-sized ticks, and non-positive tempo before Rust owns runtime calls."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_phrase_dp_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml phrase_dp"
+  - "uv run pytest tests/test_web_api.py"

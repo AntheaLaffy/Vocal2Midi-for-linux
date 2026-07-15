@@ -1,0 +1,10 @@
+# case_id	kind	raw_start	raw_end	lyric	radius	step	input_pairs	expected
+note_pair_basic	build_note_pair	10	50	la				10,50,40,la
+note_pair_min_duration	build_note_pair	50	50	__empty__				50,50,1,__empty__
+note_pair_reversed	build_note_pair	90	40	late				90,40,1,late
+note_pair_missing_lyric	build_note_pair	5	8	__missing__				5,8,3,__empty__
+annotate_gap_basic	annotate_pairs_with_gap						0,10,10,a|15,25,10,b|20,30,10,c	0,10,10,a,0|15,25,10,b,5|20,30,10,c,0
+annotate_gap_after_reversed	annotate_pairs_with_gap						10,5,1,__empty__|6,12,6,after	10,5,1,__empty__,0|6,12,6,after,1
+candidate_pairs_basic	build_candidate_pairs	30	90	la	1	30		0,60|0,90|0,120|30,60|30,90|30,120|60,90|60,120
+candidate_pairs_exclude_equal	build_candidate_pairs	60	60	same	1	30		30,60|30,90|60,90
+candidate_pairs_custom_step	build_candidate_pairs	64	120	grid	1	45		0,90|0,135|0,180|45,90|45,135|45,180|90,135|90,180

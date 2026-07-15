@@ -1,0 +1,43 @@
+unit: quantization_bridge_bootstrap
+status: done
+capabilities:
+  rust_quantization_bridge_contract:
+    legacy: "inference/quant/quantization.py::quantize_notes and should_apply_quantization"
+    rust: "planned Python-to-Rust bridge over rewrite-in-rust/rust/crates/v2m-core quantization functions"
+    reason: "All algorithm units are verified in Rust, but production Python has no bridge, payload contract, error mapping, or fallback route yet."
+  json_cli_bridge:
+    legacy: "legacy in-process Python quantization"
+    rust: "recommended first bridge proof: one CLI/subprocess JSON request per quantization operation"
+    reason: "This avoids PyO3 packaging work, provides a crisp request/response contract, can be killed for cancellation, and has acceptable overhead because quantization runs once per pipeline."
+seam:
+  kind: cli
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "Bridge request/response fixtures for versioned JSON payloads covering simple, smart, dp, bayes, disabled quantization, unknown positive mode simple fallback, and uppercase/whitespace mode behavior."
+    - "Bridge error fixtures for invalid JSON, schema/type errors, non-finite note timings, non-positive tempo, overflow-sized ticks, unsupported versions, and child-process failure."
+    - "Python wrapper tests proving the original note list is sorted/mutated in place and pitch/lyric metadata are preserved."
+    - "Fallback tests proving legacy Python remains default and can be selected by feature flag or backend setting."
+inventory_impact:
+  decision: split
+  reason: "quantization_pipeline_promotion mixed bridge proof, caller routing, GUI/Web/application defaults, and final production promotion. A bridge bootstrap unit must prove the runtime seam before callers route to Rust."
+hand_written_replacements:
+  - capability: "quantization bridge payload conversion"
+    reference_sources:
+      - "inference/quant/quantization.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/quant.rs"
+    reason: "The bridge is project-specific glue over verified Rust algorithms and legacy Python note objects; a broad third-party FFI framework is not required for the first proof."
+legacy_kept:
+  - capability: "production quantization runtime owner"
+    reason: "Legacy Python remains default until bridge parity, caller defaults, architecture review, and product ergonomics review pass."
+  - capability: "PyO3/maturin extension packaging"
+    reason: "Feasible but not currently configured in pyproject.toml or Cargo metadata; defer unless CLI bridge proof is insufficient."
+  - capability: "cdylib/ctypes bridge"
+    reason: "Manual C ABI, ownership, string/error, and cancellation complexity are worse than a JSON CLI proof for this project."
+verification:
+  - "cargo build --manifest-path rewrite-in-rust/rust/Cargo.toml --bin v2m-quant-bridge"
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "uv run pytest tests/test_web_api.py"
+  - "Run bridge parity tests across simple, smart, dp, and bayes before promotion."

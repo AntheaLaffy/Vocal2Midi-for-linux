@@ -1,0 +1,68 @@
+unit: quantization_pipeline_promotion
+status: done
+capabilities:
+  pipeline_quantization_routing:
+    legacy: "inference/pipeline/auto_lyric_hybrid.py imports inference.quant.quantization.should_apply_quantization and quantize_notes, sorts all_notes, gates quantization, mutates the same note list, then exports that list to every requested format."
+    rust: "Route the same gated pipeline point through inference/quant/rust_bridge.py::quantize_notes_with_backend, preserving pre-export ordering/mutation behavior and passing mode, tempo, step, backend, bridge executable, timeout, and cancellation context explicitly."
+    reason: "All quantization algorithm units, the JSON bridge, and caller/default contracts are verified. Promotion risk is now the production caller seam, not algorithm behavior."
+  backend_selection_and_rollback:
+    legacy: "inference/quant/rust_bridge.py keeps backend='legacy' as the wrapper default and supports V2M_QUANT_BACKEND for explicit selection."
+    rust: "Use the existing 'rust-json' backend as the only Rust promotion target for this unit; keep a tested legacy backend selection for rollback."
+    reason: "A reversible backend setting is required so production routing can be enabled, reviewed, and rolled back without reintroducing direct algorithm calls."
+  bridge_executable_resolution:
+    legacy: "No production caller currently resolves or requires v2m-quant-bridge; the bridge bootstrap checker uses rewrite-in-rust/rust/target/debug/v2m-quant-bridge or V2M_QUANT_BRIDGE_BIN."
+    rust: "Require a deterministic bridge executable path from explicit config or V2M_QUANT_BRIDGE_BIN. Do not run cargo/build tools at application runtime. Missing, non-executable, timeout, and nonzero-exit cases must surface as QuantizationBridgeError through the application error path."
+    reason: "Promotion cannot depend on an implicit development target path. Packaging/distribution must provide the binary or select legacy as rollback."
+  cancellation_and_limits:
+    legacy: "auto_lyric_hybrid_pipeline has a cancel_checker and checks it between major stages; rust_bridge currently uses subprocess.run with timeout_sec=30.0 and has no cancel_checker parameter."
+    rust: "Add a cancel-aware wrapper call path before promotion: check cancellation before and after quantization, kill an in-flight bridge subprocess when cancel_checker becomes true, and keep a bounded timeout. The bridge must remain one subprocess call per quantization operation, never per note."
+    reason: "Web and GUI tasks rely on cancellation. A blocking bridge call without cancellation polling is acceptable for bootstrap proof only, not production runtime ownership."
+  gui_web_quantization_settings_contract:
+    legacy: "Desktop AutoLyric controls are visible but disabled and pass quantization_step=0, quantization_mode='simple'. Web settings persist quantize_precision='none' and quantize_algorithm='dev', but web_task_manager.py does not map them into PipelineConfig, so effective Web defaults remain bayes/16."
+    rust: "Preserve that verified current behavior during routing promotion unless a new product decision updates quantization_caller_defaults_contract first."
+    reason: "The caller/default contract passed with follow-ups. Promotion must not accidentally make disabled or ignored UI fields user-effective."
+seam:
+  kind: pipeline
+  default_owner: legacy
+  target_owner_after_promotion: rust
+  bridge_dependencies:
+    - "existing rewrite-in-rust/rust/crates/v2m-quant-bridge binary"
+    - "existing Python stdlib json/subprocess wrapper in inference/quant/rust_bridge.py"
+    - "existing bridge crate dependencies serde and serde_json"
+fixtures:
+  required:
+    - "Add a promotion routing fixture or focused pytest covering legacy default, explicit rust-json backend, explicit legacy rollback, unsupported backend error, missing bridge executable, non-executable bridge path, timeout, and cancelled in-flight bridge process."
+    - "Add fake-note pipeline tests proving the Rust wrapper is called only after should_apply_quantization returns true, simple step 0 remains no-op, dp step 0 still quantizes, unknown positive modes still use simple fallback, and the mutated/reordered list is exported to mid/txt/csv/ustx."
+    - "Add a packaging/config check proving promotion does not rely on rewrite-in-rust/rust/target/debug unless V2M_QUANT_BRIDGE_BIN or an explicit config path names it."
+    - "Add a cancellation check with a long-running fake bridge executable that is killed promptly when cancel_checker becomes true and maps to the existing cancellation path."
+    - "Add a representative performance check proving one bridge process is spawned per quantization operation and that bridge timeout/default limits are enforced for simple, smart, bayes, and dp."
+    - "Keep tests/test_quantization_caller_defaults_contract.py green to prove GUI/Web settings remain intentionally disabled/ignored unless that contract is updated."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency discovery confirms quantization_pipeline_promotion is a coherent final caller-routing/runtime-owner unit after verified quantization_bridge_bootstrap and verified quantization_caller_defaults_contract. It should not be re-expanded into algorithm, GUI rewrite, Flask rewrite, or model-inference work."
+hand_written_replacements:
+  - capability: "production quantization caller routing glue"
+    reference_sources:
+      - "inference/pipeline/auto_lyric_hybrid.py"
+      - "inference/quant/rust_bridge.py"
+      - "rewrite-in-rust/records/0011-split-quantization-promotion.md"
+      - "rewrite-in-rust/records/0012-quantization-json-bridge-proof.md"
+      - "rewrite-in-rust/records/0013-quantization-caller-defaults-contract.md"
+    reason: "The remaining work is project-specific orchestration around already verified Rust quantization behavior and an existing JSON bridge; no new third-party runtime package is needed."
+legacy_kept:
+  - capability: "model inference, slicing, ASR, forced alignment, GAME, RMVPE, and export implementations"
+    reason: "Promotion only changes quantization runtime ownership at the existing post-GAME, pre-export seam."
+  - capability: "desktop GUI control enablement and Web quantization setting mapping"
+    reason: "Those user-facing settings remain locked as disabled/ignored by quantization_caller_defaults_contract unless a separate product change updates and reviews that contract."
+  - capability: "legacy Python quantization backend"
+    reason: "Rollback requires a tested backend selection that keeps inference.quant.quantization available without changing callers again."
+  - capability: "PyO3, maturin, ctypes/cdylib, HTTP service bridge, and Python package dependency changes"
+    reason: "The verified bridge decision is a CLI/subprocess JSON binary. A different bridge would need a new record before promotion."
+verification:
+  - "uv run pytest tests/test_quantization_pipeline_promotion.py"
+  - "cargo build --manifest-path rewrite-in-rust/rust/Cargo.toml --bin v2m-quant-bridge"
+  - "uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py"
+  - "uv run pytest tests/test_quantization_caller_defaults_contract.py"
+  - "uv run pytest tests/test_web_api.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "uv run python scripts/audit_vendored_sources.py"

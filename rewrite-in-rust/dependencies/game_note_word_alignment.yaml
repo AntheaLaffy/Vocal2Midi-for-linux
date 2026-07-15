@@ -1,0 +1,39 @@
+unit: game_note_word_alignment
+status: planned
+capabilities:
+  note_word_timeline_alignment:
+    legacy: "inference/game/alignment_utils.py::align_notes_to_words"
+    rust: "planned narrow implementation in rewrite-in-rust/rust/crates/v2m-core"
+    reason: "The selected boundary is deterministic timeline alignment over small float lists; fixtures can preserve NumPy cumsum/argmin behavior without introducing a Rust ndarray dependency."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "empty word durations, note durations, or note sequence return empty outputs."
+    - "exact word/note boundaries preserve note durations and slur flags."
+    - "word boundaries snap to nearby note boundaries within tol."
+    - "boundaries do not snap outside tol."
+    - "monotonic clamp preserves _ALIGN_MIN_GAP behavior."
+    - "repeated same note segments inside one word merge durations."
+    - "missing note overlap inserts a rest for that word span."
+    - "apply_word_uv=True converts unvoiced words to single rest spans."
+    - "multi-note word emits [0, 1, ...] slur flags."
+inventory_impact:
+  decision: split
+  reason: "The original game_word_note_alignment unit mixed align_notes_to_words with separately verifiable phoneme parsing helpers. This unit isolates the live GAME caller surface and NumPy-style timeline behavior."
+hand_written_replacements:
+  - capability: "word boundary snapping and note segmentation"
+    reference_sources:
+      - "inference/game/alignment_utils.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "The Python implementation uses np.cumsum, np.abs, and np.argmin on small vectors. A fixture-bound Rust Vec implementation is narrower than adding a NumPy-equivalent dependency."
+legacy_kept:
+  - capability: "validate_phones, parse_words, and merge_consecutive_uv_words"
+    reason: "Split into game_phone_word_parsing because these helpers are independently fixtureable pure list behavior."
+  - capability: "GAME ONNX inference, NumPy array preparation, librosa note conversion, HFA word extraction, and production API integration"
+    reason: "These are outside the alignment helper boundary and remain legacy-owned."
+verification:
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml note_word"
+  - "uv run python rewrite-in-rust/bootstrap/check_game_note_word_alignment.py"
