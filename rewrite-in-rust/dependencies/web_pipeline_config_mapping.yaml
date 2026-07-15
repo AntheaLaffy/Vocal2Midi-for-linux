@@ -1,0 +1,56 @@
+unit: web_pipeline_config_mapping
+status: done
+capabilities:
+  frontend_config_defaults:
+    legacy: "web_task_manager.py::TaskManager._build_config"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/web_config.rs"
+    reason: "The selected boundary maps JSON-compatible frontend values into PipelineConfig fields; it does not start tasks or run model inference."
+  device_normalization:
+    legacy: "web_task_manager.py::_build_config via inference.device_utils.normalize_runtime_device"
+    rust: "reuse v2m-core device normalization"
+    reason: "The device mapping is already fixture-backed and verified as a narrow string-normalization capability."
+  slice_bounds_fallback:
+    legacy: "web_task_manager.py::_build_config via application.config.validate_slice_bounds"
+    rust: "reuse v2m-core slice bounds validation with Web fallback to application defaults"
+    reason: "Invalid Web slice bounds print a warning and fall back to DEFAULT_SLICE_MIN_SEC/DEFAULT_SLICE_MAX_SEC."
+  output_format_and_timestamp_mapping:
+    legacy: "web_task_manager.py::TaskManager._build_config"
+    rust: "narrow implementation in v2m-core"
+    reason: "The behavior is deterministic list construction and arithmetic over frontend values."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_pipeline_config_mapping.jsonl is the durable Python/Rust parity table."
+    - "Minimal config with explicit save_dir preserves Web-specific defaults."
+    - "Explicit model paths, language, device alias, export flags, debug flags, lyric matching, batches, slicing, thresholds, and timestamps."
+    - "Invalid slice bounds fall back to application defaults without failing config construction."
+    - "output_pitch_curve is effective only when export_ustx is true."
+    - "Web quantize_precision and quantize_algorithm remain ignored by PipelineConfig mapping."
+    - "nsteps=0 and nsteps=1 timestamp edges."
+    - "save_dir creation failure when the path is an existing file."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed for TaskManager._build_config only. Persisted settings merge, task lifecycle, SocketIO events, model downloads, filesystem browsing, GUI behavior, and pipeline execution remain separate units or legacy-owned."
+hand_written_replacements:
+  - capability: "Web frontend config to PipelineConfig mapping"
+    reference_sources:
+      - "web_task_manager.py"
+      - "application/config.py"
+      - "inference/device_utils.py"
+    reason: "A direct Rust implementation against JSONL fixtures is smaller and more verifiable than replacing Flask, SocketIO, task threading, or inference runtimes."
+legacy_kept:
+  - capability: "Flask request parsing and persisted settings merge"
+    reason: "web_server.py merges current settings with request config before TaskManager receives the dict; settings behavior is a separate planned unit."
+  - capability: "Task creation, threading, cancellation, SocketIO logging, and output collection"
+    reason: "Those behaviors belong to web_task_lifecycle_contract."
+  - capability: "auto_lyric_hybrid_pipeline and all model inference"
+    reason: "Stage 1 explicitly excludes model execution paths."
+  - capability: "Arbitrary malformed frontend value error behavior"
+    reason: "This unit fixtures the supported typed JSON-compatible mapping path plus output directory creation failures; request validation and malformed numeric/string conversion reporting remain legacy-owned."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_pipeline_config_mapping.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_config"
+  - "uv run pytest tests/test_web_api.py tests/test_quantization_caller_defaults_contract.py"

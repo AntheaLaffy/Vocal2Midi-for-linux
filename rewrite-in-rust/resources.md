@@ -55,13 +55,27 @@ manual Rust replacements.
 ## Current Public Boundaries
 
 - `application/config.py`: `PipelineConfig` and user-facing validation.
-- `application/pipeline.py`: application-layer job entrypoint.
+- `application/pipeline.py`: application-layer job entrypoint, model-path
+  validation, pipeline error mapping, and cancellation-before-start contract.
 - `inference/device_utils.py`: runtime device normalization and ONNX provider
   selection.
 - `inference/pipeline/auto_lyric_hybrid.py`: end-to-end pipeline workflow.
 - `scripts/slice_asr_cli.py`: batch CLI behavior.
 - `web_server.py` and `web_task_manager.py`: Web caller boundary and task
   lifecycle.
+- `web_model_download_manager.py` and `download_models.py`: model asset status,
+  download task lifecycle, proxy handling, and archive safety.
+- `inference/API/slicer_api.py` and `inference/slicer/slicer2.py`: slicing
+  method selection, segment merge policies, default silence slicing, and
+  smart-slicing helpers when supplied with precomputed voiced masks.
+- `inference/API/ustx_api.py` and `inference/io/note_io.py`: deterministic
+  MIDI/USTX/TXT/CSV export behavior.
+- `inference/LyricFA/tools/` and `inference/HubertFA/tools/`: lyric matching,
+  G2P, interval, export, and metric helpers around inference outputs.
+- `inference/qwen3asr_dml/chinese_itn.py`, `inference/qwen3asr_dml/utils.py`,
+  `inference/qwen3asr_dml/schema.py`, and `inference/romaji_asr/common.py`:
+  ASR text/schema helpers that can be fixture-tested without creating model
+  sessions.
 
 ## Project Rewrite Skills
 
@@ -97,6 +111,40 @@ Python dependency expansion reveals a better seam.
 - `inference/io/note_io.py`: deterministic TXT/CSV export behavior.
 - `inference/quant/quantization.py`: larger algorithmic unit to defer until the
   fixture workflow is proven.
+
+## Stage 1 Non-Inference Backend Candidates
+
+Stage 1 covers remaining backend behavior outside the desktop GUI, browser
+frontend, and model inference chain. These candidates must still pass
+dependency/bootstrap discovery before writer work.
+
+- Application and Web contracts: `application/pipeline.py`,
+  `web_task_manager.py`, `web_stream_redirector.py`, `web_server.py`, and
+  `web_model_download_manager.py`.
+- Asset and batch tooling: `download_models.py` and
+  `scripts/slice_asr_cli.py`, with network, package installation, and model
+  runtime calls mocked or excluded from parity checks.
+- Model download management is split by capability: request/catalog behavior,
+  subprocess/process planning, task lifecycle state, execution result handling,
+  process termination, and asset safety should stay independently verified.
+- Deterministic exports: MIDI and USTX behavior in `inference/io/note_io.py`
+  and `inference/API/ustx_api.py`; RMVPE-derived pitch curves use synthetic
+  `RmvpeResult` data only.
+- Slicer helpers: method/bounds normalization, segment merge logic, RMS/default
+  silence slicing, heuristic/grid policies, and supplied-voiced-mask smart
+  slicing in `inference/API/slicer_api.py` and `inference/slicer/slicer2.py`.
+- Lyric and alignment helpers: sequence alignment, Chinese/Japanese G2P
+  fallback/dictionary behavior, lyric matching, HubertFA word intervals, label
+  export/config helpers, and metrics under `inference/LyricFA/tools/` and
+  `inference/HubertFA/tools/`.
+- ASR text and schema helpers: Chinese ITN, language validation, schema
+  dataclasses, romaji vocab/CTC decode/chunking helpers, and WAV fallback
+  loading when model sessions are not created.
+
+Stage 1 explicitly does not cover `gui/`, browser static assets, Flask/SocketIO
+replacement as a Rust server, ONNX Runtime sessions, Qwen encoder/decoder,
+llama.cpp subprocess inference, romaji/GAME/HFA/RMVPE model execution, or GGUF
+weight/model-format execution paths.
 
 ## Re-cut Signals
 

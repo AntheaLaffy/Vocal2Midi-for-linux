@@ -1,0 +1,43 @@
+unit: web_stream_redirector_contract
+status: done
+capabilities:
+  write_callback_mirroring:
+    legacy: "web_stream_redirector.py::WebStreamRedirector.write"
+    rust: "narrow behavior model in rewrite-in-rust/rust/crates/v2m-core/src/web_stream.rs"
+    reason: "The selected boundary is deterministic string/callback behavior and does not require a WebSocket transport."
+  flush_and_delegation:
+    legacy: "web_stream_redirector.py::WebStreamRedirector.flush and __getattr__"
+    rust: "narrow behavior model in v2m-core"
+    reason: "Flush and attribute delegation can be fixture-tested with fake streams."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_stream_redirector_contract.jsonl is the durable Python/Rust parity table."
+    - "Non-empty write sends stripped text to callback at info level and writes original text to stream."
+    - "Whitespace-only writes skip callback but still write original text."
+    - "Callback exceptions are swallowed and original stream writes still happen."
+    - "None callback skips callback and writes original text."
+    - "flush delegates to the underlying stream."
+    - "__getattr__ delegates missing attributes to the underlying stream."
+inventory_impact:
+  decision: confirmed
+  reason: "This is the second split from the broad web_task_lifecycle_contract unit and covers only stream redirection behavior."
+hand_written_replacements:
+  - capability: "Web stream redirection behavior"
+    reference_sources:
+      - "web_stream_redirector.py"
+    reason: "A direct Rust behavior model against fake stream/callback fixtures is smaller and more verifiable than replacing SocketIO or the task manager."
+legacy_kept:
+  - capability: "real SocketIO log emission"
+    reason: "This unit covers callback invocation only; SocketIO payloads belong to web_pipeline_execution_events."
+  - capability: "TaskManager._execute_pipeline stdout/stderr installation and restoration"
+    reason: "Execution event behavior is split into web_pipeline_execution_events."
+  - capability: "real Python stream objects"
+    reason: "Fixture checks use fake streams; production streams stay Python-owned before promotion."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_stream_redirector_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_stream"
+  - "uv run pytest tests/test_web_api.py"

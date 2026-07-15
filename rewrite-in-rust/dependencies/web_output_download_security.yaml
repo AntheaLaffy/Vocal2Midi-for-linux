@@ -1,0 +1,60 @@
+unit: web_output_download_security
+status: done
+capabilities:
+  requested_path_validation:
+    legacy: "web_server.py::_safe_requested_download_path"
+    rust: "narrow POSIX URL path model in rewrite-in-rust/rust/crates/v2m-core/src/web_output_download.rs"
+    reason: "The public behavior is deterministic rejection of empty, NUL, backslash, Windows drive, absolute, and traversal paths before project-root resolution."
+  registered_output_authorization:
+    legacy: "web_server.py::_authorized_output_file and web_task_manager.Task.output_files"
+    rust: "fixture-backed canonical output matching"
+    reason: "Authorization depends on exact canonical equality between the safe requested path and one registered task output path, including symlink resolution."
+  route_response_shape:
+    legacy: "web_server.py::download_file"
+    rust: "modeled 200/404 response metadata"
+    reason: "The route returns exact 404 JSON error shape or a successful attachment with the requested file body and filename."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_output_download_security.jsonl is the durable Python/Rust parity table."
+    - "Empty paths are rejected."
+    - "Absolute POSIX paths are rejected."
+    - "Traversal paths are rejected."
+    - "Backslashes and NUL bytes are rejected."
+    - "Windows drive prefixes with slash or backslash are rejected."
+    - "Existing project files are rejected when unregistered."
+    - "Registered relative outputs are accepted."
+    - "Registered absolute outputs are accepted."
+    - "Registered paths canonicalize before comparison."
+    - "Registered symlink outputs authorize the resolved canonical target."
+    - "Registered-but-nonexistent requested files are rejected."
+    - "Unregistered files in an output directory are rejected."
+    - "Successful route responses preserve body and `download_name` filename."
+    - "Encoded absolute POSIX paths use the legacy app-level JSON 404 shape."
+inventory_impact:
+  decision: confirmed
+  reason: "Record 0025 split picker behavior from output-download authorization; record 0027 confirms the remaining download boundary."
+hand_written_replacements:
+  - capability: "Web output download authorization"
+    reference_sources:
+      - "web_server.py"
+      - "web_task_manager.py"
+      - "docs/web-api.md"
+      - "tests/test_web_api.py"
+    reason: "A narrow Rust model over explicit path/task/symlink fixtures is more verifiable than replacing Flask, send_file streaming, or task-manager locking."
+legacy_kept:
+  - capability: "Flask route binding and send_file streaming"
+    reason: "Stage 1 does not replace the Web server or file streaming implementation."
+  - capability: "Task manager locking and task lifecycle"
+    reason: "Registry behavior is covered by web_task_registry_contract and remains Python-owned."
+  - capability: "Pipeline output collection"
+    reason: "Output collection is covered by web_pipeline_execution_events and remains legacy-owned."
+  - capability: "Filesystem picker"
+    reason: "Split into web_filesystem_picker_contract."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_output_download_security.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_output_download"
+  - "uv run pytest tests/test_web_api.py"

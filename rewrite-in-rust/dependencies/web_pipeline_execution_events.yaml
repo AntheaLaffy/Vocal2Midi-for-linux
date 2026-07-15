@@ -1,0 +1,54 @@
+unit: web_pipeline_execution_events
+status: done
+capabilities:
+  execution_log_progress_events:
+    legacy: "web_task_manager.py::TaskManager._execute_pipeline"
+    rust: "narrow event/state model in rewrite-in-rust/rust/crates/v2m-core/src/web_pipeline_events.rs"
+    reason: "The selected boundary is deterministic task state, ordered log/progress/status SocketIO emit payloads, and stdout/stderr restoration around fake pipeline outcomes."
+  terminal_status_mapping:
+    legacy: "web_task_manager.py::TaskManager._execute_pipeline"
+    rust: "narrow event/state model in v2m-core"
+    reason: "Completed, cooperative cancellation, KeyboardInterrupt cancellation, stopped errors, generic failures, and manager errors can be fixture-tested without real model inference."
+  output_file_collection:
+    legacy: "web_task_manager.py::TaskManager._execute_pipeline"
+    rust: "narrow extension-order model"
+    reason: "The Python code collects output files in .mid, .ustx, .txt, .csv extension order from the configured output directory."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_pipeline_execution_events.jsonl is the durable Python/Rust parity table."
+    - "Completed run with stdout/stderr redirected logs and multi-file output collection."
+    - "Ordered SocketIO emit trace preserves event name, room, task_id, log timestamp, status payload shape, and terminal result payloads."
+    - "Pipeline returns after setting stop_event, producing cancelled status."
+    - "KeyboardInterrupt maps to cancelled status."
+    - "Exception with stop_event set maps to cancelled status and leaves task.error unset."
+    - "Generic exception maps to failed status, task.error=str(error), error logs, traceback log, and failed status_change."
+    - "Config/build manager error maps through the outer Task manager error path."
+inventory_impact:
+  decision: confirmed
+  reason: "After splitting registry and stream behavior, this unit is confirmed for _execute_pipeline event/state behavior only."
+hand_written_replacements:
+  - capability: "Web pipeline execution event/state mapping"
+    reference_sources:
+      - "web_task_manager.py"
+      - "web_stream_redirector.py"
+      - "application/pipeline.py"
+    reason: "A direct Rust event model against fake SocketIO/config/pipeline/clock fixtures is smaller and more verifiable than replacing Flask-SocketIO, Python threading, or model inference."
+legacy_kept:
+  - capability: "real run_auto_lyric_job and model inference"
+    reason: "Fixtures patch the application pipeline; Stage 1 excludes model execution."
+  - capability: "Task registry start/stop/list"
+    reason: "Covered by web_task_registry_contract."
+  - capability: "WebStreamRedirector write/flush/delegation internals"
+    reason: "Covered by web_stream_redirector_contract."
+  - capability: "real SocketIO server transport"
+    reason: "Fixtures use fake SocketIO records; Flask/SocketIO runtime remains Python-owned."
+  - capability: "Web config mapping"
+    reason: "Covered by web_pipeline_config_mapping."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_pipeline_execution_events.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_pipeline_events"
+  - "uv run pytest tests/test_web_api.py"

@@ -1,0 +1,46 @@
+unit: download_models_asset_catalog_contract
+status: done
+capabilities:
+  static_model_catalog:
+    legacy: "download_models.py::GithubModel, GITHUB_MODELS, GITHUB_MODEL_BY_NAME, QWEN_MODEL_ID, QWEN_LOCAL_DIR"
+    rust: "owned catalog-model structs and static metadata rows"
+    reason: "Catalog rows are deterministic literals and can be verified without runtime filesystem or network access."
+  catalog_formatting:
+    legacy: "download_models.py::human_size and asset_url"
+    rust: "direct formatting helpers"
+    reason: "The helpers are pure string/number formatting and do not depend on Python-only libraries."
+  marker_display:
+    legacy: "download_models.py::target_has_model, qwen_has_weights, list_planned"
+    rust: "injected fake filesystem and asset-size display model"
+    reason: "Presence markers and planned-output rows are deterministic from injected paths, immediate Qwen entries, asset sizes, and source label."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/download_models_asset_catalog_contract.jsonl is the durable Python/Rust parity table."
+    - "Python checker patches GitHub asset-size lookup, color, catalog rows, root paths, and Qwen local dir inside temp fixtures."
+    - "Rust tests consume the same fake paths and size maps without touching the production experiments directory."
+    - "No fixture contacts network services, installs packages, extracts archives, invokes external CLIs, or reads model weights."
+inventory_impact:
+  decision: confirmed
+  reason: "The former mixed asset-safety unit was split; this contract covers only deterministic catalog and marker-display behavior."
+hand_written_replacements:
+  - capability: "Static model catalog, asset URLs, human-size formatting, marker checks, Qwen marker checks, and dry-run list display"
+    reference_sources:
+      - "download_models.py"
+      - "rewrite-in-rust/records/0035-split-download-models-asset-safety.md"
+    reason: "The surface is small and deterministic enough for a hand-written Rust model with explicit fixture injection."
+legacy_kept:
+  - capability: "Safe archive extraction and merge layout"
+    reason: "Covered separately by download_models_archive_layout_contract."
+  - capability: "CLI selection and main exit-code planning"
+    reason: "Split to download_models_cli_selection_contract."
+  - capability: "GitHub API calls, stream_download, download_github_model, package installation, external Qwen CLI download flow, and cleanup of partial Qwen artifacts"
+    reason: "Split to download_models_effectful_fetch_contract."
+  - capability: "Model weight or model format execution"
+    reason: "Out of scope for Stage 1 model-inference exclusions."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_download_models_asset_catalog_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_catalog"

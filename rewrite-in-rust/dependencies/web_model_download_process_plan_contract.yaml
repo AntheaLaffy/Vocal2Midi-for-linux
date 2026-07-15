@@ -1,0 +1,53 @@
+unit: web_model_download_process_plan_contract
+status: done
+capabilities:
+  command_planning:
+    legacy: "web_model_download_manager.py::_build_command"
+    rust: "ordered command vector model using injected python executable and root directory placeholders"
+    reason: "The public subprocess argv shape is deterministic and independent from process execution."
+  proxy_environment_planning:
+    legacy: "web_model_download_manager.py::_build_process_env and PROXY_ENV_KEYS"
+    rust: "environment map transformation over explicit fixture input"
+    reason: "Proxy inheritance, clearing, manual override, and PYTHONUNBUFFERED behavior can be verified without spawning a child process."
+  process_group_kwargs:
+    legacy: "web_model_download_manager.py::_popen_process_group_kwargs"
+    rust: "POSIX/Windows kwargs model over injected os name and Windows flag"
+    reason: "Spawn kwargs are pure platform branching; termination remains a later lifecycle unit."
+  output_line_parser:
+    legacy: "web_model_download_manager.py::_read_process_output, _handle_output_line, _guess_model_from_line, _emit_progress_for_model, _emit_log, and _emit_progress"
+    rust: "fake stdout/socket state machine with normalized timestamps"
+    reason: "Line splitting, log levels, model guessing, legacy percent regex, progress math, and log cap are deterministic with fake process/socket inputs."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_model_download_process_plan_contract.jsonl is the durable Python/Rust parity table."
+    - "Python executable, root directory, OS name, base environment, process output, and socket emissions are injected or normalized."
+    - "No fixture starts download_models.py or creates network/model-runtime side effects."
+inventory_impact:
+  decision: confirmed
+  reason: "Record 0030 confirms process planning as a deterministic split after request/catalog was separated in record 0029."
+hand_written_replacements:
+  - capability: "Web model-download process planning and output parsing"
+    reference_sources:
+      - "web_model_download_manager.py"
+      - "download_models.py"
+      - "tests/test_web_api.py"
+    reason: "A narrow Rust model over fake process/socket fixtures is more verifiable than replacing Python threading, subprocess, SocketIO, or download runtime behavior."
+legacy_kept:
+  - capability: "Threading, active-task locking, start/stop lifecycle, cancellation transitions, and process termination"
+    reason: "Reserved for web_model_download_lifecycle_termination_contract."
+  - capability: "ModelDownloadManager.create_task UUID/clock assignment, stop event, lock insertion, and task registry mutation"
+    reason: "This is task lifecycle/registry behavior rather than subprocess planning."
+  - capability: "Real subprocess.Popen invocation and download_models.py execution"
+    reason: "Stage 1 fixtures must not spawn downloads."
+  - capability: "SocketIO transport errors and WebSocket delivery"
+    reason: "The unit models payload shape and state effects only."
+  - capability: "Network downloads, package installation, archive extraction, and model marker safety"
+    reason: "Reserved for download_models_asset_safety."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_process_plan_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download"
+  - "uv run pytest tests/test_web_api.py"

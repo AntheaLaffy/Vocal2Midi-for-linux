@@ -1,0 +1,59 @@
+unit: web_model_download_execution_result_contract
+status: done
+capabilities:
+  execution_start_handoff:
+    legacy: "web_model_download_manager.py::ModelDownloadManager._execute_download"
+    rust: "fixture-backed execution state machine with fake Popen/socket"
+    reason: "Command/env planning is deterministic and already covered; this unit proves the orchestration handoff and startup emits without spawning a process."
+  terminal_result_mapping:
+    legacy: "web_model_download_manager.py::_execute_download wait/returncode handling"
+    rust: "returncode fixtures for completed and failed terminal states"
+    reason: "Status, stage, progress, error, completed_at, logs, and status_change payloads are deterministic once returncode and timestamps are normalized."
+  cancellation_result_mapping:
+    legacy: "web_model_download_manager.py::_execute_download stop_event branch"
+    rust: "fake stop-event and fake wait timeout escalation callbacks"
+    reason: "The cancellation status behavior can be verified without asserting POSIX or Windows process-tree kill semantics."
+  exception_result_mapping:
+    legacy: "web_model_download_manager.py::_execute_download exception handler"
+    rust: "fake Popen error path with normalized traceback log"
+    reason: "The failed status/error/log/status_change behavior is deterministic when traceback text is normalized."
+  active_task_cleanup:
+    legacy: "web_model_download_manager.py::_execute_download finally block"
+    rust: "active_task_id cleanup model"
+    reason: "The cleanup rule only depends on whether the active id still equals the task id."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies:
+    - "web_model_download_process_plan_contract"
+    - "web_model_download_request_catalog_contract"
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_model_download_execution_result_contract.jsonl is the durable Python/Rust parity table."
+    - "Fixtures inject fake Popen stdout, return codes, wait plans, stop-event state, process-group kwargs, environment maps, and active-task ids."
+    - "No fixture spawns download_models.py, contacts network services, installs packages, extracts archives, or kills a real process."
+inventory_impact:
+  decision: confirmed
+  reason: "Record 0033 confirms the _execute_download result-handling subset after records 0029 and 0031 split model-download behavior."
+hand_written_replacements:
+  - capability: "Web model-download execution result handling"
+    reference_sources:
+      - "web_model_download_manager.py"
+      - "tests/test_web_api.py"
+      - "docs/web-api.md"
+    reason: "A narrow fake-process Rust model captures the task-visible contract while leaving runtime process management in legacy Python."
+legacy_kept:
+  - capability: "Route request/response mapping and proxy redaction helpers"
+    reason: "Covered by web_model_download_request_catalog_contract."
+  - capability: "Command/env planning and output-line parsing"
+    reason: "Covered by web_model_download_process_plan_contract and reused as a dependency."
+  - capability: "Task creation/start/stop state without live process"
+    reason: "Covered by web_model_download_task_lifecycle_contract."
+  - capability: "OS process-tree termination and stop_task live-process OSError handling"
+    reason: "Reserved for web_model_download_process_termination_contract."
+  - capability: "Network downloads, package installation, archive extraction, and model marker safety"
+    reason: "Reserved for download_models_asset_safety."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_execution_result_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_execution"
+  - "uv run pytest tests/test_web_api.py"

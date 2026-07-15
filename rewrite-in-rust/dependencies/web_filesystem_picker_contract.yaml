@@ -1,0 +1,59 @@
+unit: web_filesystem_picker_contract
+status: done
+capabilities:
+  picker_path_resolution:
+    legacy: "web_server.py::_resolve_picker_path and _input_value_for_path"
+    rust: "narrow POSIX path model in rewrite-in-rust/rust/crates/v2m-core/src/web_filesystem_picker.rs"
+    reason: "The picker resolves empty, relative, home-expanded, and absolute paths, then exposes project-relative UI values when possible."
+  root_entries:
+    legacy: "web_server.py::_filesystem_roots"
+    rust: "fake project/home/system root model"
+    reason: "The public shape is labels, absolute paths, project-relative input values, and duplicate suppression."
+  extension_filtering_and_listing:
+    legacy: "web_server.py::_parse_extensions, _filesystem_entry, and /api/filesystem/list"
+    rust: "fake directory-entry filtering/sorting model"
+    reason: "Directory/file mode filtering and sort order are deterministic with explicit fake-scandir entry fixtures."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_filesystem_picker_contract.jsonl is the durable Python/Rust parity table."
+    - "Empty and whitespace paths resolve to the project root."
+    - "Relative paths resolve under the project root."
+    - "Home paths expand with os.path.expanduser semantics."
+    - "Absolute paths outside the project preserve absolute input values."
+    - "Project root input values collapse to '.'."
+    - "Nested project paths are returned as POSIX relative paths."
+    - "Extensions are lowercased, dot-prefixed, blank-filtered, and deduplicated."
+    - "Directory mode lists directories only."
+    - "File mode lists directories plus matching files, or all files with no extension filter."
+    - "File-path inputs fall back to the parent directory."
+    - "Missing paths return 404 and invalid modes return 400."
+    - "Unreadable directory/scandir errors return 400."
+    - "Entries sort directories first, then by lowercase name, preserving fake-scandir enumeration order for equal lowercase names."
+    - "Invalid mode, missing path, and unreadable directory errors preserve exact response shape."
+inventory_impact:
+  decision: confirmed
+  reason: "Record 0025 split the provisional filesystem/download unit and confirmed this picker-specific boundary."
+hand_written_replacements:
+  - capability: "Web filesystem picker contract"
+    reference_sources:
+      - "web_server.py"
+      - "docs/web-api.md"
+      - "tests/test_web_api.py"
+    reason: "A small Rust data model over fake roots and entries is more verifiable than replacing Flask, live os.scandir, or browser picker UI."
+legacy_kept:
+  - capability: "Flask route binding and jsonify serialization"
+    reason: "Stage 1 does not replace the Web server."
+  - capability: "live production filesystem enumeration"
+    reason: "Fixtures use synthetic temp directories; runtime os.scandir stays Python-owned."
+  - capability: "browser/frontend path picker UI"
+    reason: "Stage 1 excludes browser static assets."
+  - capability: "output download authorization"
+    reason: "Split into web_output_download_security."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_filesystem_picker_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_filesystem_picker"
+  - "uv run pytest tests/test_web_api.py"

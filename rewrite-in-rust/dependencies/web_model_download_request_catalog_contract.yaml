@@ -1,0 +1,55 @@
+unit: web_model_download_request_catalog_contract
+status: done
+capabilities:
+  model_catalog_status:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.model_statuses and web_server.py::model_status"
+    rust: "static model catalog with injected install states in rewrite-in-rust/rust/crates/v2m-core/src/web_model_download.rs"
+    reason: "The public catalog shape is deterministic once installed/missing booleans are supplied; real filesystem marker checks remain legacy-owned."
+  active_task_serialization:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.serialize_task and _redact_proxy_url"
+    rust: "fixture-backed task snapshot serialization and proxy URL redaction"
+    reason: "The route exposes task fields and must redact credential-bearing proxy URLs without requiring a running thread or subprocess."
+  start_request_contract:
+    legacy: "web_server.py::start_model_download and web_model_download_manager.py::validate_model_request"
+    rust: "request normalization, Python-like force truthiness, missing-model defaulting, deduplication, validation, and conflict response modeling"
+    reason: "The start route's public behavior is pure request and response shaping before task execution begins."
+  status_stop_route_mapping:
+    legacy: "web_server.py::get_model_download_status and stop_model_download"
+    rust: "response-shape model over fake task-manager outcomes"
+    reason: "Found/not-found/cannot-stop/success mapping can be verified without process termination."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_model_download_request_catalog_contract.jsonl is the durable Python/Rust parity table."
+    - "Catalog fixtures inject installed states for game/hfa/rmvpe/romaji/qwen without touching real model files."
+    - "Active-task fixtures use deterministic timestamps and no live threads/processes."
+    - "Start-route fixtures use fake manager outcomes and assert captured selected models, qwen source, force value, proxy mode, and proxy URL."
+    - "Status and stop-route fixtures use fake task-manager outcomes only."
+inventory_impact:
+  decision: split
+  reason: "Record 0029 split the broad provisional model download manager unit into request/catalog, process planning, and lifecycle/termination units."
+hand_written_replacements:
+  - capability: "Web model download request/catalog contract"
+    reference_sources:
+      - "web_server.py"
+      - "web_model_download_manager.py"
+      - "download_models.py"
+      - "docs/web-api.md"
+      - "tests/test_web_api.py"
+    reason: "A narrow Rust model over explicit route/task/catalog fixtures is more verifiable than replacing Flask, SocketIO, subprocess, or download runtime behavior."
+legacy_kept:
+  - capability: "Flask route binding and JSON response serialization"
+    reason: "Stage 1 does not replace the Web server."
+  - capability: "Filesystem marker checks for real model installation status"
+    reason: "The Rust unit receives install states as fixture inputs; real marker probing stays Python-owned."
+  - capability: "Threading, active-task lock ownership, subprocess execution, SocketIO emission, and process termination"
+    reason: "Split into later process-planning and lifecycle/termination units."
+  - capability: "Actual download_models.py execution, network fetches, and archive safety"
+    reason: "Covered by later asset safety work and excluded from request/catalog parity."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_request_catalog_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download"
+  - "uv run pytest tests/test_web_api.py"

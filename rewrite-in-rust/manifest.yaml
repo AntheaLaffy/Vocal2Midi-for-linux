@@ -21,6 +21,8 @@ policy:
   review_cadence: "Run one R0 behavior review per stage after 3-5 reimplemented units; run other reviews only for high-risk units or before promotion."
   python_environment: "Use uv Python 3.12.x; do not use the system python binary for project verification."
   rust_environment: "Use Rust Edition 2024 for new workspace crates."
+  stage1_scope: "Cover remaining non-frontend, non-model-inference backend behavior: application validation, Web backend contracts, batch/asset tooling, deterministic exports, slicer helpers, lyric/text alignment helpers, and ASR text post-processing."
+  stage1_exclusions: "Do not rewrite desktop GUI, browser frontend assets, Flask/SocketIO routing as a Rust server, ONNX/Qwen/romaji/HFA/GAME/RMVPE model loading, encoder/decoder sessions, llama.cpp subprocess inference, or model weight/format execution paths in this stage."
 
 status_values:
   - planned
@@ -50,6 +52,22 @@ stage_review_batches:
       - "per-unit dependency records under rewrite-in-rust/dependencies/"
     required_reviews:
       - dependency_bootstrap_reviewer
+
+  - id: stage1_non_inference_backend
+    objective: "Confirm, split, and reimplement remaining backend library behavior outside the model inference chain and frontend."
+    status: active
+    verification:
+      - "uv run python scripts/audit_vendored_sources.py"
+      - "per-unit dependency records under rewrite-in-rust/dependencies/"
+      - "per-unit fixture or contract harnesses under rewrite-in-rust/bootstrap/"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+      - "uv run pytest tests/test_web_api.py"
+      - "uv run pytest tests/test_quantization_caller_defaults_contract.py tests/test_quantization_pipeline_promotion.py"
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - "data_algorithm_reviewer for slicer, lyric alignment, G2P, metrics, and export algorithms"
+      - "error_tracing_reviewer for Web, filesystem, download, subprocess, and settings boundaries"
 
 units:
   - id: slice_bounds_validation
@@ -367,3 +385,693 @@ units:
       - "Before user-facing default-Rust release, package/configure v2m-quant-bridge, improve GUI/Web bridge error wording if needed, and explicitly resolve or accept visible-but-ignored GUI/Web quantization controls."
       - "Run cargo, Python parity, Web API, and pipeline integration checks before promotion."
     rollback: "Keep inference.quant.quantization and all Python callers as runtime owners."
+
+  - id: application_job_contract
+    title: "Application job validation and error contract"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "application/pipeline.py"
+      - "application/config.py"
+      - "application/exceptions.py"
+    public_interface_policy: "Preserve required model path selection, output_lyrics gating, cancellation-before-start behavior, InterruptedError mapping, and Vocal2MidiError details without replacing auto_lyric_hybrid_pipeline."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Python/Rust parity fixtures for valid paths, missing GAME/HFA/ASR paths, output_lyrics=False, cancellation before start, interrupted pipeline, Vocal2MidiError passthrough, and generic exception wrapping are in rewrite-in-rust/fixtures/application_job_contract.tsv."
+      - "uv run python rewrite-in-rust/bootstrap/check_application_job_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml application"
+      - "Run uv run pytest tests/test_web_api.py after any caller-facing change."
+    rollback: "Keep application.pipeline.run_auto_lyric_job and application exceptions as the runtime owners."
+
+  - id: web_pipeline_config_mapping
+    title: "Web pipeline config mapping"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_task_manager.py"
+      - "application/config.py"
+      - "inference/device_utils.py"
+    public_interface_policy: "Preserve frontend-config to PipelineConfig mapping, default values, slice-bound fallback behavior, output format list construction, timestamp generation, and device normalization."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for minimal config, explicit debug/export flags, invalid slice bounds fallback, output_pitch_curve gated by export_ustx, t0/nsteps timestamp generation, device aliases, and ignored Web quantization fields are in rewrite-in-rust/fixtures/web_pipeline_config_mapping.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_pipeline_config_mapping.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_config"
+      - "Keep quantization Web settings ignored unless a separate product contract changes that behavior."
+      - "Run uv run pytest tests/test_web_api.py tests/test_quantization_caller_defaults_contract.py."
+    rollback: "Keep TaskManager._build_config as the runtime owner."
+
+  - id: web_task_registry_contract
+    title: "Web task registry and start/stop state"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_task_manager.py"
+    public_interface_policy: "Preserve Task creation defaults, UUID shape, pending/running start rules, started_at assignment, daemon thread naming, running-only stop_event behavior, get_task lookup, and list_tasks summary shape."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Python/Rust parity fixtures for created task fields, missing task start/stop, pending-only start, running-only stop, stop_event state, get_task, and list_tasks summaries are in rewrite-in-rust/fixtures/web_task_registry_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_task_registry_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_task"
+      - "Do not invoke _execute_pipeline, real model inference, or real SocketIO in parity checks."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_task_manager.TaskManager registry/start/stop/list methods as runtime owners."
+
+  - id: web_stream_redirector_contract
+    title: "Web stream redirector behavior"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_stream_redirector.py"
+    public_interface_policy: "Preserve non-empty stripped callback writes, callback failure swallowing, original stream writes, flush delegation, and attribute delegation."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Python/Rust parity fixtures for whitespace-only writes, newline stripping, callback exceptions, original stream contents, flush calls, and delegated attributes are in rewrite-in-rust/fixtures/web_stream_redirector_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_stream_redirector_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_stream"
+      - "Do not invoke real WebSocket sockets in parity checks."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_stream_redirector.WebStreamRedirector as the runtime owner."
+
+  - id: web_pipeline_execution_events
+    title: "Web pipeline execution events"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_task_manager.py"
+      - "web_stream_redirector.py"
+      - "application/pipeline.py"
+    public_interface_policy: "Preserve _execute_pipeline config handoff, cancel_checker injection, stdout/stderr restoration, log/progress/status_change SocketIO payloads, output-file collection, completed/cancelled/failed distinctions, and manager-error fallback."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Python/Rust parity fixtures for completed, stop-after-run cancellation, KeyboardInterrupt, task-stop exception cancellation, generic failure, manager-error, stdout/stderr restoration, ordered SocketIO emit payloads, and multi-file output collection are in rewrite-in-rust/fixtures/web_pipeline_execution_events.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_pipeline_execution_events.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_pipeline_events"
+      - "Do not invoke real model inference or real Web server sockets in parity checks."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_task_manager.TaskManager._execute_pipeline as the runtime owner."
+
+  - id: web_settings_contract
+    title: "Web settings merge and persistence"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_server.py"
+    public_interface_policy: "Preserve DEFAULT_SETTINGS shape, known-section-only merge, invalid JSON and non-object errors, reset behavior, atomic write shape, and fallback to defaults on load failures."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Python/Rust parity fixtures for missing settings file, malformed JSON, unknown keys, partial section overrides, non-object section rejection, invalid JSON, reset, and persisted UTF-8 JSON formatting are in rewrite-in-rust/fixtures/web_settings_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_settings_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_settings"
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_server settings helpers and routes as runtime owners."
+
+  - id: web_filesystem_picker_contract
+    title: "Web filesystem picker contract"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_server.py"
+    public_interface_policy: "Preserve picker path resolution, project-relative input values, root entries, extension parsing, file-vs-directory filtering, non-directory fallback, missing/unreadable errors, and directory-first lowercase sorting."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for empty/relative/absolute/home paths, project-relative input values, extension parsing, directory and file listing, missing paths, invalid modes, non-directory fallback, and sorting are in rewrite-in-rust/fixtures/web_filesystem_picker_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_filesystem_picker_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_filesystem_picker"
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_server filesystem picker helpers and routes as runtime owners."
+
+  - id: web_output_download_security
+    title: "Web output download authorization"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_server.py"
+      - "web_task_manager.py"
+    public_interface_policy: "Preserve registered-output-only download authorization, project-relative URL path resolution, exact canonical output matching, traversal rejection, backslash/NUL rejection, Windows drive-prefix rejection, and unregistered-file rejection."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for empty paths, absolute paths, traversal, backslash, null byte, Windows absolute paths, unregistered files, registered relative outputs, registered absolute outputs, canonical registered outputs, nonexistent outputs, and download filename behavior are in rewrite-in-rust/fixtures/web_output_download_security.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_output_download_security.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_output_download"
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_server download helpers/routes and web_task_manager task output registration as runtime owners."
+
+  - id: web_model_download_request_catalog_contract
+    title: "Web model download request and catalog contract"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_server.py"
+      - "web_model_download_manager.py"
+      - "download_models.py"
+    public_interface_policy: "Preserve model catalog/status serialization, installed/missing counts, active task serialization with proxy redaction, POST request defaults/deduplication/validation, start conflict mapping, status lookup mapping, and stop route response mapping."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for catalog install states, active-task serialization, proxy redaction, request defaults, deduplication, force truthiness, validation errors, conflicts, status lookup, and stop route mapping are in rewrite-in-rust/fixtures/web_model_download_request_catalog_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_request_catalog_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download"
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_server.py model download routes and web_model_download_manager.ModelDownloadManager request/catalog helpers as runtime owners."
+
+  - id: web_model_download_process_plan_contract
+    title: "Web model download process planning"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_model_download_manager.py"
+      - "download_models.py"
+    public_interface_policy: "Preserve subprocess command construction, proxy environment shaping, process-group spawn kwargs, stdout line framing, model guessing, per-model progress math, log level classification, and log cap behavior without starting a child process."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for command argv, proxy env, process-group kwargs, fake stdout framing, log classification, model guessing, legacy percent parsing, progress math, selected-order priority, stdout None, and log cap behavior are in rewrite-in-rust/fixtures/web_model_download_process_plan_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_process_plan_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_process"
+      - "Do not spawn download_models.py or contact network services."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_model_download_manager.ModelDownloadManager process planning and output parsing as the runtime owner."
+
+  - id: web_model_download_task_lifecycle_contract
+    title: "Web model download task lifecycle state"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_model_download_manager.py"
+      - "web_server.py"
+    public_interface_policy: "Preserve task creation defaults/registration, proxy URL trimming, get_task lookup, active_task pending/running/stopping rules, active start conflict, daemon thread metadata, running status/start timestamp assignment, and stop_task no-process status/stop_event behavior."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for create_task defaults, proxy URL trimming, selected-model copying, get_task lookup, active_task status filtering, start_task conflicts/success/thread metadata, completed-active replacement, and stop_task without live process behavior are in rewrite-in-rust/fixtures/web_model_download_task_lifecycle_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_task_lifecycle_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_lifecycle"
+      - "Do not download model assets or contact network services."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_model_download_manager.ModelDownloadManager task registry and lifecycle methods as the runtime owner."
+
+  - id: web_model_download_execution_result_contract
+    title: "Web model download execution result handling"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_model_download_manager.py"
+    public_interface_policy: "Preserve _execute_download start log/progress/status behavior, fake process assignment, output reader handoff, wait/returncode mapping, completed/failed/cancelled/exception transitions, status_change payload emission, and active_task_id cleanup without real subprocess execution."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for start logs, fake Popen handoff, output-reader handoff, completed return code 0, failed nonzero return code, cancellation with timeout escalation callback, exception path, status_change payloads, and active-task cleanup are in rewrite-in-rust/fixtures/web_model_download_execution_result_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_execution_result_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_execution"
+      - "Do not spawn download_models.py or contact network services."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_model_download_manager.ModelDownloadManager._execute_download as the runtime owner."
+
+  - id: web_model_download_process_termination_contract
+    title: "Web model download process termination"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "web_model_download_manager.py"
+    public_interface_policy: "Preserve stop_task process-present behavior, POSIX process-group SIGTERM/SIGKILL targeting, Windows taskkill /T and /F command construction, ProcessLookupError handling, OSError fallback to terminate/kill, and already-exited no-op behavior."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Python/Rust parity fixtures for already-exited no-op, POSIX SIGTERM/SIGKILL, POSIX ProcessLookupError, POSIX OSError terminate/kill fallback, Windows taskkill /T and /F, Windows OSError terminate/kill fallback, and stop_task live-process success/OSError false result are in rewrite-in-rust/fixtures/web_model_download_process_termination_contract.jsonl."
+      - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_process_termination_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_termination"
+      - "Do not terminate real processes."
+      - "Run uv run pytest tests/test_web_api.py."
+    rollback: "Keep web_model_download_manager.ModelDownloadManager.stop_task and _terminate_process_tree as runtime owners."
+
+  - id: download_models_archive_layout_contract
+    title: "Model archive member validation and merge layout"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "download_models.py"
+    public_interface_policy: "Preserve safe zip member validation, POSIX and Windows escape rejection, single-top-level directory stripping, direct-file merge behavior, mixed-top-level merge behavior, and overwrite-oriented merge layout without reading model weights or contacting network services."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Use temp-zip Python fixtures and Rust member-list fixtures for safe extraction, traversal rejection, Windows absolute rejection, backslash/NUL/empty rejection, single-top-level merge, direct-file merge, mixed-top-level merge, and file-named-top-level behavior."
+      - "uv run python rewrite-in-rust/bootstrap/check_download_models_archive_layout_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_archive"
+      - "Do not contact network services, install packages, or read model weights."
+    rollback: "Keep download_models.py extract_zip/_safe_extractall/_validated_zip_member_path/_merge_tree as runtime owners."
+
+  - id: download_models_asset_catalog_contract
+    title: "Model asset catalog and marker helpers"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "download_models.py"
+    public_interface_policy: "Preserve GithubModel metadata, asset URL formatting, human-size formatting, target marker checks, qwen weight marker checks, and list-planned display data using injected asset-size and filesystem fixtures."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+    verification:
+      - "rewrite-in-rust/fixtures/download_models_asset_catalog_contract.jsonl covers static catalog metadata, asset_url, human_size, target marker checks, qwen weight marker checks, and list_planned display rows."
+      - "uv run python rewrite-in-rust/bootstrap/check_download_models_asset_catalog_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_catalog"
+      - "Use fake filesystem and injected GitHub size maps; do not call GitHub API or inspect real model weights."
+    rollback: "Keep download_models.py metadata, marker, and list_planned helpers as runtime owners."
+
+  - id: download_models_cli_selection_contract
+    title: "Model download CLI selection planning"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "download_models.py"
+    public_interface_policy: "Preserve parse_args accepted choices, --only repetition, --force, --qwen-source, --no-qwen, --list exit behavior, selected GitHub model iteration, qwen inclusion/skipping rules, failure aggregation, and final exit-code planning using fake download outcomes."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Use fake download_github_model/download_qwen/list_planned outcomes; do not stream downloads, run external CLIs, or create model directories outside temp fixtures."
+    rollback: "Keep download_models.py parse_args/main as runtime owners."
+
+  - id: download_models_effectful_fetch_contract
+    title: "Model download network and external CLI execution"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "download_models.py"
+    public_interface_policy: "Preserve GitHub API size lookup fallback, stream-download progress, download_github_model size/archive/marker failure mapping, Qwen ModelScope/Hugging Face CLI resolution/install/download flow, and cleanup of Qwen partial artifacts using mocked network and subprocess fixtures."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Mock urllib, subprocess, shutil.which, temp files, and CLI return codes; no live network, package installation, or model download in verification."
+    rollback: "Keep download_models.py network and external CLI download helpers as runtime owners."
+
+  - id: batch_cli_planning_and_index_core
+    title: "Batch CLI planning and source index core"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "scripts/slice_asr_cli.py"
+    public_interface_policy: "Preserve audio-file collection, batch iteration, slicing-method normalization, slice-bound validation, source keys, MD5 indexing, skip-existing detection, source-index load/save, and final counters."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Add fixtures for recursive/non-recursive scans, supported extensions, batch_size errors, mojibake slicing labels, source index variants, existing output detection, and skip-failed counter behavior."
+      - "Do not load ASR/RMVPE runtimes in this unit."
+    rollback: "Keep scripts/slice_asr_cli.py planning/index helpers as runtime owners."
+
+  - id: batch_cli_reslice_json_core
+    title: "Batch CLI JSON re-slicing core"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "scripts/slice_asr_cli.py"
+    public_interface_policy: "Preserve JSON timestamp parsing, source metadata shape, chunk filename formatting, invalid-range skipping, lab sidecar writing, and empty-input behavior."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Use synthetic audio arrays and temp directories for save_timestamps_json, slice_audio_from_json, save_chunks, and extract_text variants."
+      - "Do not run ASR or RMVPE inference in this unit."
+    rollback: "Keep scripts/slice_asr_cli.py JSON and chunk-writing helpers as runtime owners."
+
+  - id: midi_export_core
+    title: "MIDI note export core"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/io/note_io.py"
+    public_interface_policy: "Preserve finite-note filtering reuse, tempo meta event, onset/offset tick rounding, monotonic onset clamping, minimum one-tick duration, pitch clamping, lyric event placement, and UTF-8 MIDI writing behavior."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add golden MIDI event fixtures for sorted/overlapping notes, lyrics, invalid skipped notes, pitch clamp, short duration, and tempo."
+      - "Use mido inspection in Python parity harness; Rust stays fixture-bound before any runtime promotion."
+    rollback: "Keep inference.io.note_io._save_midi as the runtime owner."
+
+  - id: ustx_project_export_core
+    title: "USTX project export core"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/API/ustx_api.py"
+    public_interface_policy: "Preserve USTX YAML project shape, expression descriptors, note sorting/filtering, tick conversion, minimum duration, tone clamping, fallback lyric, vibrato defaults, tempo/time-signature metadata, and voice part duration."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add golden YAML fixtures for empty/invalid notes, lyrics, pitch clamp, note ordering, tempo changes, and minimum voice-part duration."
+      - "Do not invoke RMVPE inference; pitch curve input must be synthetic."
+    rollback: "Keep inference.API.ustx_api.save_ustx as the runtime owner."
+
+  - id: ustx_pitch_curve_core
+    title: "USTX pitch curve rendering from RMVPE output"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/API/ustx_api.py"
+      - "inference/API/rmvpe_api.py"
+    public_interface_policy: "Preserve pitch-point tick snapping, cents offset clipping, edge trimming, NaN skipping, note-boundary pending flush, short-gap fill, median filter, adaptive smoothing, duplicate-x replacement, and curve omission when empty."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add synthetic RmvpeResult fixtures covering empty pitch, NaNs, edge trim, duplicate ticks, gap interpolation, smoothing spikes, multi-note flush, and clipping."
+      - "Do not load or run the RMVPE model in this unit."
+    rollback: "Keep inference.API.ustx_api pitch-curve helpers as runtime owners."
+
+  - id: slice_method_and_bounds_contract
+    title: "Slicing method names and custom bounds"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/API/slicer_api.py"
+      - "scripts/slice_asr_cli.py"
+      - "application/config.py"
+    public_interface_policy: "Preserve method aliases, repaired legacy mojibake handling, keyword fallback, unsupported-method errors, min/max custom bounds validation, and CLI/API consistency."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Add fixtures for None, auto/default, smart/heuristic/grid, Chinese labels, repaired encodings, unknown labels, half-specified bounds, negative min, zero max, and min>max."
+    rollback: "Keep slicing method and bounds helpers in Python as runtime owners."
+
+  - id: slicer_segment_merge_core
+    title: "Slicer segment merge helpers"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/API/slicer_api.py"
+    public_interface_policy: "Preserve waveform concatenation axis behavior, inserted silence gap length, segment duration math, greedy short-segment merge, reverse tail merge, tiny leading/body/tail merge, and empty input behavior."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Use synthetic mono/stereo arrays for no chunks, adjacent chunks, positive gaps, overlapping offsets, leading tiny fragments, all-tiny inputs, and recursive short merges."
+    rollback: "Keep inference.API.slicer_api merge helpers as runtime owners."
+
+  - id: slicer_rms_and_default_core
+    title: "RMS and default silence slicer"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/slicer/slicer2.py"
+      - "inference/API/slicer_api.py"
+    public_interface_policy: "Preserve get_rms framing/padding behavior, Slicer constructor validation and unit conversion, mono/stereo averaging, silence-tag selection, leading/middle/trailing silence handling, and chunk offset/waveform slicing."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add synthetic waveform fixtures for short input, no silence, leading silence, middle silence at each max_sil_kept branch, trailing silence, stereo input, and invalid constructor parameters."
+    rollback: "Keep inference.slicer.slicer2.Slicer and get_rms as runtime owners."
+
+  - id: slicer_heuristic_grid_core
+    title: "Heuristic and grid slicing policies"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/API/slicer_api.py"
+    public_interface_policy: "Preserve sliding-window split windowing, RMS fallback, heuristic stage ordering, ultra-short retention, grid parameter order, scoring formula, best-parameter tie behavior, and logging-relevant decisions."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Use synthetic RMS/waveform fixtures or dependency-injected helpers for threshold cuts, local-min cuts, too-long segments, kept short segments, all-failing grid params, and tie ordering."
+      - "Do not include pitch/RMVPE smart-slicing inference in this unit."
+    rollback: "Keep heuristic_slice, grid_search_slice, and _sliding_window_split as runtime owners."
+
+  - id: slicer_pitch_override_core
+    title: "Smart slicing with supplied voiced mask"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/API/slicer_api.py"
+    public_interface_policy: "Preserve voiced-mask override indexing, longest-unvoiced-segment cut choice, RMS fallback when no unvoiced cut exists, parallel-split offset adjustment, and short/tiny merge behavior."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Use supplied boolean voiced-mask fixtures; do not call librosa.pyin or RMVPE in this unit."
+      - "Cover single long segment, multiple long segments, no unvoiced frames, boundary clipping, and global segment offsets."
+    rollback: "Keep pitch_based_slice and _pitch_based_split as runtime owners."
+
+  - id: lyric_sequence_alignment_core
+    title: "Lyric sequence alignment and highlighting"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/LyricFA/tools/sequence_aligner.py"
+    public_interface_policy: "Preserve edit-distance DP, backtrack alignment, exact-match shortcut, LCS window prefilter, overlap threshold, candidate pruning, long-input reason text, difference counts, and SmartHighlighter parenthesized output."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add fixtures for empty input/reference, exact match, substitution/delete/insert ties, long input, no overlap, approximate window match, empty alignment result, and highlighter insert/delete/substitute cases."
+    rollback: "Keep SequenceAligner and SmartHighlighter as runtime owners."
+
+  - id: zh_g2p_dictionary_core
+    title: "Chinese lyric G2P dictionary logic"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/LyricFA/tools/ZhG2p.py"
+      - "inference/LyricFA/Dicts/"
+    public_interface_policy: "Preserve token splitting, tone mark normalization, traditional-to-simplified lookup, phrase dictionary precedence, polyphonic matching windows, number conversion, include_tone behavior, and unknown token fallback."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add dictionary-backed fixtures for hanzi, digits, Latin/kana passthrough, phrase hits at each relative window, polyphonic fallback, tone stripping, and v/umlaut normalization."
+    rollback: "Keep inference.LyricFA.tools.ZhG2p as the runtime owner."
+
+  - id: ja_g2p_fallback_core
+    title: "Japanese lyric G2P fallback logic"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/LyricFA/tools/JaG2p.py"
+    public_interface_policy: "Preserve character classification, kana/romaji tables, number mapping, token splitting, kana mora splitting, long-vowel handling, fallback entry behavior, pyopenjtalk-absent path, convert_number behavior, and kana-vs-romaji output."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add fixtures that force pyopenjtalk absence and cover kana, kanji fallback, full-width digits, Latin words, contracted kana, long vowels, cl/N moras, and convert_list/split_kana outputs."
+      - "Do not require pyopenjtalk or platform-specific frontend execution in Rust parity."
+    rollback: "Keep inference.LyricFA.tools.JaG2p as the runtime owner."
+
+  - id: lyric_matching_pipeline_contract
+    title: "Lyric matching pipeline file contract"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/LyricFA/tools/lyric_matcher.py"
+      - "inference/LyricFA/tools/language_processors.py"
+    public_interface_policy: "Preserve language processor selection, clean/split/phonetic flow, lab-to-lyric name mapping, missing lyric tracking, no-match JSON output, diff-threshold behavior, and result JSON schema."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+      - product_ergonomics_reviewer
+    verification:
+      - "Add temp-file fixtures for zh/en/ja processing, unreadable lyric/lab files, missing lyric files, empty ASR content, no match, threshold-exceeding diff, and saved JSON payloads."
+    rollback: "Keep LyricMatcher and LyricMatchingPipeline as runtime owners."
+
+  - id: hfa_word_interval_core
+    title: "HubertFA word and phoneme interval utilities"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/align_word.py"
+    public_interface_policy: "Preserve Phoneme/Word validation and clamping, add/append phoneme warning behavior, overlap detection, AP interval subtraction, SP gap fill, small-gap boundary movement, language-prefix clearing, log accumulation, and check invariants."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add fixtures for invalid zero/negative intervals, out-of-bound phonemes, overlapping AP/SP intervals, leading/trailing gaps, small gap fill, language prefixes, and failed check messages."
+    rollback: "Keep inference.HubertFA.tools.align_word as the runtime owner."
+
+  - id: hfa_g2p_export_config_core
+    title: "HubertFA G2P, config, and label export helpers"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/g2p.py"
+      - "inference/HubertFA/tools/config_utils.py"
+      - "inference/HubertFA/tools/export_tool.py"
+    public_interface_policy: "Preserve phoneme/dictionary/Japanese-mora G2P output shapes, SP assertions, dictionary warnings, config file checks, TextGrid tier contents, HTK time scaling, output folder selection, and export format dispatch."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add fixtures for raw phoneme input, Japanese mora grouping, dictionary missing words, malformed dictionaries, missing config/vocab/dictionary files, TextGrid serialization, HTK labels, and combined export dispatch."
+    rollback: "Keep HubertFA G2P/config/export helpers as runtime owners."
+
+  - id: hfa_metrics_core
+    title: "HubertFA alignment metric helpers"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/metrics.py"
+    public_interface_policy: "Preserve point insertion ordering, vlabeler edit costs, edit ratios, IoU accumulation and zero-union behavior, LCS matching, boundary edit distance/ratio, weighted error penalty, and reset semantics."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add synthetic point-tier fixtures for equal/unequal lengths, insert/delete/move costs, label mismatch, empty totals, overlapping intervals, no matched pairs, and reset-after-compute behavior."
+    rollback: "Keep inference.HubertFA.tools.metrics as the runtime owner."
+
+  - id: asr_text_postprocess_contract
+    title: "ASR text post-processing and schema helpers"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/qwen3asr_dml/chinese_itn.py"
+      - "inference/qwen3asr_dml/utils.py"
+      - "inference/qwen3asr_dml/schema.py"
+      - "inference/romaji_asr/common.py"
+    public_interface_policy: "Preserve Chinese inverse text normalization, language-name normalization and validation, WAV PCM fallback loading behavior, ASR schema defaults, romaji vocab loading, CTC decode collapse, chunking, and metadata helpers that do not create ONNX sessions."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add fixtures for Chinese ranges, pure/value/fraction/percent/ratio/time/date conversions, unsupported language errors, WAV sample widths/channels/resampling, dataclass defaults, vocab blank lookup, CTC duplicate/blank collapse, logits-vs-id decode, and chunked batching."
+      - "Do not cover create_session, encoder/decoder workers, llama subprocess inference, ONNX Runtime sessions, or model weight parsing in this unit."
+    rollback: "Keep qwen3asr_dml and romaji_asr Python helpers as runtime owners."

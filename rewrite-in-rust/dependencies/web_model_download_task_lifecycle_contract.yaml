@@ -1,0 +1,53 @@
+unit: web_model_download_task_lifecycle_contract
+status: done
+capabilities:
+  task_creation_state:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.create_task"
+    rust: "fixture-backed manager state model with injected UUID and clock"
+    reason: "Task defaults, selected-model copy behavior, proxy trimming, stop-event creation, and registry insertion are deterministic once UUID and time are supplied."
+  active_task_lookup:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.get_task and active_task"
+    rust: "in-memory task registry status filtering"
+    reason: "Lookup and active-status filtering are pure manager-state behavior."
+  start_task_state:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.start_task"
+    rust: "fake thread metadata and active-task transition model"
+    reason: "Conflict detection, thread name/daemon metadata, active_task_id, status, started_at, and start hook are deterministic without running the thread target."
+  stop_task_state_without_process:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.stop_task"
+    rust: "status and stop-event state transition for tasks without live processes"
+    reason: "Missing/non-running rejection and pending/running no-process stopping behavior can be verified without OS termination."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_model_download_task_lifecycle_contract.jsonl is the durable Python/Rust parity table."
+    - "UUIDs, times, thread/event objects, selected-model mutation, and pre-existing manager tasks are explicit fixture inputs."
+    - "No fixture runs a thread target, spawns download_models.py, emits SocketIO, downloads assets, or terminates a real process."
+inventory_impact:
+  decision: confirmed
+  reason: "Record 0031 split lifecycle/termination; record 0032 confirms the task lifecycle state subset."
+hand_written_replacements:
+  - capability: "Web model-download task lifecycle state"
+    reference_sources:
+      - "web_model_download_manager.py"
+      - "tests/test_web_api.py"
+      - "docs/web-api.md"
+    reason: "A narrow Rust model over explicit manager-state fixtures is more verifiable than replacing Python threading, subprocess, SocketIO, or route runtime behavior."
+legacy_kept:
+  - capability: "Route request/response mapping"
+    reason: "Covered by web_model_download_request_catalog_contract."
+  - capability: "Command/env/output parser process planning"
+    reason: "Covered by web_model_download_process_plan_contract."
+  - capability: "_execute_download result transitions and SocketIO status delivery"
+    reason: "Reserved for web_model_download_execution_result_contract."
+  - capability: "Process-tree termination and stop_task live-process OSError handling"
+    reason: "Reserved for web_model_download_process_termination_contract."
+  - capability: "Network downloads, package installation, archive extraction, and model marker safety"
+    reason: "Reserved for download_models_asset_safety."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_task_lifecycle_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_lifecycle"
+  - "uv run pytest tests/test_web_api.py"

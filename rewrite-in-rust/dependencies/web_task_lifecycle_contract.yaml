@@ -1,0 +1,46 @@
+unit: web_task_lifecycle_contract
+status: done
+capabilities:
+  task_registry_state:
+    legacy: "web_task_manager.py::TaskManager.create_task/start_task/stop_task/get_task/list_tasks and Task"
+    rust: "new split unit web_task_registry_contract"
+    reason: "Task registry state and start/stop/list transitions can be verified without executing the pipeline body or stream redirector."
+  stream_redirection:
+    legacy: "web_stream_redirector.py::WebStreamRedirector"
+    rust: "new split unit web_stream_redirector_contract"
+    reason: "Stream write/flush/delegation behavior is independently fixtureable and should not be tied to task execution state."
+  pipeline_execution_events:
+    legacy: "web_task_manager.py::TaskManager._execute_pipeline"
+    rust: "new split unit web_pipeline_execution_events"
+    reason: "Pipeline execution event/status behavior depends on fake SocketIO, fake config builder, fake run_auto_lyric_job, and fake output files; it is broader than task registry state."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "web_task_registry_contract fixtures for created task fields, pending-only start, running-only stop, missing task lookup, list summary shape, timestamp option shape, and stop_event state."
+    - "web_stream_redirector_contract fixtures for whitespace-only writes, stripped message callbacks, callback failure swallowing, original stream writes, flush delegation, and getattr delegation."
+    - "web_pipeline_execution_events fixtures for fake pipeline completed, stop-after-run cancellation, KeyboardInterrupt cancellation, task-stop exception cancellation, failed exception, manager-error path, output file collection, stdout/stderr restoration, and SocketIO emit payloads."
+inventory_impact:
+  decision: split
+  reason: "The provisional unit mixed three separately verifiable capabilities with different dependencies and review risks: registry/thread state, stream redirection, and execution event/error handling."
+hand_written_replacements:
+  - capability: "task registry, stream redirector, and pipeline execution event state"
+    reference_sources:
+      - "web_task_manager.py"
+      - "web_stream_redirector.py"
+      - "application/pipeline.py"
+    reason: "Narrow Rust state/event models against fixtures are more verifiable than replacing Flask, SocketIO, Python threading, or model inference."
+legacy_kept:
+  - capability: "real Python threading and live SocketIO transport"
+    reason: "Fixture checks use fake executors and fake SocketIO; production threading and transport stay Python-owned before promotion."
+  - capability: "TaskManager._build_config"
+    reason: "Already split into web_pipeline_config_mapping."
+  - capability: "application pipeline job validation and model inference"
+    reason: "Application job guards are split into application_job_contract; model inference remains out of Stage 1 scope."
+  - capability: "Flask routes and persisted settings merge"
+    reason: "Those are covered by separate Stage 1 units."
+verification:
+  - "No writer work for web_task_lifecycle_contract; it is replaced by web_task_registry_contract, web_stream_redirector_contract, and web_pipeline_execution_events."
+  - "Run uv run pytest tests/test_web_api.py after each split Web lifecycle unit."

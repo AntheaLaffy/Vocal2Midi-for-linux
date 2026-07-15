@@ -1,0 +1,18 @@
+# case_id	output_lyrics	game_path	hfa_path	asr_path	cancel_checker	pipeline_result	expected_kind	expected_message	expected_details	expected_detail_labels	expected_pipeline_called
+valid_lyrics	true	exists_dir	exists_dir	exists_dir	none	ok	ok	__empty__	__empty__	__empty__	true
+valid_no_lyrics_ignores_missing_models	false	exists_dir	missing	missing	none	ok	ok	__empty__	__empty__	__empty__	true
+file_paths_are_accepted	true	exists_file	exists_file	exists_file	none	ok	ok	__empty__	__empty__	__empty__	true
+cancel_checker_false_dispatches_callable	true	exists_dir	exists_dir	exists_dir	false	ok	ok	__empty__	__empty__	__empty__	true
+missing_game	true	missing	exists_dir	exists_dir	none	ok	model_not_found	模型路径验证失败	__model_path_details__	GAME 模型目录	false
+empty_game	true	empty	exists_dir	exists_dir	none	ok	model_not_found	模型路径验证失败	__model_path_details__	GAME 模型目录	false
+missing_hfa	true	exists_dir	missing	exists_dir	none	ok	model_not_found	模型路径验证失败	__model_path_details__	HubertFA 模型目录	false
+missing_asr	true	exists_dir	exists_dir	missing	none	ok	model_not_found	模型路径验证失败	__model_path_details__	ASR 模型路径	false
+missing_game_and_hfa	true	missing	missing	exists_dir	none	ok	model_not_found	模型路径验证失败	__model_path_details__	GAME 模型目录|HubertFA 模型目录	false
+missing_hfa_and_asr	true	exists_dir	missing	missing	none	ok	model_not_found	模型路径验证失败	__model_path_details__	HubertFA 模型目录|ASR 模型路径	false
+missing_all_required	true	missing	missing	missing	none	ok	model_not_found	模型路径验证失败	__model_path_details__	GAME 模型目录|HubertFA 模型目录|ASR 模型路径	false
+missing_game_precedes_cancel	true	missing	exists_dir	exists_dir	true	ok	model_not_found	模型路径验证失败	__model_path_details__	GAME 模型目录	false
+no_lyrics_missing_hfa_and_asr	false	exists_dir	missing	missing	none	ok	ok	__empty__	__empty__	__empty__	true
+cancel_before_start	true	exists_dir	exists_dir	exists_dir	true	ok	cancelled	Pipeline was cancelled before starting.	__empty__	__empty__	false
+interrupted_pipeline	true	exists_dir	exists_dir	exists_dir	none	interrupted	cancelled	Pipeline was interrupted by user.	__empty__	__empty__	true
+vocal2midi_passthrough	true	exists_dir	exists_dir	exists_dir	none	v2m_error	vocal2midi_error	legacy failure	legacy details	__empty__	true
+generic_pipeline_wraps	true	exists_dir	exists_dir	exists_dir	none	generic	vocal2midi_error	Pipeline execution failed: boom	boom	__empty__	true

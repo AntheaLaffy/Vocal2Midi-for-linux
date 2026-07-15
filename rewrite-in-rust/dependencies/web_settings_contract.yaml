@@ -1,0 +1,50 @@
+unit: web_settings_contract
+status: done
+capabilities:
+  settings_default_shape:
+    legacy: "web_server.py::DEFAULT_SETTINGS"
+    rust: "JSON settings model in rewrite-in-rust/rust/crates/v2m-core/src/web_settings.rs"
+    reason: "The public boundary is a JSON-compatible settings object with stable top-level sections and default values."
+  settings_merge_and_load:
+    legacy: "web_server.py::_merge_settings and _load_settings_from_disk"
+    rust: "serde_json-backed narrow implementation"
+    reason: "Merge/load behavior is JSON object manipulation and file fallback, not Flask or model runtime behavior."
+  settings_update_reset_save:
+    legacy: "web_server.py::update_settings, reset_settings, _save_settings_to_disk"
+    rust: "serde_json-backed narrow implementation"
+    reason: "The behavior is known-section update, non-object rejection, reset to defaults, and pretty UTF-8 JSON payload creation."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_settings_contract.jsonl is the durable Python/Rust parity table."
+    - "Partial known-section merge and unknown top-level filtering."
+    - "Non-object persisted settings fallback to defaults."
+    - "Missing, malformed, and partial persisted settings load behavior."
+    - "PUT update success, unknown top-level ignore, non-object section rejection, and invalid JSON rejection."
+    - "Reset to defaults and persisted UTF-8 pretty JSON payload with trailing newline."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed for Web settings merge/load/save/update/reset behavior only; it does not include pipeline start config merging or filesystem picker behavior."
+hand_written_replacements:
+  - capability: "Web settings JSON merge, update, reset, and payload serialization"
+    reference_sources:
+      - "web_server.py"
+      - "docs/web-api.md"
+      - "tests/test_web_api.py"
+    reason: "A direct serde_json implementation against fixtures is smaller and more verifiable than replacing Flask routes or the full Web backend."
+legacy_kept:
+  - capability: "Flask request routing and jsonify response machinery"
+    reason: "Fixtures exercise response shape but production Flask remains the runtime owner."
+  - capability: "pipeline start merged_config assembly"
+    reason: "The settings-to-pipeline merge is caller behavior in start_pipeline and is outside this settings persistence unit."
+  - capability: "filesystem picker and output download security"
+    reason: "Those are separate planned units."
+  - capability: "model download settings validation"
+    reason: "Model download task behavior is covered by web_model_download_contract."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_settings_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_settings"
+  - "uv run pytest tests/test_web_api.py"

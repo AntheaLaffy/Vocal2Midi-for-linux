@@ -4,11 +4,26 @@
 //! rewrite workspace a small independently testable Rust surface before any
 //! business migration unit is promoted.
 
+pub mod application;
 pub mod device;
+pub mod download_models_archive;
+pub mod download_models_catalog;
 pub mod export;
 pub mod game;
 pub mod quant;
 pub mod slice_bounds;
+pub mod web_config;
+pub mod web_filesystem_picker;
+pub mod web_model_download;
+pub mod web_model_download_execution;
+pub mod web_model_download_lifecycle;
+pub mod web_model_download_process;
+pub mod web_model_download_termination;
+pub mod web_output_download;
+pub mod web_pipeline_events;
+pub mod web_settings;
+pub mod web_stream;
+pub mod web_task;
 
 /// Manifest states accepted by `rewrite-in-rust/manifest.yaml`.
 pub const STATUS_VALUES: &[&str] = &[

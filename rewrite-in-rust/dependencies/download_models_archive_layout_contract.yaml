@@ -1,0 +1,44 @@
+unit: download_models_archive_layout_contract
+status: done
+capabilities:
+  zip_member_validation:
+    legacy: "download_models.py::_validated_zip_member_path and _safe_extractall"
+    rust: "narrow member-name validator and destination layout model"
+    reason: "Safety decisions depend only on member names and normalized path rules; temp-zip Python fixtures prove legacy extraction rejects unsafe names."
+  archive_merge_layout:
+    legacy: "download_models.py::extract_zip and _merge_tree"
+    rust: "member-list merge planner that mirrors single-top-level stripping and direct/mixed merge layout"
+    reason: "The user-visible extracted target layout is deterministic from archive member names and file contents; Rust can verify layout without parsing zip bytes."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/download_models_archive_layout_contract.jsonl is the durable Python/Rust parity table."
+    - "Python checker creates temp zip archives and inspects extracted target files."
+    - "Rust tests consume explicit member-name/content fixtures and model final target layout."
+    - "No fixture contacts network services, installs packages, invokes external CLIs, or reads model weights."
+inventory_impact:
+  decision: split
+  reason: "The old download_models_asset_safety unit mixed archive safety, catalog/marker display, CLI planning, and effectful network/CLI download behavior."
+hand_written_replacements:
+  - capability: "Zip member safety and merge layout"
+    reference_sources:
+      - "download_models.py"
+      - "tests/test_web_api.py"
+      - "Python stdlib zipfile/pathlib/shutil behavior"
+    reason: "A narrow Rust path/layout model is more verifiable than adding a full archive extraction dependency before any production bridge exists."
+legacy_kept:
+  - capability: "GitHub model metadata, asset URLs, human-size formatting, marker checks, qwen_has_weights, and list display"
+    reason: "Split to download_models_asset_catalog_contract."
+  - capability: "CLI selection and main exit-code planning"
+    reason: "Split to download_models_cli_selection_contract."
+  - capability: "GitHub API calls, stream_download, download_github_model, package installation, external Qwen CLI download flow, and cleanup of partial Qwen artifacts"
+    reason: "Split to download_models_effectful_fetch_contract."
+  - capability: "Model weight or model format execution"
+    reason: "Out of scope for Stage 1 model-inference exclusions."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_download_models_archive_layout_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_archive"
+  - "uv run pytest tests/test_web_api.py -k ModelZipExtraction -q"

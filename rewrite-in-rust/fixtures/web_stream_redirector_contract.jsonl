@@ -1,0 +1,6 @@
+{"case_id":"write_non_empty","operation":"write","text":"hello world\n","callback":"record","expect":{"stream_writes":["hello world\n"],"callbacks":[["hello world","info"]],"flush_count":0}}
+{"case_id":"write_whitespace_only","operation":"write","text":" \n\t ","callback":"record","expect":{"stream_writes":[" \n\t "],"callbacks":[],"flush_count":0}}
+{"case_id":"write_callback_exception_is_swallowed","operation":"write","text":"boom\n","callback":"raise","expect":{"stream_writes":["boom\n"],"callbacks":[["boom","info"]],"callback_error_swallowed":true,"flush_count":0}}
+{"case_id":"write_without_callback","operation":"write","text":"silent","callback":"none","expect":{"stream_writes":["silent"],"callbacks":[],"flush_count":0}}
+{"case_id":"flush_delegates","operation":"flush","callback":"record","expect":{"stream_writes":[],"callbacks":[],"flush_count":1}}
+{"case_id":"getattr_delegates","operation":"getattr","attribute":"encoding","callback":"record","expect":{"attribute_value":"utf-8","stream_writes":[],"callbacks":[],"flush_count":0}}

@@ -1,0 +1,46 @@
+unit: web_model_download_process_termination_contract
+status: done
+capabilities:
+  process_tree_termination:
+    legacy: "web_model_download_manager.py::ModelDownloadManager._terminate_process_tree"
+    rust: "fixture-backed OS termination decision model"
+    reason: "The signal/taskkill/fallback decisions are deterministic once os.name, poll result, pid, force flag, and fake API outcomes are supplied."
+  stop_task_live_process:
+    legacy: "web_model_download_manager.py::ModelDownloadManager.stop_task"
+    rust: "fixture-backed live-process stop_task branch"
+    reason: "The status/stop-event update and OSError false result can be verified without terminating a real child process."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies:
+    - "web_model_download_task_lifecycle_contract"
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_model_download_process_termination_contract.jsonl is the durable Python/Rust parity table."
+    - "Fixtures inject os.name, process pid/poll result, killpg outcome, taskkill outcome, fallback exceptions, and stop_task pre-state."
+    - "No fixture starts a process, sends a signal, invokes taskkill, or downloads assets."
+inventory_impact:
+  decision: confirmed
+  reason: "Record 0034 confirms the OS process termination subset after records 0031-0033 split model-download behavior."
+hand_written_replacements:
+  - capability: "Web model-download process termination"
+    reference_sources:
+      - "web_model_download_manager.py"
+      - "tests/test_web_api.py"
+      - "docs/web-api.md"
+    reason: "A fake-OS Rust model captures the branch contract while production OS process management remains in legacy Python."
+legacy_kept:
+  - capability: "Route request/response mapping and proxy redaction helpers"
+    reason: "Covered by web_model_download_request_catalog_contract."
+  - capability: "Command/env planning and output-line parsing"
+    reason: "Covered by web_model_download_process_plan_contract."
+  - capability: "Task creation/start and no-process stop_task lifecycle state"
+    reason: "Covered by web_model_download_task_lifecycle_contract."
+  - capability: "_execute_download result transitions and SocketIO status delivery"
+    reason: "Covered by web_model_download_execution_result_contract."
+  - capability: "Network downloads, package installation, archive extraction, and model marker safety"
+    reason: "Reserved for download_models_asset_safety."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_process_termination_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_termination"
+  - "uv run pytest tests/test_web_api.py"

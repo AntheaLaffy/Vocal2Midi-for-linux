@@ -1,0 +1,58 @@
+unit: application_job_contract
+status: done
+capabilities:
+  model_path_validation:
+    legacy: "application/pipeline.py::_validate_model_paths"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/application.rs"
+    reason: "The selected boundary checks required path presence with os.path.exists semantics and does not require model loading or model-format inspection."
+  output_lyrics_model_gate:
+    legacy: "application/pipeline.py::_validate_model_paths"
+    rust: "same narrow implementation in v2m-core"
+    reason: "GAME is always required; HubertFA and ASR are required only when output_lyrics is true."
+  cancellation_before_start:
+    legacy: "application/pipeline.py::run_auto_lyric_job"
+    rust: "closure-guarded contract model in v2m-core"
+    reason: "The cancellation check is pure call ordering after path validation and before the hybrid pipeline call."
+  pipeline_error_mapping:
+    legacy: "application/pipeline.py::run_auto_lyric_job"
+    rust: "closure-guarded contract model in v2m-core"
+    reason: "InterruptedError maps to CancellationError, Vocal2MidiError passes through, and unknown exceptions are wrapped without invoking model inference."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/application_job_contract.tsv is the durable Python/Rust parity table."
+    - "Valid lyric and no-lyric model path cases, including file paths accepted by os.path.exists."
+    - "Missing and empty GAME, HubertFA, and ASR paths with Python-compatible message and detail labels."
+    - "Combined missing-path cases preserve Python detail ordering."
+    - "Invalid paths take precedence over pre-start cancellation."
+    - "No-lyrics mode ignores missing HubertFA and ASR paths."
+    - "Cancellation-before-start must not call the legacy pipeline closure."
+    - "A cancel checker returning false still dispatches the legacy pipeline."
+    - "Successful Python preflight passes exactly cfg.to_kwargs() to auto_lyric_hybrid_pipeline."
+    - "InterruptedError, Vocal2MidiError passthrough, and generic exception wrapping."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed as an application-layer guard and error-mapping contract. The hybrid inference pipeline, model loading, GUI/Web callers, and full PipelineConfig mapping remain separate units or legacy-owned."
+hand_written_replacements:
+  - capability: "application job validation and error mapping"
+    reference_sources:
+      - "application/pipeline.py"
+      - "application/config.py"
+      - "application/exceptions.py"
+    reason: "A direct Rust implementation against fixtures is smaller and more verifiable than replacing inference, GUI, Flask, ONNX Runtime, Qwen ASR, or PyQt dependencies for this guard-only boundary."
+legacy_kept:
+  - capability: "auto_lyric_hybrid_pipeline execution"
+    reason: "This unit preserves call ordering and error mapping only; model inference remains explicitly out of Stage 1 scope."
+  - capability: "PipelineConfig full field mapping and caller construction"
+    reason: "Web and GUI config construction are covered by separate planned units and existing Python callers."
+  - capability: "model directory contents, ONNX Runtime sessions, Qwen encoder/decoder, llama.cpp subprocess, GAME, HFA, RMVPE, and romaji model execution"
+    reason: "The application guard checks path existence only and must not broaden into model runtime behavior."
+  - capability: "GUI, Web, and Flask/SocketIO routing behavior"
+    reason: "Stage 1 excludes frontend surfaces and Rust Web-server replacement."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_application_job_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml application"
+  - "uv run pytest tests/test_web_api.py"

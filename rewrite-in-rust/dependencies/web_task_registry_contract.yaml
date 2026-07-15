@@ -1,0 +1,48 @@
+unit: web_task_registry_contract
+status: done
+capabilities:
+  task_creation_defaults:
+    legacy: "web_task_manager.py::TaskManager.create_task and Task"
+    rust: "narrow state model in rewrite-in-rust/rust/crates/v2m-core/src/web_task.rs"
+    reason: "Task creation is deterministic after UUID and clock injection; it does not require pipeline execution or SocketIO."
+  task_start_state:
+    legacy: "web_task_manager.py::TaskManager.start_task"
+    rust: "narrow state model with fake thread metadata"
+    reason: "The selected boundary preserves pending-only start, running status, started_at assignment, daemon thread naming, and start invocation without executing _execute_pipeline."
+  task_stop_and_listing:
+    legacy: "web_task_manager.py::TaskManager.stop_task/get_task/list_tasks"
+    rust: "narrow state model"
+    reason: "Stop and list behavior is pure task state over the registry when the event/thread are faked."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/web_task_registry_contract.jsonl is the durable Python/Rust parity table."
+    - "Task creation default fields, config/audio retention, timestamp ISO formatting, stop_event initial state, empty outputs/logs, and list summary shape."
+    - "Pending-only start behavior, started_at assignment, thread name Pipeline-<first8>, daemon flag, and fake thread start."
+    - "Missing and non-pending start failures."
+    - "Running-only stop_event behavior and missing/pending stop failures."
+    - "Multi-task list ordering plus explicit get_task hit/miss behavior."
+inventory_impact:
+  decision: confirmed
+  reason: "This is the first split from the broad web_task_lifecycle_contract unit and covers only registry/start/stop/list state."
+hand_written_replacements:
+  - capability: "Web task registry state transitions"
+    reference_sources:
+      - "web_task_manager.py"
+    reason: "A direct Rust state model against fake UUID/clock/thread fixtures is smaller and more verifiable than replacing Python threading, Flask-SocketIO, or model inference."
+legacy_kept:
+  - capability: "TaskManager._execute_pipeline"
+    reason: "Execution event behavior is split into web_pipeline_execution_events."
+  - capability: "WebStreamRedirector"
+    reason: "Stream behavior is split into web_stream_redirector_contract."
+  - capability: "real Python threading scheduler"
+    reason: "The fixture harness uses fake threads; production threading stays Python-owned before promotion."
+  - capability: "Flask/SocketIO routes and live sockets"
+    reason: "Routes and transports are outside this registry-state unit."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_web_task_registry_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_task"
+  - "uv run pytest tests/test_web_api.py"
