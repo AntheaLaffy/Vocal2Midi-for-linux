@@ -713,8 +713,8 @@ units:
 
   - id: download_models_cli_selection_contract
     title: "Model download CLI selection planning"
-    status: planned
-    inventory_status: provisional
+    status: reimplemented
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -725,13 +725,16 @@ units:
       - stage_behavior_reviewer
       - product_ergonomics_reviewer
     verification:
+      - "rewrite-in-rust/fixtures/download_models_cli_selection_contract.jsonl covers parse defaults/errors, list early exit, selected GitHub/Qwen calls, force propagation, no-qwen rules, qwen-source skip behavior, duplicate --only handling, and failure aggregation."
+      - "uv run python rewrite-in-rust/bootstrap/check_download_models_cli_selection_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_cli"
       - "Use fake download_github_model/download_qwen/list_planned outcomes; do not stream downloads, run external CLIs, or create model directories outside temp fixtures."
     rollback: "Keep download_models.py parse_args/main as runtime owners."
 
   - id: download_models_effectful_fetch_contract
     title: "Model download network and external CLI execution"
-    status: planned
-    inventory_status: provisional
+    status: reimplemented
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -743,6 +746,9 @@ units:
       - error_tracing_reviewer
       - product_ergonomics_reviewer
     verification:
+      - "rewrite-in-rust/fixtures/download_models_effectful_fetch_contract.jsonl covers GitHub asset-size API fallback/cache, stream progress, GitHub download result and stream-exception mapping, _run_cli, uv/pip install selection, CLI resolution, Qwen cleanup success/failure swallowing, provider CLI flows, and download_qwen source strategy."
+      - "uv run python rewrite-in-rust/bootstrap/check_download_models_effectful_fetch_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_effectful"
       - "Mock urllib, subprocess, shutil.which, temp files, and CLI return codes; no live network, package installation, or model download in verification."
     rollback: "Keep download_models.py network and external CLI download helpers as runtime owners."
 

@@ -1,0 +1,54 @@
+unit: download_models_effectful_fetch_contract
+status: done
+capabilities:
+  github_asset_api:
+    legacy: "download_models.py::github_api_asset_sizes"
+    rust: "mocked API response parser and cache/fallback model"
+    reason: "Release JSON parsing, integer-size filtering, and failure fallback can be verified from injected response fixtures."
+  stream_download_progress:
+    legacy: "download_models.py::stream_download"
+    rust: "chunk/progress formatter with injected chunks and content-length header"
+    reason: "Byte counting and progress output are deterministic from fixture chunks; no live network socket is required."
+  github_download_flow:
+    legacy: "download_models.py::download_github_model"
+    rust: "mocked size/stream/extract/marker state machine"
+    reason: "User-visible success and error mapping is deterministic once stream, archive extraction, marker checks, and HTTP errors are injected."
+  qwen_cli_flow:
+    legacy: "download_models.py::_run_cli, _pip_install, _resolve_cli, _cleanup_qwen_artifacts, download_qwen_modelscope, download_qwen_huggingface, download_qwen"
+    rust: "mocked process/package/cleanup/source-selection state model"
+    reason: "CLI resolution, install fallback, return-code handling, cleanup decisions, weight-marker failure, and source fallback are deterministic from injected outcomes."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/download_models_effectful_fetch_contract.jsonl is the durable Python/Rust parity table."
+    - "Python checker patches urllib, subprocess, shutil.which, stream_download, extract_zip, marker checks, package installs, CLI resolution, and Qwen weight checks."
+    - "Python checker uses temp files only for stream byte writes and cleanup of synthetic Qwen artifacts."
+    - "Python checker records legacy stream URLError/TimeoutError escape behavior and cleanup unlink-error swallowing."
+    - "Rust tests consume injected response chunks, return codes, path states, and fake CLI outcomes."
+    - "No fixture contacts network services, installs packages, extracts real model archives, invokes external CLIs, or reads model weights."
+inventory_impact:
+  decision: confirmed
+  reason: "The former mixed asset-safety unit was split; this contract covers the remaining effectful download control flow through mocked effects."
+hand_written_replacements:
+  - capability: "GitHub API fallback/cache, stream progress, GitHub download failure mapping, package/CLI planning, Qwen cleanup, Qwen CLI download, and source fallback"
+    reference_sources:
+      - "download_models.py"
+      - "rewrite-in-rust/records/0035-split-download-models-asset-safety.md"
+      - "rewrite-in-rust/records/0036-confirm-download-models-asset-catalog-boundary.md"
+      - "rewrite-in-rust/records/0037-confirm-download-models-cli-selection-boundary.md"
+    reason: "The surface is effectful in production but can be safely verified as a mocked state machine before any runtime bridge exists."
+legacy_kept:
+  - capability: "Actual network transfer, real GitHub API requests, real package installation, real external CLI execution, real archive extraction, and real model-weight inspection"
+    reason: "Out of scope for this mocked contract and for Stage 1 model-inference exclusions."
+  - capability: "Static model catalog and list display"
+    reason: "Covered separately by download_models_asset_catalog_contract."
+  - capability: "Safe archive extraction and merge layout"
+    reason: "Covered separately by download_models_archive_layout_contract."
+  - capability: "CLI selection and main exit-code planning"
+    reason: "Covered separately by download_models_cli_selection_contract."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_download_models_effectful_fetch_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_effectful"

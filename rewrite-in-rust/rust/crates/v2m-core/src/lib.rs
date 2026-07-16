@@ -8,6 +8,8 @@ pub mod application;
 pub mod device;
 pub mod download_models_archive;
 pub mod download_models_catalog;
+pub mod download_models_cli;
+pub mod download_models_effectful;
 pub mod export;
 pub mod game;
 pub mod quant;

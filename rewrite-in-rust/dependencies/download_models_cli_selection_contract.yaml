@@ -1,0 +1,43 @@
+unit: download_models_cli_selection_contract
+status: done
+capabilities:
+  argument_parsing:
+    legacy: "download_models.py::parse_args"
+    rust: "small parser for the declared flags and choices"
+    reason: "The compatibility surface is limited to accepted choices, defaults, repeated --only values, and parse-error status for invalid choices."
+  main_selection_planning:
+    legacy: "download_models.py::main with patched download/list collaborators"
+    rust: "fake-collaborator plan simulator"
+    reason: "Download selection, Qwen inclusion, list early-exit, force propagation, failure aggregation, and final exit code are deterministic from parsed args and injected outcomes."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/download_models_cli_selection_contract.jsonl is the durable Python/Rust parity table."
+    - "Python checker patches download_github_model, download_qwen, list_planned, _USE_COLOR, and EXPERIMENTS_DIR."
+    - "Rust tests consume fake outcomes and do not touch production experiments paths."
+    - "No fixture contacts network services, installs packages, extracts archives, invokes external CLIs, or reads model weights."
+inventory_impact:
+  decision: confirmed
+  reason: "The former mixed asset-safety unit was split; this contract covers only command-line selection and main orchestration with fake effectful collaborators."
+hand_written_replacements:
+  - capability: "Parser state, selected download calls, list early exit, failure aggregation, and final exit status"
+    reference_sources:
+      - "download_models.py"
+      - "rewrite-in-rust/records/0035-split-download-models-asset-safety.md"
+      - "rewrite-in-rust/records/0036-confirm-download-models-asset-catalog-boundary.md"
+    reason: "The surface is deterministic and can be modeled without porting argparse or effectful downloads."
+legacy_kept:
+  - capability: "Static model catalog, asset URLs, human-size formatting, marker checks, Qwen marker checks, and dry-run list display"
+    reason: "Covered separately by download_models_asset_catalog_contract."
+  - capability: "Safe archive extraction and merge layout"
+    reason: "Covered separately by download_models_archive_layout_contract."
+  - capability: "GitHub API calls, stream_download, download_github_model, package installation, external Qwen CLI download flow, and cleanup of partial Qwen artifacts"
+    reason: "Split to download_models_effectful_fetch_contract."
+  - capability: "Model weight or model format execution"
+    reason: "Out of scope for Stage 1 model-inference exclusions."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_download_models_cli_selection_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_cli"
