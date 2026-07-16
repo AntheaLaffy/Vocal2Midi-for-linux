@@ -4,3 +4,4 @@
 {"case_id":"write_without_callback","operation":"write","text":"silent","callback":"none","expect":{"stream_writes":["silent"],"callbacks":[],"flush_count":0}}
 {"case_id":"flush_delegates","operation":"flush","callback":"record","expect":{"stream_writes":[],"callbacks":[],"flush_count":1}}
 {"case_id":"getattr_delegates","operation":"getattr","attribute":"encoding","callback":"record","expect":{"attribute_value":"utf-8","stream_writes":[],"callbacks":[],"flush_count":0}}
+{"case_id":"getattr_delegates_non_encoding","operation":"getattr","attribute":"isatty","callback":"record","expect":{"attribute_value":"callable-isatty","stream_writes":[],"callbacks":[],"flush_count":0}}

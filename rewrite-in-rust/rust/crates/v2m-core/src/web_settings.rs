@@ -115,14 +115,7 @@ pub fn save_settings_payload(settings: &Value) -> String {
 pub fn update_settings(current: &mut Value, data: &Value) -> SettingsUpdateResponse {
     let defaults = default_settings();
     let Some(data_object) = data.as_object() else {
-        return SettingsUpdateResponse {
-            status_code: 400,
-            success: false,
-            message: None,
-            error: Some("Invalid JSON in request body".to_string()),
-            settings: None,
-            saved_payload: None,
-        };
+        return update_non_object_settings(current, data, &defaults);
     };
 
     for section in known_sections(&defaults) {
@@ -155,6 +148,71 @@ pub fn update_settings(current: &mut Value, data: &Value) -> SettingsUpdateRespo
         error: None,
         settings: Some(current.clone()),
         saved_payload: Some(saved_payload),
+    }
+}
+
+fn update_non_object_settings(
+    current: &Value,
+    data: &Value,
+    defaults: &Value,
+) -> SettingsUpdateResponse {
+    if data.is_null() {
+        return SettingsUpdateResponse {
+            status_code: 400,
+            success: false,
+            message: None,
+            error: Some("Invalid JSON in request body".to_string()),
+            settings: None,
+            saved_payload: None,
+        };
+    }
+
+    if non_object_update_would_raise(data, defaults) {
+        return SettingsUpdateResponse {
+            status_code: 500,
+            success: false,
+            message: None,
+            error: Some(format!(
+                "Failed to update settings: {}",
+                legacy_non_object_error(data)
+            )),
+            settings: None,
+            saved_payload: None,
+        };
+    }
+
+    SettingsUpdateResponse {
+        status_code: 200,
+        success: true,
+        message: Some("Settings updated successfully".to_string()),
+        error: None,
+        settings: Some(current.clone()),
+        saved_payload: Some(save_settings_payload(current)),
+    }
+}
+
+fn non_object_update_would_raise(data: &Value, defaults: &Value) -> bool {
+    let sections = known_sections(defaults);
+    match data {
+        Value::Array(items) => sections
+            .iter()
+            .any(|section| items.iter().any(|item| item.as_str() == Some(*section))),
+        Value::String(text) => sections.iter().any(|section| text.contains(section)),
+        Value::Bool(_) | Value::Number(_) => true,
+        Value::Null | Value::Object(_) => false,
+    }
+}
+
+fn legacy_non_object_error(data: &Value) -> &'static str {
+    match data {
+        Value::Array(_) => "list indices must be integers or slices, not str",
+        Value::String(_) => "string indices must be integers, not 'str'",
+        Value::Bool(_) => "argument of type 'bool' is not iterable",
+        Value::Number(number) if number.is_i64() || number.is_u64() => {
+            "argument of type 'int' is not iterable"
+        }
+        Value::Number(_) => "argument of type 'float' is not iterable",
+        Value::Null | Value::Object(_) => "Invalid JSON in request body",
     }
 }
 
@@ -309,17 +367,35 @@ mod tests {
             expected["status_code"].as_u64().unwrap() as u16
         );
         assert_eq!(response.success, expected["success"].as_bool().unwrap());
-        assert!(
-            response
-                .error
-                .as_deref()
-                .unwrap_or("")
-                .contains(expected["error_contains"].as_str().unwrap())
-        );
+        if let Some(message) = expected.get("message").and_then(Value::as_str) {
+            assert_eq!(response.message.as_deref(), Some(message));
+        }
+        if let Some(error_contains) = expected.get("error_contains").and_then(Value::as_str) {
+            assert!(
+                response
+                    .error
+                    .as_deref()
+                    .unwrap_or("")
+                    .contains(error_contains)
+            );
+        }
+        if response.success {
+            assert_subset(
+                response.settings.as_ref().unwrap(),
+                &expected_settings_subset(expected),
+            );
+        }
         assert_eq!(
             response.saved_payload.is_some(),
             expected["saved_file"].as_bool().unwrap()
         );
+        if expected
+            .get("saved_trailing_newline")
+            .and_then(Value::as_bool)
+            .unwrap_or(false)
+        {
+            assert!(response.saved_payload.as_ref().unwrap().ends_with('\n'));
+        }
     }
 
     fn check_reset(case: &Value) {

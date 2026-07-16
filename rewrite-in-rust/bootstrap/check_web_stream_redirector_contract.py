@@ -18,6 +18,7 @@ from web_stream_redirector import WebStreamRedirector  # noqa: E402
 
 class FakeStream:
     encoding = "utf-8"
+    isatty = "callable-isatty"
 
     def __init__(self):
         self.writes: list[str] = []

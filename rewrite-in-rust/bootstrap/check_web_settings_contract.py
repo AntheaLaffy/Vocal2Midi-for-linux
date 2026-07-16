@@ -128,10 +128,20 @@ def run_update_raw(case: dict[str, Any], tmp_dir: pathlib.Path) -> None:
         raise AssertionError(f"{case['case_id']}: status mismatch")
     if actual.get("success") != expected["success"]:
         raise AssertionError(f"{case['case_id']}: success mismatch")
-    if expected["error_contains"] not in actual.get("error", ""):
+    if "message" in expected and actual.get("message") != expected["message"]:
+        raise AssertionError(f"{case['case_id']}: message mismatch")
+    if "error_contains" in expected and expected["error_contains"] not in actual.get("error", ""):
         raise AssertionError(f"{case['case_id']}: error {actual.get('error')!r}")
+    if actual.get("success"):
+        assert_subset(case["case_id"], actual["settings"], expected_settings_subset(expected))
     if settings_file.is_file() != expected.get("saved_file", False):
         raise AssertionError(f"{case['case_id']}: saved_file mismatch")
+    if (
+        settings_file.is_file()
+        and expected.get("saved_trailing_newline")
+        and not settings_file.read_text(encoding="utf-8").endswith("\n")
+    ):
+        raise AssertionError(f"{case['case_id']}: saved payload lacks trailing newline")
 
 
 def run_reset(case: dict[str, Any], tmp_dir: pathlib.Path) -> None:

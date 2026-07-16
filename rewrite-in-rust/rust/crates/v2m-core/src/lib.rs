@@ -5,6 +5,8 @@
 //! business migration unit is promoted.
 
 pub mod application;
+pub mod batch_cli_planning;
+pub mod batch_cli_reslice_json;
 pub mod device;
 pub mod download_models_archive;
 pub mod download_models_catalog;

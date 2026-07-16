@@ -1,0 +1,70 @@
+unit: batch_cli_planning_and_index_core
+status: done
+capabilities:
+  audio_file_scan_and_batching:
+    legacy: "scripts/slice_asr_cli.py::collect_audio_files and batch_iter"
+    rust: "fixture-backed path list filtering, sorting, and batch grouping"
+    reason: "Directory traversal, supported suffix filtering, sorted order, and batch grouping are deterministic with temp files and explicit batch size."
+  slicing_option_normalization:
+    legacy: "scripts/slice_asr_cli.py::repair_text_candidates, normalize_slicing_method, and resolve_slice_bounds"
+    rust: "hand-written string/float validation model with encoding_rs-backed GB18030/GBK repair"
+    reason: "Chinese labels, legacy mojibake repair candidates, alias matching, keyword fallback, and slice-bound validation are pure parsing behavior."
+  source_identity:
+    legacy: "scripts/slice_asr_cli.py::safe_stem, file_md5, and source_key"
+    rust: "md-5-backed fixture-content hashing plus safe-stem key model"
+    reason: "The source key contract is deterministic from the file stem and first eight MD5 hex characters."
+  output_skip_detection:
+    legacy: "scripts/slice_asr_cli.py::has_existing_outputs and index_has_completed_output"
+    rust: "fixture-backed output tree and source-index state model"
+    reason: "Existing JSON, lab, and slice outputs can be represented with temp directories and fixture records without invoking model code."
+  source_index_persistence:
+    legacy: "scripts/slice_asr_cli.py::source_index_path, load_source_index, save_source_index, and update_source_index"
+    rust: "JSON object persistence and record-shape model"
+    reason: "The index format is plain UTF-8 JSON keyed by source MD5 with resolved source path metadata."
+  batch_loop_accounting:
+    legacy: "scripts/slice_asr_cli.py::main planning loop around file_md5, skip checks, process_one_file, update_source_index, and final counters"
+    rust: "fake process outcome planner over explicit source files and skip state"
+    reason: "Final processed chunk/lab totals and skipped-existing/skipped-failed counters can be verified by injecting MD5 failures and fake processing results."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+rust_dependencies:
+  - crate: "encoding_rs"
+    capability: "Legacy GB18030/GBK encode step before UTF-8-ignore repair for mojibake slicing labels."
+  - crate: "md-5"
+    capability: "MD5 hex digest parity for source keys and source-index matching."
+  - crate: "serde_json/preserve_order"
+    capability: "Python dict insertion-order parity when loading, updating, and pretty-saving source-index JSON."
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/batch_cli_planning_and_index_core.jsonl should be the durable Python/Rust parity table."
+    - "Fixtures should cover recursive and non-recursive scans, supported extensions with mixed case, sorted ordering, and batch_size <= 0 errors."
+    - "Fixtures should cover slicing method aliases, Chinese labels, repaired mojibake candidates, unsupported method errors, paired/unpaired slice bounds, negative min, nonpositive max, and min > max."
+    - "Fixtures should cover safe_stem, file_md5, source_key, source index missing/malformed/non-object/object files, UTF-8 save formatting, update record shape, and resolved source paths."
+    - "Fixtures should cover source-index loading of valid object files, multi-record save formatting, malformed truthy non-string output_key errors, and update record shape with caller-supplied resolved source paths."
+    - "Fixtures should cover existing-output detection through jsons/<key>.json, labs/<key>/*.lab, slices/<key>/*.wav, recursive/non-recursive output modes, stale index records, and valid index records including indexed lab/slice completion."
+    - "Fixtures should cover batch loop accounting with fake MD5 failures, fake process_one_file failures, skipped-existing files, processed chunk/lab totals, and saved source-index records."
+    - "No fixture loads audio through librosa/soundfile, writes real chunks/labs from waveforms, loads ASR/RMVPE models, runs ONNX/Qwen inference, or uses FFmpeg."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion shows the unit is viable as a deterministic planning/index seam when audio IO, model runtime, JSON re-slicing, and chunk writing are kept out."
+hand_written_replacements:
+  - capability: "Batch CLI planning, index, and skip-accounting helpers"
+    reference_sources:
+      - "scripts/slice_asr_cli.py"
+      - "rewrite-in-rust/records/0039-confirm-batch-cli-planning-index-boundary.md"
+    reason: "The covered behavior is stdlib path/string/hash/JSON logic and is more verifiable as a narrow fixture-bound Rust model than by replacing librosa, soundfile, ASR, or RMVPE dependencies."
+legacy_kept:
+  - capability: "Audio decode and chunk/lab writing"
+    reason: "load_audio, save_chunks, save_timestamps_json, and slice_audio_from_json use librosa/soundfile/audio arrays and belong to later IO-specific units or legacy runtime ownership."
+  - capability: "Slicer and model runtime execution"
+    reason: "run_slicer, process_one_file, Qwen ASR calls, RMVPE voiced-mask inference, model loading, and cache clearing are model-adjacent or inference-owned and excluded from this planning/index unit."
+  - capability: "Full argparse help/device/language validation"
+    reason: "This unit covers named planning/index behavior; full CLI parser UX and device normalization are either already covered elsewhere or remain legacy-owned until a separate unit chooses that boundary."
+  - capability: "FFmpeg PATH mutation"
+    reason: "ensure_ffmpeg_on_path affects runtime environment setup and is not required for planning/index parity."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_batch_cli_planning_and_index_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml batch_cli_planning"
+  - "Use temp files/directories and fake processing outcomes only; do not load ASR/RMVPE runtimes or decode audio."

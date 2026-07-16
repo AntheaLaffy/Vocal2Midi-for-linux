@@ -1,0 +1,60 @@
+unit: batch_cli_reslice_json_core
+status: done
+capabilities:
+  extract_text_normalization:
+    legacy: "scripts/slice_asr_cli.py::extract_text"
+    rust: "fixture-backed normalization over null, object-text, dict text/transcript, and scalar values"
+    reason: "The behavior is deterministic string extraction and fallback ordering with no audio/model dependency."
+  timestamp_json_generation:
+    legacy: "scripts/slice_asr_cli.py::save_timestamps_json"
+    rust: "hand-written JSON payload renderer over explicit chunk offsets, waveform lengths, ASR result shapes, chunk_indices, sample rate, source path, and source MD5"
+    reason: "Offset sorting, six-decimal rounding, duration calculation from waveform length/sample rate, text stripping, UTF-8 JSON formatting, and source metadata shape are pure data formatting behavior."
+  reslice_json_payload_parsing:
+    legacy: "scripts/slice_asr_cli.py::slice_audio_from_json"
+    rust: "fixture-backed JSON payload model accepting either {'chunks': [...]} objects or list payloads"
+    reason: "JSON loading, empty chunk handling, record field coercion, and propagated malformed JSON/key/value errors are deterministic without real audio decoding."
+  reslice_sample_range_planning:
+    legacy: "scripts/slice_asr_cli.py::slice_audio_from_json"
+    rust: "synthetic waveform-length planner using Python-compatible rounding and sample clipping"
+    reason: "Start/end sample calculations, max/min clipping, invalid-range skipping, return counts, and output names can be verified from waveform length and sample rate."
+  chunk_and_lab_output_plan:
+    legacy: "scripts/slice_asr_cli.py::slice_audio_from_json and save_chunks"
+    rust: "fixture-backed write-plan model for WAV file names, lab sidecar names/content, write counts, and save_chunks path list"
+    reason: "The visible path/name/sidecar contract is deterministic; actual PCM encoding remains a legacy effect."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/batch_cli_reslice_json_core.jsonl should be the durable Python/Rust parity table."
+    - "Fixtures should cover extract_text(None), objects with text attributes including empty string and text=None fallback to str(result), property errors, dict text/transcript fallback including falsy text fallback, dict missing text/transcript, and scalar fallback."
+    - "Fixtures should cover save_timestamps_json source metadata with and without source_audio/source_md5, chunk_indices reordering, offset sorting, six-decimal offset/duration rounding, stripped text, empty results still writing JSON, bad chunk index, missing waveform, sr=0 errors, and UTF-8 JSON formatting."
+    - "Fixtures should cover slice_audio_from_json missing JSON path, missing source audio path, malformed JSON, dict payload chunks, list payload chunks, missing chunks/null chunks/top-level 0 as empty, empty synthetic audio without output-dir creation, missing record keys, bad numeric coercion, invalid ranges, clipped ranges, negative offsets, and written count."
+    - "Fixtures should cover WAV filename formatting with chunk index, offset, duration, source safe stem, Python formatting widths, lab sidecar creation for truthy str(record.get('text', '')) including None/False/0/whitespace, no lab for missing text or empty string, and save_chunks path/write-plan behavior."
+    - "No fixture should call real librosa decoding, real soundfile/libsndfile encoding, ASR, RMVPE, slicer execution, ONNX Runtime, Qwen, or FFmpeg."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion shows the unit is viable when real audio codec IO is kept legacy-owned and the Rust side implements the deterministic JSON/text/path/sample-range/write-plan contract against synthetic fixtures."
+hand_written_replacements:
+  - capability: "Batch CLI JSON timestamp and synthetic re-slice planning helpers"
+    reference_sources:
+      - "scripts/slice_asr_cli.py"
+      - "third_party/sources/librosa-0.11.0"
+      - "third_party/sources/soundfile-0.14.0"
+      - "third_party/native_sources/libsndfile-1.2.2"
+      - "rewrite-in-rust/records/0040-confirm-batch-cli-reslice-json-boundary.md"
+    reason: "The covered compatibility surface is pure Python data/path/sample-index behavior. Directly replacing librosa, NumPy arrays, SoundFile/libsndfile, or FFmpeg would be broader than this unit and unnecessary for parity fixtures."
+legacy_kept:
+  - capability: "Real audio loading and resampling"
+    reason: "load_audio delegates to librosa and FFmpeg-related fallback behavior; this unit uses monkeypatched synthetic waveforms and does not own codec or resampling behavior."
+  - capability: "Real WAV/PCM encoding"
+    reason: "sf.write reaches soundfile/libsndfile/native codec behavior. Rust fixtures should model write destinations and sample slices, not encode audio files."
+  - capability: "ASR/RMVPE/slicer/model runtime behavior"
+    reason: "The unit covers saved JSON and JSON-driven chunk writing only; model execution remains excluded by Stage 1 boundaries."
+  - capability: "Full CLI parser/help and user progress text"
+    reason: "The unit may assert key skip/error strings that are part of helper behavior, but full argparse UX remains legacy-owned unless a later CLI unit chooses that boundary."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_batch_cli_reslice_json_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml batch_cli_reslice_json"
+  - "uv run python scripts/audit_vendored_sources.py"

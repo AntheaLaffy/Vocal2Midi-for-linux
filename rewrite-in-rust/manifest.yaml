@@ -388,7 +388,7 @@ units:
 
   - id: application_job_contract
     title: "Application job validation and error contract"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -406,11 +406,14 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_application_job_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml application"
       - "Run uv run pytest tests/test_web_api.py after any caller-facing change."
+      - "rewrite-in-rust/reviews/2026-07-15-application_job_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-15-application_job_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-application_job_contract-error_tracing_reviewer.md"
     rollback: "Keep application.pipeline.run_auto_lyric_job and application exceptions as the runtime owners."
 
   - id: web_pipeline_config_mapping
     title: "Web pipeline config mapping"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -429,11 +432,14 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_config"
       - "Keep quantization Web settings ignored unless a separate product contract changes that behavior."
       - "Run uv run pytest tests/test_web_api.py tests/test_quantization_caller_defaults_contract.py."
+      - "rewrite-in-rust/reviews/2026-07-15-web_pipeline_config_mapping-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_pipeline_config_mapping-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_pipeline_config_mapping-product_ergonomics_reviewer.md"
     rollback: "Keep TaskManager._build_config as the runtime owner."
 
   - id: web_task_registry_contract
     title: "Web task registry and start/stop state"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -450,11 +456,14 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_task"
       - "Do not invoke _execute_pipeline, real model inference, or real SocketIO in parity checks."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-15-web_task_registry_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_task_registry_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_task_registry_contract-error_tracing_reviewer.md"
     rollback: "Keep web_task_manager.TaskManager registry/start/stop/list methods as runtime owners."
 
   - id: web_stream_redirector_contract
     title: "Web stream redirector behavior"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -471,11 +480,14 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_stream"
       - "Do not invoke real WebSocket sockets in parity checks."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_stream_redirector_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_stream_redirector_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_stream_redirector_contract-error_tracing_reviewer.md"
     rollback: "Keep web_stream_redirector.WebStreamRedirector as the runtime owner."
 
   - id: web_pipeline_execution_events
     title: "Web pipeline execution events"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -494,11 +506,14 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_pipeline_events"
       - "Do not invoke real model inference or real Web server sockets in parity checks."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_pipeline_execution_events-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_pipeline_execution_events-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_pipeline_execution_events-error_tracing_reviewer.md"
     rollback: "Keep web_task_manager.TaskManager._execute_pipeline as the runtime owner."
 
   - id: web_settings_contract
     title: "Web settings merge and persistence"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -514,11 +529,14 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_web_settings_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_settings"
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_settings_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_settings_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_settings_contract-error_tracing_reviewer.md"
     rollback: "Keep web_server settings helpers and routes as runtime owners."
 
   - id: web_filesystem_picker_contract
     title: "Web filesystem picker contract"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -535,11 +553,15 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_web_filesystem_picker_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_filesystem_picker"
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_filesystem_picker_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_filesystem_picker_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_filesystem_picker_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_filesystem_picker_contract-product_ergonomics_reviewer.md"
     rollback: "Keep web_server filesystem picker helpers and routes as runtime owners."
 
   - id: web_output_download_security
     title: "Web output download authorization"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -557,11 +579,15 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_web_output_download_security.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_output_download"
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_output_download_security-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_output_download_security-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_output_download_security-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_output_download_security-product_ergonomics_reviewer.md"
     rollback: "Keep web_server download helpers/routes and web_task_manager task output registration as runtime owners."
 
   - id: web_model_download_request_catalog_contract
     title: "Web model download request and catalog contract"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -580,11 +606,15 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_web_model_download_request_catalog_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download"
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_request_catalog_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_request_catalog_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_request_catalog_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_request_catalog_contract-product_ergonomics_reviewer.md"
     rollback: "Keep web_server.py model download routes and web_model_download_manager.ModelDownloadManager request/catalog helpers as runtime owners."
 
   - id: web_model_download_process_plan_contract
     title: "Web model download process planning"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -603,11 +633,15 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_process"
       - "Do not spawn download_models.py or contact network services."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_plan_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_plan_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_plan_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_plan_contract-product_ergonomics_reviewer.md"
     rollback: "Keep web_model_download_manager.ModelDownloadManager process planning and output parsing as the runtime owner."
 
   - id: web_model_download_task_lifecycle_contract
     title: "Web model download task lifecycle state"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -626,11 +660,15 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_lifecycle"
       - "Do not download model assets or contact network services."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_task_lifecycle_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_task_lifecycle_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_task_lifecycle_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_task_lifecycle_contract-product_ergonomics_reviewer.md"
     rollback: "Keep web_model_download_manager.ModelDownloadManager task registry and lifecycle methods as the runtime owner."
 
   - id: web_model_download_execution_result_contract
     title: "Web model download execution result handling"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -648,11 +686,15 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_execution"
       - "Do not spawn download_models.py or contact network services."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_execution_result_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_execution_result_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_execution_result_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_execution_result_contract-product_ergonomics_reviewer.md"
     rollback: "Keep web_model_download_manager.ModelDownloadManager._execute_download as the runtime owner."
 
   - id: web_model_download_process_termination_contract
     title: "Web model download process termination"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -670,11 +712,15 @@ units:
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml web_model_download_termination"
       - "Do not terminate real processes."
       - "Run uv run pytest tests/test_web_api.py."
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_termination_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_termination_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_termination_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-web_model_download_process_termination_contract-product_ergonomics_reviewer.md"
     rollback: "Keep web_model_download_manager.ModelDownloadManager.stop_task and _terminate_process_tree as runtime owners."
 
   - id: download_models_archive_layout_contract
     title: "Model archive member validation and merge layout"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -690,11 +736,14 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_download_models_archive_layout_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_archive"
       - "Do not contact network services, install packages, or read model weights."
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_archive_layout_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_archive_layout_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_archive_layout_contract-error_tracing_reviewer-rerun.md"
     rollback: "Keep download_models.py extract_zip/_safe_extractall/_validated_zip_member_path/_merge_tree as runtime owners."
 
   - id: download_models_asset_catalog_contract
     title: "Model asset catalog and marker helpers"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -709,11 +758,13 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_download_models_asset_catalog_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_catalog"
       - "Use fake filesystem and injected GitHub size maps; do not call GitHub API or inspect real model weights."
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_asset_catalog_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_asset_catalog_contract-behavior_reviewer.md"
     rollback: "Keep download_models.py metadata, marker, and list_planned helpers as runtime owners."
 
   - id: download_models_cli_selection_contract
     title: "Model download CLI selection planning"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -729,11 +780,14 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_download_models_cli_selection_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_cli"
       - "Use fake download_github_model/download_qwen/list_planned outcomes; do not stream downloads, run external CLIs, or create model directories outside temp fixtures."
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_cli_selection_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_cli_selection_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_cli_selection_contract-product_ergonomics_reviewer.md"
     rollback: "Keep download_models.py parse_args/main as runtime owners."
 
   - id: download_models_effectful_fetch_contract
     title: "Model download network and external CLI execution"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -750,12 +804,16 @@ units:
       - "uv run python rewrite-in-rust/bootstrap/check_download_models_effectful_fetch_contract.py"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml download_models_effectful"
       - "Mock urllib, subprocess, shutil.which, temp files, and CLI return codes; no live network, package installation, or model download in verification."
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_effectful_fetch_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_effectful_fetch_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_effectful_fetch_contract-error_tracing_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-download_models_effectful_fetch_contract-product_ergonomics_reviewer.md"
     rollback: "Keep download_models.py network and external CLI download helpers as runtime owners."
 
   - id: batch_cli_planning_and_index_core
     title: "Batch CLI planning and source index core"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -766,26 +824,39 @@ units:
       - stage_behavior_reviewer
       - product_ergonomics_reviewer
     verification:
-      - "Add fixtures for recursive/non-recursive scans, supported extensions, batch_size errors, mojibake slicing labels, source index variants, existing output detection, and skip-failed counter behavior."
-      - "Do not load ASR/RMVPE runtimes in this unit."
+      - "rewrite-in-rust/fixtures/batch_cli_planning_and_index_core.jsonl should cover recursive/non-recursive scans, supported extensions, batch_size errors, mojibake slicing labels, slice-bound validation, source index variants, existing output detection, and fake batch-loop counters."
+      - "uv run python rewrite-in-rust/bootstrap/check_batch_cli_planning_and_index_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml batch_cli_planning"
+      - "Use temp files/directories and fake processing outcomes only; do not load ASR/RMVPE runtimes, decode audio, or write waveform chunks."
+      - "rewrite-in-rust/dependencies/batch_cli_planning_and_index_core.yaml"
+      - "rewrite-in-rust/bootstrap/batch_cli_planning_and_index_core.md"
+      - "rewrite-in-rust/records/0039-confirm-batch-cli-planning-index-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-16-batch_cli_planning_and_index_core-dependency_bootstrap_reviewer-final-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-batch_cli_planning_and_index_core-behavior_reviewer-final-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-batch_cli_planning_and_index_core-product_ergonomics_reviewer-rerun.md"
     rollback: "Keep scripts/slice_asr_cli.py planning/index helpers as runtime owners."
 
   - id: batch_cli_reslice_json_core
     title: "Batch CLI JSON re-slicing core"
-    status: planned
-    inventory_status: provisional
+    status: reimplemented
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
       - "scripts/slice_asr_cli.py"
-    public_interface_policy: "Preserve JSON timestamp parsing, source metadata shape, chunk filename formatting, invalid-range skipping, lab sidecar writing, and empty-input behavior."
+    public_interface_policy: "Preserve extract_text behavior, timestamp JSON generation, JSON payload parsing, source metadata shape, chunk filename formatting, sample-range clipping/skipping, lab sidecar decisions, and empty-input behavior under synthetic waveform/write fixtures."
     required_reviews:
       - dependency_bootstrap_reviewer
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Use synthetic audio arrays and temp directories for save_timestamps_json, slice_audio_from_json, save_chunks, and extract_text variants."
-      - "Do not run ASR or RMVPE inference in this unit."
+      - "rewrite-in-rust/fixtures/batch_cli_reslice_json_core.jsonl should cover extract_text variants, timestamp JSON sorting/rounding/source metadata, dict/list JSON payloads, missing source/json errors, empty chunks, empty audio, invalid ranges, filename formatting, lab sidecar decisions, and save_chunks write plans."
+      - "uv run python rewrite-in-rust/bootstrap/check_batch_cli_reslice_json_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml batch_cli_reslice_json"
+      - "Use monkeypatched load_audio and sf.write with synthetic arrays only; do not run ASR/RMVPE inference, real audio decode, or real waveform encoding."
+      - "rewrite-in-rust/dependencies/batch_cli_reslice_json_core.yaml"
+      - "rewrite-in-rust/bootstrap/batch_cli_reslice_json_core.md"
+      - "rewrite-in-rust/records/0040-confirm-batch-cli-reslice-json-boundary.md"
     rollback: "Keep scripts/slice_asr_cli.py JSON and chunk-writing helpers as runtime owners."
 
   - id: midi_export_core

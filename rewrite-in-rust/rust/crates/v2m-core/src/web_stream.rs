@@ -55,11 +55,13 @@ pub fn redirect_flush() -> StreamRedirectOutcome {
 }
 
 /// Models delegated attribute access on the underlying stream.
-pub fn redirect_getattr(attribute: &str) -> StreamRedirectOutcome {
-    let value = match attribute {
-        "encoding" => Some("utf-8".to_string()),
-        _ => None,
-    };
+pub fn redirect_getattr(
+    attribute: &str,
+    stream_attributes: &[(&str, &str)],
+) -> StreamRedirectOutcome {
+    let value = stream_attributes
+        .iter()
+        .find_map(|(name, value)| (*name == attribute).then(|| (*value).to_string()));
     StreamRedirectOutcome {
         stream_writes: Vec::new(),
         callbacks: Vec::new(),
@@ -133,7 +135,11 @@ mod tests {
             let actual = match case["operation"].as_str().unwrap() {
                 "write" => redirect_write(case["text"].as_str().unwrap(), callback_mode),
                 "flush" => redirect_flush(),
-                "getattr" => redirect_getattr(case["attribute"].as_str().unwrap()),
+                "getattr" => {
+                    let attribute = case["attribute"].as_str().unwrap();
+                    let expected_attribute = case["expect"]["attribute_value"].as_str().unwrap();
+                    redirect_getattr(attribute, &[(attribute, expected_attribute)])
+                }
                 operation => panic!("unknown operation {operation}"),
             };
 
