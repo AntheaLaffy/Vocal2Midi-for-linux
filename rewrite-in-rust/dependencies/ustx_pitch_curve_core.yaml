@@ -1,0 +1,49 @@
+unit: ustx_pitch_curve_core
+status: done
+capabilities:
+  synthetic_rmvpe_payload:
+    legacy: "inference/API/rmvpe_api.py::RmvpeResult"
+    rust: "plain Rust input struct with time_step_seconds and midi_pitch values"
+    reason: "The selected boundary consumes already-computed RMVPE midi_pitch samples; it does not need waveform input, ONNX Runtime, librosa resampling, or RMVPE model execution."
+  pitch_sample_selection:
+    legacy: "inference/API/ustx_api.py::_build_pitd_curve"
+    rust: "narrow algorithmic implementation over notes and midi_pitch samples"
+    reason: "The behavior is deterministic scalar/list processing: note sorting, note-window selection, NaN skip, edge trimming, tick snapping, cents offset clipping, and duplicate-x replacement."
+  pitch_point_post_processing:
+    legacy: "inference/API/ustx_api.py::_append_smoothed_points, _fill_short_gaps, _median_filter, _adaptive_smooth"
+    rust: "hand-written list transforms matching legacy helper order"
+    reason: "Gap fill, median filtering, and adaptive smoothing are local deterministic transforms with fixture-proven outputs."
+  curve_omission:
+    legacy: "inference/API/ustx_api.py::save_ustx"
+    rust: "return empty xs/ys when no curve points are produced"
+    reason: "Project YAML curve insertion remains a separate integration concern; this unit only determines whether pitd point vectors exist."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/ustx_pitch_curve_core.jsonl is the durable Python/Rust parity table."
+    - "Fixtures cover empty notes, empty midi_pitch, NaN skipping, edge trimming, cents clipping, duplicate tick replacement, short-gap interpolation, median/adaptive smoothing, and multi-note pending flush."
+inventory_impact:
+  decision: confirmed
+  reason: "The manifest unit boundary is valid as a deterministic pitch-curve renderer from synthetic RmvpeResult arrays. RMVPE model loading, ONNX inference, waveform preprocessing, and USTX project YAML serialization stay outside this unit."
+hand_written_replacements:
+  - capability: "USTX pitd curve point selection and smoothing"
+    reference_sources:
+      - "inference/API/ustx_api.py"
+      - "inference/API/rmvpe_api.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "The required NumPy behavior is scalar/list-level NaN handling, clipping, and array length access. A broad ndarray or ONNX replacement is unnecessary for this fixture-bound algorithm."
+legacy_kept:
+  - capability: "RMVPE model loading, ONNX Runtime provider selection, and inference execution"
+    reason: "Stage 1 excludes model execution paths; this unit consumes synthetic RmvpeResult data only."
+  - capability: "Waveform resampling, clipping, f0-to-midi interpolation, and voiced_mask calculation"
+    reason: "Those occur before RmvpeResult reaches _build_pitd_curve and remain owned by inference/API/rmvpe_api.py."
+  - capability: "USTX project YAML assembly and filesystem writes"
+    reason: "Project export without pitch curves is already handled by ustx_project_export_core; promotion wiring is deferred."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_ustx_pitch_curve_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml ustx_pitch_curve"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "uv run python scripts/audit_vendored_sources.py"

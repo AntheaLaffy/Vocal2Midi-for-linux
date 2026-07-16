@@ -838,7 +838,7 @@ units:
 
   - id: batch_cli_reslice_json_core
     title: "Batch CLI JSON re-slicing core"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -857,12 +857,15 @@ units:
       - "rewrite-in-rust/dependencies/batch_cli_reslice_json_core.yaml"
       - "rewrite-in-rust/bootstrap/batch_cli_reslice_json_core.md"
       - "rewrite-in-rust/records/0040-confirm-batch-cli-reslice-json-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-16-batch_cli_reslice_json_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-batch_cli_reslice_json_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-batch_cli_reslice_json_core-error_tracing_reviewer-final-rerun.md"
     rollback: "Keep scripts/slice_asr_cli.py JSON and chunk-writing helpers as runtime owners."
 
   - id: midi_export_core
     title: "MIDI note export core"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -874,14 +877,24 @@ units:
       - data_algorithm_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add golden MIDI event fixtures for sorted/overlapping notes, lyrics, invalid skipped notes, pitch clamp, short duration, and tempo."
+      - "rewrite-in-rust/fixtures/midi_export_core.jsonl covers sorted/overlapping notes, same-onset stable ordering, half-even tick rounding, lyrics, invalid skipped notes, pitch clamp, short duration, tempo conversion, UTF-8 lyrics, and all-invalid input."
       - "Use mido inspection in Python parity harness; Rust stays fixture-bound before any runtime promotion."
+      - "uv run python rewrite-in-rust/bootstrap/check_midi_export_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml midi_export"
+      - "rewrite-in-rust/dependencies/midi_export_core.yaml"
+      - "rewrite-in-rust/bootstrap/midi_export_core.md"
+      - "rewrite-in-rust/records/0041-confirm-midi-export-core-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-16-midi_export_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-midi_export_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-midi_export_core-data_algorithm_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-midi_export_core-error_tracing_reviewer.md"
+      - "Behavior review's low fixture follow-up was closed by adding the half_tick_same_onset_order fixture and rerunning Python/Rust MIDI checks; error-tracing follow-ups are promotion-only."
     rollback: "Keep inference.io.note_io._save_midi as the runtime owner."
 
   - id: ustx_project_export_core
     title: "USTX project export core"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -893,14 +906,25 @@ units:
       - data_algorithm_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add golden YAML fixtures for empty/invalid notes, lyrics, pitch clamp, note ordering, tempo changes, and minimum voice-part duration."
-      - "Do not invoke RMVPE inference; pitch curve input must be synthetic."
+      - "Add golden YAML fixtures for empty/invalid notes, lyrics, pitch clamp, note ordering, half-even tick conversion, tempo metadata, and minimum voice-part duration."
+      - "Use rmvpe_result=None for this unit; keep pitch curve input synthetic for ustx_pitch_curve_core."
+      - "rewrite-in-rust/fixtures/ustx_project_export_core.jsonl covers empty input, invalid skipped notes, note ordering, half-even tick conversion, minimum duration, tone clamping, fallback lyric, UTF-8 lyric, tempo metadata, and voice-part duration."
+      - "uv run python rewrite-in-rust/bootstrap/check_ustx_project_export_core.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml ustx_project"
+      - "rewrite-in-rust/dependencies/ustx_project_export_core.yaml"
+      - "rewrite-in-rust/bootstrap/ustx_project_export_core.md"
+      - "rewrite-in-rust/records/0042-confirm-ustx-project-export-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_project_export_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_project_export_core-behavior_reviewer-scalar-final-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_project_export_core-data_algorithm_reviewer-scalar-final-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_project_export_core-error_tracing_reviewer-scalar-final-rerun.md"
+      - "Review follow-ups are promotion-gate only: broaden arbitrary-scalar golden fixtures if byte-for-byte USTX YAML for all filenames/lyrics is required, and add direct TickOutOfRange diagnostic coverage before runtime promotion."
     rollback: "Keep inference.API.ustx_api.save_ustx as the runtime owner."
 
   - id: ustx_pitch_curve_core
     title: "USTX pitch curve rendering from RMVPE output"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -914,12 +938,22 @@ units:
     verification:
       - "Add synthetic RmvpeResult fixtures covering empty pitch, NaNs, edge trim, duplicate ticks, gap interpolation, smoothing spikes, multi-note flush, and clipping."
       - "Do not load or run the RMVPE model in this unit."
+      - "rewrite-in-rust/fixtures/ustx_pitch_curve_core.jsonl covers empty notes, empty midi_pitch, NaN skipping, edge trimming, cents clipping, duplicate tick replacement, short-gap interpolation, median/adaptive smoothing, and multi-note pending flush."
+      - "uv run python rewrite-in-rust/bootstrap/check_ustx_pitch_curve_core.py"
+      - "rewrite-in-rust/dependencies/ustx_pitch_curve_core.yaml"
+      - "rewrite-in-rust/bootstrap/ustx_pitch_curve_core.md"
+      - "rewrite-in-rust/records/0043-confirm-ustx-pitch-curve-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_pitch_curve_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_pitch_curve_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-16-ustx_pitch_curve_core-data_algorithm_reviewer.md"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml ustx_pitch_curve"
+      - "Review follow-ups are promotion-gate only: define Rust error mapping, decide whether Rust is called before Python _finite_notes, and add focused promotion fixtures for unsorted notes, exact half-even ties, cross-note same-x replacement, and non-finite time_step behavior."
     rollback: "Keep inference.API.ustx_api pitch-curve helpers as runtime owners."
 
   - id: slice_method_and_bounds_contract
     title: "Slicing method names and custom bounds"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -932,13 +966,23 @@ units:
       - stage_behavior_reviewer
       - product_ergonomics_reviewer
     verification:
-      - "Add fixtures for None, auto/default, smart/heuristic/grid, Chinese labels, repaired encodings, unknown labels, half-specified bounds, negative min, zero max, and min>max."
+      - "Fixtures cover None, auto/default, smart/heuristic/grid, Chinese labels, repaired encodings, unknown labels, unsupported-method Python repr quote selection, half-specified bounds, negative min, zero max, min>max, NaN, and infinity."
+      - "rewrite-in-rust/fixtures/slice_method_and_bounds_contract.jsonl covers API/CLI method normalization consistency, Chinese labels, repaired mojibake, keyword fallback, unsupported methods, empty methods, unsupported-method single-quote repr selection, CLI/API custom-bound messages, NaN, and infinity."
+      - "uv run python rewrite-in-rust/bootstrap/check_slice_method_and_bounds_contract.py"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slice_method"
+      - "rewrite-in-rust/dependencies/slice_method_and_bounds_contract.yaml"
+      - "rewrite-in-rust/bootstrap/slice_method_and_bounds_contract.md"
+      - "rewrite-in-rust/records/0044-confirm-slice-method-bounds-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-17-slice_method_and_bounds_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-slice_method_and_bounds_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-slice_method_and_bounds_contract-product_ergonomics_reviewer-rerun.md"
+      - "Initial behavior/product review follow-up was closed by adding unsupported-method single-quote repr fixture coverage and Python-compatible Rust quote selection."
     rollback: "Keep slicing method and bounds helpers in Python as runtime owners."
 
   - id: slicer_segment_merge_core
     title: "Slicer segment merge helpers"
-    status: planned
-    inventory_status: provisional
+    status: reimplemented
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -949,7 +993,13 @@ units:
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "Use synthetic mono/stereo arrays for no chunks, adjacent chunks, positive gaps, overlapping offsets, leading tiny fragments, all-tiny inputs, and recursive short merges."
+      - "rewrite-in-rust/fixtures/slicer_segment_merge_core.jsonl covers mono/stereo concat axis behavior, zero and positive silence shapes, merged duration with positive gaps, positive/overlapping/half-even/stereo segment merges, empty short/tiny inputs, forward short merge, combined-too-long skip, reverse tail merge, recursive retry behavior, leading/body/all/single tiny chunks, and stereo tiny len(waveform) behavior."
+      - "uv run python rewrite-in-rust/bootstrap/check_slicer_segment_merge_core.py"
+      - "rewrite-in-rust/dependencies/slicer_segment_merge_core.yaml"
+      - "rewrite-in-rust/bootstrap/slicer_segment_merge_core.md"
+      - "rewrite-in-rust/records/0045-confirm-slicer-segment-merge-boundary.md"
+      - "rewrite-in-rust/reviews/2026-07-17-slicer_segment_merge_core-dependency_bootstrap_reviewer.md"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slicer_segment"
     rollback: "Keep inference.API.slicer_api merge helpers as runtime owners."
 
   - id: slicer_rms_and_default_core

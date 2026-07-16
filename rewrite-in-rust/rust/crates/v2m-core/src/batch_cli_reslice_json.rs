@@ -545,50 +545,79 @@ mod tests {
             .collect()
     }
 
-    fn assert_subset(actual: &Value, expected: &Value) {
+    fn assert_subset(case_id: &str, actual: &Value, expected: &Value, path: &str) {
         match expected {
             Value::Object(expected_object) => {
-                let actual_object = actual.as_object().unwrap();
+                let actual_object = actual
+                    .as_object()
+                    .unwrap_or_else(|| panic!("{case_id}: {path} actual is not object"));
                 for (key, expected_value) in expected_object {
-                    assert_subset(actual_object.get(key).unwrap(), expected_value);
+                    let child_path = format!("{path}.{key}");
+                    let actual_value = actual_object
+                        .get(key)
+                        .unwrap_or_else(|| panic!("{case_id}: missing key {child_path}"));
+                    assert_subset(case_id, actual_value, expected_value, &child_path);
                 }
             }
             Value::Array(expected_values) => {
-                let actual_values = actual.as_array().unwrap();
-                assert_eq!(actual_values.len(), expected_values.len());
-                for (actual_value, expected_value) in actual_values.iter().zip(expected_values) {
-                    assert_subset(actual_value, expected_value);
+                let actual_values = actual
+                    .as_array()
+                    .unwrap_or_else(|| panic!("{case_id}: {path} actual is not array"));
+                assert_eq!(
+                    actual_values.len(),
+                    expected_values.len(),
+                    "{case_id}: {path} list length differs"
+                );
+                for (index, (actual_value, expected_value)) in
+                    actual_values.iter().zip(expected_values).enumerate()
+                {
+                    assert_subset(
+                        case_id,
+                        actual_value,
+                        expected_value,
+                        &format!("{path}[{index}]"),
+                    );
                 }
             }
-            _ => assert_eq!(actual, expected),
+            _ => assert_eq!(actual, expected, "{case_id}: {path} differs"),
         }
     }
 
     #[test]
     fn batch_cli_reslice_json_fixtures_match() {
         for case in load_cases() {
+            let case_id = case["case_id"].as_str().unwrap();
             match case["operation"].as_str().unwrap() {
-                "extract_text" => run_grouped(&case, run_extract_text_case),
+                "extract_text" => run_grouped(case_id, &case, run_extract_text_case),
                 "save_timestamps_json" => {
                     let actual = run_save_timestamps_json(&case);
-                    assert_subset(&actual, &case["expect"]);
+                    assert_subset(case_id, &actual, &case["expect"], "");
                 }
-                "save_timestamps_json_cases" => run_grouped(&case, run_save_timestamps_json),
+                "save_timestamps_json_cases" => {
+                    run_grouped(case_id, &case, run_save_timestamps_json)
+                }
                 "slice_audio_from_json" => {
                     let actual = run_slice_audio_from_json(&case);
-                    assert_subset(&actual, &case["expect"]);
+                    assert_subset(case_id, &actual, &case["expect"], "");
                 }
-                "slice_audio_from_json_cases" => run_grouped(&case, run_slice_audio_from_json),
-                "save_chunks_cases" => run_grouped(&case, run_save_chunks),
+                "slice_audio_from_json_cases" => {
+                    run_grouped(case_id, &case, run_slice_audio_from_json)
+                }
+                "save_chunks_cases" => run_grouped(case_id, &case, run_save_chunks),
                 other => panic!("unknown operation {other:?}"),
             }
         }
     }
 
-    fn run_grouped(case: &Value, runner: fn(&Value) -> Value) {
-        for subcase in case["cases"].as_array().unwrap() {
+    fn run_grouped(case_id: &str, case: &Value, runner: fn(&Value) -> Value) {
+        for (index, subcase) in case["cases"].as_array().unwrap().iter().enumerate() {
             let actual = runner(subcase);
-            assert_subset(&actual, &subcase["expect"]);
+            assert_subset(
+                &format!("{case_id}[{index}]"),
+                &actual,
+                &subcase["expect"],
+                "",
+            );
         }
     }
 

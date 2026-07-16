@@ -1,0 +1,49 @@
+unit: slice_method_and_bounds_contract
+status: done
+capabilities:
+  slicing_method_normalization:
+    legacy: "inference/API/slicer_api.py::normalize_slicing_method and scripts/slice_asr_cli.py::normalize_slicing_method"
+    rust: "future narrow implementation in v2m-core over string inputs"
+    reason: "Both legacy callers share the same alias table, repaired text candidates, lowercasing, keyword fallback, default None handling, and unsupported-method message."
+  cli_custom_bounds:
+    legacy: "scripts/slice_asr_cli.py::resolve_slice_bounds"
+    rust: "future narrow implementation preserving CLI-specific option names and messages"
+    reason: "CLI bounds are pure optional-float validation and conversion, with messages tied to --min-seconds/--max-seconds."
+  api_custom_bounds:
+    legacy: "inference/API/slicer_api.py::_resolve_custom_slice_bounds"
+    rust: "future narrow implementation preserving API-specific parameter names and messages"
+    reason: "API bounds use the same comparison semantics as CLI bounds but expose different error strings for min_len_sec/max_len_sec."
+  application_slice_bounds:
+    legacy: "application/config.py::validate_slice_bounds"
+    rust: "already verified by slice_bounds_validation"
+    reason: "The application 0-60 second user-facing bounds are a separate verified migration unit and should not be reimplemented here."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slice_method_and_bounds_contract.jsonl is the durable Python/Rust parity table."
+    - "Fixtures must cover None, auto/default, canonical method names, Chinese labels, repaired legacy mojibake values, keyword fallback, unsupported values, empty string, paired/missing bounds, negative min, non-positive max, min>max, NaN, and infinity."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit boundary is pure string and optional-float contract behavior shared by slicer_api and batch CLI. Heavy audio slicing, librosa, Slicer, RMVPE, ASR, SoundFile, argparse, and application 0-60 validation are kept out of this unit."
+hand_written_replacements:
+  - capability: "Slicing method and custom-bound contract normalization"
+    reference_sources:
+      - "inference/API/slicer_api.py"
+      - "scripts/slice_asr_cli.py"
+      - "application/config.py"
+    reason: "A direct Rust implementation is smaller and more verifiable than any package-level replacement; the selected behavior uses only stdlib string, encoding, optional value, float conversion, and comparison semantics."
+legacy_kept:
+  - capability: "Actual audio slicing algorithms"
+    reason: "default_slice, pitch_based_slice, heuristic_slice, grid_search_slice, segment merging, RMS, and Slicer internals are separate manifest units."
+  - capability: "RMVPE, ASR, librosa, SoundFile/libsndfile, FFmpeg, and argparse runtime behavior"
+    reason: "The selected seam does not load audio, write files, run model inference, parse CLI argv, or invoke external binaries."
+  - capability: "application.config.validate_slice_bounds"
+    reason: "The application bounds validator is already verified as slice_bounds_validation and has different 0-60 second policy."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_slice_method_and_bounds_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slice_method"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "uv run python scripts/audit_vendored_sources.py"

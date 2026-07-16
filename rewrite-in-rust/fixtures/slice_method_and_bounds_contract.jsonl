@@ -1,0 +1,43 @@
+{"case_id":"method_0","kind":"normalize_method","input":null,"api":{"ok":"default"},"cli":{"ok":"default"}}
+{"case_id":"method_1","kind":"normalize_method","input":"auto","api":{"ok":"default"},"cli":{"ok":"default"}}
+{"case_id":"method_2","kind":"normalize_method","input":"default","api":{"ok":"default"},"cli":{"ok":"default"}}
+{"case_id":"method_3","kind":"normalize_method","input":"smart","api":{"ok":"smart"},"cli":{"ok":"smart"}}
+{"case_id":"method_4","kind":"normalize_method","input":"heuristic","api":{"ok":"heuristic"},"cli":{"ok":"heuristic"}}
+{"case_id":"method_5","kind":"normalize_method","input":"grid","api":{"ok":"grid"},"cli":{"ok":"grid"}}
+{"case_id":"method_6","kind":"normalize_method","input":" 默认切片 ","api":{"ok":"default"},"cli":{"ok":"default"}}
+{"case_id":"method_7","kind":"normalize_method","input":"智能切片","api":{"ok":"smart"},"cli":{"ok":"smart"}}
+{"case_id":"method_8","kind":"normalize_method","input":"启发式切片","api":{"ok":"heuristic"},"cli":{"ok":"heuristic"}}
+{"case_id":"method_9","kind":"normalize_method","input":"网格搜索切片","api":{"ok":"grid"},"cli":{"ok":"grid"}}
+{"case_id":"method_10","kind":"normalize_method","input":"榛樿鍒囩墖","api":{"ok":"default"},"cli":{"ok":"default"}}
+{"case_id":"method_11","kind":"normalize_method","input":"鏅鸿兘鍒囩墖","api":{"ok":"smart"},"cli":{"ok":"smart"}}
+{"case_id":"method_12","kind":"normalize_method","input":"鍚彂寮忓垏鐗","api":{"ok":"heuristic"},"cli":{"ok":"heuristic"}}
+{"case_id":"method_13","kind":"normalize_method","input":"缃戞牸鎼滅储鍒囩墖","api":{"ok":"grid"},"cli":{"ok":"grid"}}
+{"case_id":"method_14","kind":"normalize_method","input":"please use smart mode","api":{"ok":"smart"},"cli":{"ok":"smart"}}
+{"case_id":"method_15","kind":"normalize_method","input":"GRID_SEARCH","api":{"ok":"grid"},"cli":{"ok":"grid"}}
+{"case_id":"method_16","kind":"normalize_method","input":"unknown","api":{"err":"ValueError","message":"Unsupported slicing method: 'unknown'. Supported values: default, smart, heuristic, grid"},"cli":{"err":"ValueError","message":"Unsupported slicing method: 'unknown'. Supported values: default, smart, heuristic, grid"}}
+{"case_id":"method_17","kind":"normalize_method","input":"","api":{"err":"ValueError","message":"Unsupported slicing method: ''. Supported values: default, smart, heuristic, grid"},"cli":{"err":"ValueError","message":"Unsupported slicing method: ''. Supported values: default, smart, heuristic, grid"}}
+{"case_id":"method_18","kind":"normalize_method","input":"can't","api":{"err":"ValueError","message":"Unsupported slicing method: \"can't\". Supported values: default, smart, heuristic, grid"},"cli":{"err":"ValueError","message":"Unsupported slicing method: \"can't\". Supported values: default, smart, heuristic, grid"}}
+{"case_id":"cli_bounds_0","kind":"cli_bounds","min":null,"max":null,"expect":{"ok":null}}
+{"case_id":"cli_bounds_1","kind":"cli_bounds","min":null,"max":10.0,"expect":{"err":"ValueError","message":"--min-seconds and --max-seconds must be provided together"}}
+{"case_id":"cli_bounds_2","kind":"cli_bounds","min":5.0,"max":null,"expect":{"err":"ValueError","message":"--min-seconds and --max-seconds must be provided together"}}
+{"case_id":"cli_bounds_3","kind":"cli_bounds","min":0.0,"max":0.1,"expect":{"ok":[0.0,0.1]}}
+{"case_id":"cli_bounds_4","kind":"cli_bounds","min":-1.0,"max":10.0,"expect":{"err":"ValueError","message":"--min-seconds must be greater than or equal to 0"}}
+{"case_id":"cli_bounds_5","kind":"cli_bounds","min":5.0,"max":0.0,"expect":{"err":"ValueError","message":"--max-seconds must be greater than 0"}}
+{"case_id":"cli_bounds_6","kind":"cli_bounds","min":5.0,"max":-1.0,"expect":{"err":"ValueError","message":"--max-seconds must be greater than 0"}}
+{"case_id":"cli_bounds_7","kind":"cli_bounds","min":10.0,"max":5.0,"expect":{"err":"ValueError","message":"--min-seconds must be less than or equal to --max-seconds"}}
+{"case_id":"cli_bounds_8","kind":"cli_bounds","min":"nan","max":10.0,"expect":{"ok":["nan",10.0]}}
+{"case_id":"cli_bounds_9","kind":"cli_bounds","min":5.0,"max":"nan","expect":{"ok":[5.0,"nan"]}}
+{"case_id":"cli_bounds_10","kind":"cli_bounds","min":"inf","max":10.0,"expect":{"err":"ValueError","message":"--min-seconds must be less than or equal to --max-seconds"}}
+{"case_id":"cli_bounds_11","kind":"cli_bounds","min":10.0,"max":"inf","expect":{"ok":[10.0,"inf"]}}
+{"case_id":"api_bounds_0","kind":"api_bounds","min":null,"max":null,"expect":{"ok":null}}
+{"case_id":"api_bounds_1","kind":"api_bounds","min":null,"max":10.0,"expect":{"err":"ValueError","message":"min_len_sec and max_len_sec must be provided together"}}
+{"case_id":"api_bounds_2","kind":"api_bounds","min":5.0,"max":null,"expect":{"err":"ValueError","message":"min_len_sec and max_len_sec must be provided together"}}
+{"case_id":"api_bounds_3","kind":"api_bounds","min":0.0,"max":0.1,"expect":{"ok":[0.0,0.1]}}
+{"case_id":"api_bounds_4","kind":"api_bounds","min":-1.0,"max":10.0,"expect":{"err":"ValueError","message":"min_len_sec must be greater than or equal to 0 seconds"}}
+{"case_id":"api_bounds_5","kind":"api_bounds","min":5.0,"max":0.0,"expect":{"err":"ValueError","message":"max_len_sec must be greater than 0 seconds"}}
+{"case_id":"api_bounds_6","kind":"api_bounds","min":5.0,"max":-1.0,"expect":{"err":"ValueError","message":"max_len_sec must be greater than 0 seconds"}}
+{"case_id":"api_bounds_7","kind":"api_bounds","min":10.0,"max":5.0,"expect":{"err":"ValueError","message":"min_len_sec must be less than or equal to max_len_sec"}}
+{"case_id":"api_bounds_8","kind":"api_bounds","min":"nan","max":10.0,"expect":{"ok":["nan",10.0]}}
+{"case_id":"api_bounds_9","kind":"api_bounds","min":5.0,"max":"nan","expect":{"ok":[5.0,"nan"]}}
+{"case_id":"api_bounds_10","kind":"api_bounds","min":"inf","max":10.0,"expect":{"err":"ValueError","message":"min_len_sec must be less than or equal to max_len_sec"}}
+{"case_id":"api_bounds_11","kind":"api_bounds","min":10.0,"max":"inf","expect":{"ok":[10.0,"inf"]}}

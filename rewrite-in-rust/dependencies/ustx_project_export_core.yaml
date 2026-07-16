@@ -1,0 +1,53 @@
+unit: ustx_project_export_core
+status: done
+capabilities:
+  finite_note_filtering:
+    legacy: "inference/API/ustx_api.py::_finite_notes"
+    rust: "narrow implementation in rewrite-in-rust/rust/crates/v2m-core/src/ustx_project.rs"
+    reason: "USTX project export only needs scalar finite checks for onset, offset, and pitch plus offset > onset filtering; it does not need NumPy array kernels."
+  tick_and_note_conversion:
+    legacy: "inference/API/ustx_api.py::_to_ticks and save_ustx"
+    rust: "hand-written Python-compatible half-even rounding and scalar clamping"
+    reason: "The selected behavior needs deterministic seconds-to-tick conversion, minimum duration, tone clamping, lyric fallback, note ordering, and voice-part duration."
+  project_shape:
+    legacy: "inference/API/ustx_api.py::save_ustx and _default_expressions"
+    rust: "narrow USTX project renderer"
+    reason: "The public output shape is a fixed OpenUtau USTX project skeleton plus note rows and empty curves when rmvpe_result is None."
+  yaml_rendering:
+    legacy: "PyYAML safe_dump(project, allow_unicode=True, sort_keys=False)"
+    rust: "fixture-bound renderer for the selected USTX project structure"
+    reason: "The selected YAML is deterministic for the fixed project tree and can be verified against golden Python output without adding broad PyYAML parity."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/ustx_project_export_core.jsonl should describe note inputs, output stem, tempo, skipped invalid count, and golden YAML text or golden YAML file paths."
+    - "Fixtures must cover empty input, invalid skipped notes, note ordering, half-even tick conversion, minimum duration, tone clamping, lyric fallback, UTF-8 lyrics, tempo metadata, and voice-part duration."
+    - "All project-core fixtures must pass rmvpe_result=None and expect curves: []."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit is confirmed for deterministic USTX project and note YAML export without pitch curves. RMVPE-derived pitd curve generation remains a separate ustx_pitch_curve_core unit."
+hand_written_replacements:
+  - capability: "USTX project YAML assembly"
+    reference_sources:
+      - "inference/API/ustx_api.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/__init__.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/representer.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/emitter.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "A narrow renderer is smaller and more verifiable than broad PyYAML/NumPy parity because save_ustx emits a fixed USTX project tree for rmvpe_result=None."
+legacy_kept:
+  - capability: "USTX pitch curve rendering from RMVPE output"
+    reason: "_build_pitd_curve depends on synthetic RmvpeResult arrays and has its own manifest unit, ustx_pitch_curve_core."
+  - capability: "RMVPE model loading and inference"
+    reason: "Stage 1 keeps ONNX/RMVPE model execution legacy-owned; project export fixtures use only synthetic notes."
+  - capability: "Production filesystem writes, parent directory creation, and runtime export routing"
+    reason: "No Python/Rust bridge is introduced before promotion; inference.API.ustx_api.save_ustx remains the production owner."
+  - capability: "General PyYAML serialization"
+    reason: "Only the selected USTX project tree and scalar/list/map output shape are in scope."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_ustx_project_export_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml ustx_project"
+  - "uv run python scripts/audit_vendored_sources.py"
