@@ -1,0 +1,45 @@
+unit: lyric_matching_file_contract_core
+status: done
+capabilities:
+  filename_mapping:
+    legacy: "inference/LyricFA/tools/lyric_matcher.py::LyricMatchingPipeline._extract_filename_without_extension and process_single_file"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_matching_file.rs"
+    reason: "The selected behavior is deterministic path basename/stem extraction plus `lab_name.rsplit('_', 1)[0]` lyric lookup."
+  pipeline_state:
+    legacy: "inference/LyricFA/tools/lyric_matcher.py::LyricMatchingPipeline.add_missing_lyric, process_single_file, compare_and_save_result, _handle_no_match, and execute counters"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_matching_file.rs"
+    reason: "The unit covers state transitions for missing lyrics, empty ASR results, no-match results, threshold-exceeded results, successful writes, and single-file execute totals."
+  json_result_schema:
+    legacy: "inference/LyricFA/tools/lyric_matcher.py::LyricMatcher.save_to_json"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_matching_file.rs"
+    reason: "The result payload is a stable three-field JSON object: raw_text, lab, and lab_without_tone."
+  diff_threshold_routing:
+    legacy: "inference/LyricFA/tools/lyric_matcher.py::LyricMatchingPipeline.compare_and_save_result"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_matching_file.rs plus verified lyric_sequence::calculate_difference_count"
+    reason: "The unit preserves the zh-vs-non-zh source/target sequence choice before applying the already verified difference counter."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/lyric_matching_file_contract_core.jsonl covers filename extraction, lab-to-lyric mapping, missing lyric de-duplication, successful lab processing with injected matcher output, empty-ASR skip, no-match JSON output, zh phonetic diff-threshold routing, non-zh text diff-threshold routing, JSON schema, and single-file execute state."
+inventory_impact:
+  decision: split
+  reason: "The original lyric_matching_pipeline_contract mixed file IO, language processors, G2P, sequence alignment, JSON persistence, counters, and printing. Splitting keeps this unit focused on file/state/JSON behavior while lyric_language_processor_contract preserves the remaining language processor flow."
+hand_written_replacements:
+  - capability: "Lyric matching file/state/JSON orchestration"
+    reference_sources:
+      - "inference/LyricFA/tools/lyric_matcher.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/lyric_sequence.rs"
+    reason: "No third-party package replacement is needed. lyric_matcher.py uses standard-library glob/json/os/dataclasses and already verified local sequence helpers."
+legacy_kept:
+  - capability: "LanguageProcessor, ProcessorFactory, Chinese/Japanese G2P, and Japanese pyopenjtalk frontend behavior"
+    reason: "These are either already verified as separate G2P helper seams or planned in lyric_language_processor_contract."
+  - capability: "SequenceAligner, SmartHighlighter, and calculate_difference_count algorithm ownership"
+    reason: "The algorithms are already verified by lyric_sequence_alignment_core; this unit only composes the public difference-count helper for threshold routing."
+  - capability: "Console display text, full directory glob ordering, model execution, GUI/Web/CLI routing, and production bridge wiring"
+    reason: "These are runtime/product surfaces outside the current independent Rust library seam."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_lyric_matching_file_contract_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml lyric_matching_file"

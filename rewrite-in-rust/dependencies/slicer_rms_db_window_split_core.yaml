@@ -1,0 +1,46 @@
+unit: slicer_rms_db_window_split_core
+status: done
+capabilities:
+  rms_db:
+    legacy: "inference/API/slicer_api.py::get_rms_db"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_window.rs::rms_db"
+    reason: "The selected behavior reuses the already verified slicer_default::get_rms center-padded RMS helper, then covers get_rms_db's channel averaging, scalar clipping at 1e-10, and log10 conversion."
+  sliding_window_split:
+    legacy: "inference/API/slicer_api.py::_sliding_window_split"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_window.rs::sliding_window_split"
+    reason: "The split policy is deterministic frame/time conversion, threshold/local-min cut selection, sample slicing, and tail handling over synthetic waveforms."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slicer_rms_db_window_split_core.jsonl covers RMS dB center padding, stereo averaging with floor clipping, no-split early return, latest threshold-safe cut selection, first-min local-min fallback, stereo channel slicing, and the legacy unbound cut_type error path."
+    - "The fixture table includes both canceling and non-canceling stereo get_rms_db cases so channel averaging is not proven only by silence-floor clipping."
+inventory_impact:
+  decision: split
+  reason: "The former slicer_heuristic_grid_core unit mixed RMS/window splitting, heuristic stage orchestration, and grid-search scoring. Splitting keeps this unit as the shared deterministic dependency for later heuristic and grid policy units."
+hand_written_replacements:
+  - capability: "librosa RMS and frame/time conversion subset"
+    reference_sources:
+      - "inference/API/slicer_api.py"
+      - "third_party/sources/librosa-0.11.0/librosa/feature/spectral.py"
+      - "third_party/sources/librosa-0.11.0/librosa/core/convert.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "Package-level librosa/numpy parity would pull in broad audio and native dependencies. The unit only needs center-padded RMS, mean/clip/log10, np.where/argmin-style selection, and frame/time scalar conversion."
+legacy_kept:
+  - capability: "Default silence Slicer"
+    reason: "Covered by slicer_rms_and_default_core and reused as a dependency by later policy units."
+  - capability: "Raw center-padded RMS framing"
+    reason: "Covered by slicer_rms_and_default_core and reused through v2m-core::slicer_default::get_rms; this unit owns only get_rms_db wrapping and sliding-window policy behavior."
+  - capability: "Segment merge helpers"
+    reason: "Covered by slicer_segment_merge_core and reused as a dependency by later policy units."
+  - capability: "Heuristic stage orchestration"
+    reason: "Split into slicer_heuristic_policy_core so it can depend on this unit and verified Slicer/merge units."
+  - capability: "Grid parameter search and score selection"
+    reason: "Split into slicer_grid_search_policy_core so parameter-order and tie behavior remain independently testable."
+  - capability: "Pitch/RMVPE smart slicing, librosa.pyin, multiprocessing, audio IO, CLI, filesystem, model, GUI, and Web behavior"
+    reason: "Out of scope for this deterministic non-inference backend unit."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_slicer_rms_db_window_split_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slicer_window"

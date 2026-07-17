@@ -1,0 +1,44 @@
+unit: slicer_pitch_override_core
+status: done
+capabilities:
+  voiced_mask_override_resampling:
+    legacy: "inference/API/slicer_api.py::get_pitch_curve"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_pitch.rs::resample_voiced_override"
+    reason: "When a supplied voiced mask and positive step are present, legacy code bypasses librosa.pyin and maps split frames to global mask indices with round-and-clip behavior."
+  pitch_based_split_policy:
+    legacy: "inference/API/slicer_api.py::_pitch_based_split"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_pitch.rs::pitch_based_split_with_override"
+    reason: "The selected split behavior is deterministic over supplied voiced flags and RMS fallback values: choose the midpoint of the first longest unvoiced run, otherwise fall back to the first RMS minimum."
+  pitch_based_slice_orchestration:
+    legacy: "inference/API/slicer_api.py::pitch_based_slice and _split_wrapper"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_pitch.rs::apply_pitch_override_policy"
+    reason: "The selected outer behavior is deterministic orchestration over pre-sliced segments, long-segment split calls with global segment offsets, local-to-global offset adjustment, sorting, and merge helper handoff."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slicer_pitch_override_core.jsonl covers supplied voiced-mask round/clip indexing, split-window voiced/RMS frame clamping, longest-unvoiced first-tie cut choice, RMS fallback when no unvoiced frame exists, short early return, split-wrapper global offset handling, no-long short merge, and tiny merge handoff."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit excludes pyin/RMVPE/model execution and focuses on supplied-mask smart-slicing policy. The remaining capabilities are tightly coupled by the public pitch_based_slice path and can be fixture-tested without native/model dependencies."
+hand_written_replacements:
+  - capability: "supplied-mask smart slicing policy"
+    reference_sources:
+      - "inference/API/slicer_api.py"
+    reason: "No package-level replacement is needed; the selected behavior is local Python control flow over fixture-backed waveform arrays, voiced masks, RMS fallback vectors, and segment dictionaries."
+legacy_kept:
+  - capability: "librosa.pyin pitch estimation and RMVPE model execution"
+    reason: "Stage 1 excludes model inference. This unit only covers supplied voiced-mask behavior, where legacy get_pitch_curve bypasses pyin."
+  - capability: "Default silence Slicer internals"
+    reason: "Covered by slicer_rms_and_default_core and invoked as a dependency."
+  - capability: "RMS-dB calculation internals"
+    reason: "Covered by slicer_rms_db_window_split_core and used only as a fallback dependency."
+  - capability: "Tiny and short segment merge internals"
+    reason: "Covered by slicer_segment_merge_core and invoked as dependencies."
+  - capability: "ProcessPoolExecutor mechanics, audio IO, CLI, filesystem, GUI, Web, and production routing"
+    reason: "Out of scope for this deterministic non-inference backend unit."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_slicer_pitch_override_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slicer_pitch"

@@ -1,0 +1,43 @@
+unit: lyric_sequence_alignment_core
+status: done
+capabilities:
+  edit_distance_alignment:
+    legacy: "inference/LyricFA/tools/sequence_aligner.py::SequenceAligner.compute_alignment, _backtrack, compute_edit_distance"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_sequence.rs"
+    reason: "The selected behavior is deterministic dynamic programming over token lists, including legacy tie order and backtracking output shape."
+  best_match_search:
+    legacy: "inference/LyricFA/tools/sequence_aligner.py::SequenceAligner.find_best_match and helpers"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_sequence.rs"
+    reason: "The selected behavior is local exact-match, LCS prefilter, overlap threshold, candidate pruning, edit-distance rescoring, reason-string, and match-list construction logic."
+  smart_highlighter:
+    legacy: "inference/LyricFA/tools/sequence_aligner.py::SmartHighlighter.highlight_differences"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_sequence.rs"
+    reason: "SmartHighlighter only composes the same aligner result with parenthesized token rendering and can share the fixture table."
+  difference_count:
+    legacy: "inference/LyricFA/tools/sequence_aligner.py::calculate_difference_count"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/lyric_sequence.rs"
+    reason: "The helper is a deterministic zip-and-length comparison used by lyric_matcher.py."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/lyric_sequence_alignment_core.jsonl covers empty input/reference, insert/delete/substitute/backtrack tie behavior, exact match, no-overlap failure, approximate first-tie match, long-input reason strings, direct scan-window tie retention, inclusive overlap threshold, duplicate overlap counts, no-candidate scan shape, 30%-or-10 pruning, zero-distance break, empty alignment result helper, return-lyrics shape, LCS/edit-distance/difference-count helpers, and SmartHighlighter empty/substitute/delete/insert/text-index cases."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion found only standard-library Python imports and one local caller. SmartHighlighter reuses SequenceAligner.compute_alignment, so splitting it would duplicate fixture coverage instead of reducing dependency risk."
+hand_written_replacements:
+  - capability: "token sequence dynamic programming and lyric match/highlight helpers"
+    reference_sources:
+      - "inference/LyricFA/tools/sequence_aligner.py"
+      - "inference/LyricFA/tools/lyric_matcher.py"
+    reason: "No package-level replacement is needed; pyproject/requirements dependencies and uv.lock contain heavy model/UI/runtime packages, but this unit imports only collections, enum, and typing from the Python standard library."
+legacy_kept:
+  - capability: "LyricMatcher file IO, language processors, Chinese/Japanese G2P, lab/json persistence, and pipeline summary printing"
+    reason: "Those behaviors live in adjacent LyricFA units and should not be pulled into this pure sequence alignment unit."
+  - capability: "Model inference, HubertFA/GAME/RMVPE execution, GUI/Web/CLI routing, and production runtime bridge wiring"
+    reason: "Out of scope for Stage 1 fixture-bound helper migration and still legacy-owned."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_lyric_sequence_alignment_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml lyric_sequence"

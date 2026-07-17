@@ -1,0 +1,40 @@
+unit: slicer_heuristic_policy_core
+status: done
+capabilities:
+  pre_slicer_configuration:
+    legacy: "inference/API/slicer_api.py::heuristic_slice"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_heuristic.rs::HeuristicConfig::pre_slicer_params"
+    reason: "The heuristic entry configures the default Slicer with caller threshold/min-silence values and fixed min_interval=200 ms and max_sil_kept=100 ms."
+  heuristic_policy_orchestration:
+    legacy: "inference/API/slicer_api.py::heuristic_slice"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_heuristic.rs::apply_heuristic_policy"
+    reason: "The selected behavior is deterministic stage orchestration over pre-sliced segments, sliding-window split outputs, offset adjustment, retention thresholds, sorting, and merge helper handoff."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slicer_heuristic_policy_core.jsonl uses fake Slicer and fake sliding-window dependencies to prove pre-slicer params, long-segment split args/offset adjustment, exact max-duration retention, sort-before-merge, tiny merge handoff, short merge handoff, and Python len(waveform) stereo duration behavior."
+inventory_impact:
+  decision: confirmed
+  reason: "After record 0047 split RMS/window and grid scoring out, heuristic_slice is a single independently verifiable policy layer that depends on verified Slicer, sliding-window, and merge helper units."
+hand_written_replacements:
+  - capability: "heuristic policy stage orchestration"
+    reference_sources:
+      - "inference/API/slicer_api.py"
+    reason: "No package-level replacement is needed; the selected behavior is local Python control flow over fixture-backed segment dictionaries."
+legacy_kept:
+  - capability: "Default silence Slicer internals"
+    reason: "Covered by slicer_rms_and_default_core and invoked as a dependency."
+  - capability: "RMS-dB and sliding-window split internals"
+    reason: "Covered by slicer_rms_db_window_split_core and invoked as a dependency."
+  - capability: "Tiny and short segment merge internals"
+    reason: "Covered by slicer_segment_merge_core and invoked as dependencies."
+  - capability: "Grid search scoring"
+    reason: "Covered by the planned slicer_grid_search_policy_core unit."
+  - capability: "Pitch/RMVPE smart slicing, librosa.pyin, multiprocessing, audio IO, CLI, filesystem, model, GUI, and Web behavior"
+    reason: "Out of scope for this deterministic non-inference backend unit."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_slicer_heuristic_policy_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slicer_heuristic"

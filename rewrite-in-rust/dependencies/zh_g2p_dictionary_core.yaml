@@ -1,0 +1,42 @@
+unit: zh_g2p_dictionary_core
+status: done
+capabilities:
+  token_splitting:
+    legacy: "inference/LyricFA/tools/ZhG2p.py::split_string and ZhG2p.split_string_no_regex"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/zh_g2p.rs"
+    reason: "The selected behavior is deterministic Unicode range and ASCII/special-letter tokenization used by Chinese and English lyric processors."
+  tone_normalization:
+    legacy: "inference/LyricFA/tools/ZhG2p.py::tone_to_normal"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/zh_g2p.rs"
+    reason: "Tone mark and umlaut normalization is a fixed table and can be implemented directly against fixtures."
+  dictionary_conversion:
+    legacy: "inference/LyricFA/tools/ZhG2p.py::ZhG2p.convert and convert_list"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/zh_g2p.rs"
+    reason: "The selected behavior is local dictionary lookup, traditional-to-simplified mapping, number conversion, phrase-window precedence, tone stripping, and original-token reset."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/zh_g2p_dictionary_core.jsonl injects small dictionaries to cover tone/v normalization, split_string and split_string_no_regex, hanzi conversion, Latin/kana/unknown passthrough, traditional-to-simplified lookup, ASCII digit conversion, include_tone behavior, polyphonic fallback, direct length-4 phrase precedence, previous-current phrase replacement, previous-current-with-next phrase replacement, previous-current-next phrase replacement, and convert(text) no-regex splitting."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion found no third-party package dependency in ZhG2p.py. The original unit remains independently verifiable if Rust accepts dictionary maps as input and production dictionary file loading stays legacy-owned."
+hand_written_replacements:
+  - capability: "Chinese dictionary-backed G2P control flow"
+    reference_sources:
+      - "inference/LyricFA/tools/ZhG2p.py"
+      - "inference/LyricFA/Dicts/mandarin/*.txt"
+      - "inference/LyricFA/Dicts/cantonese/*.txt"
+      - "inference/LyricFA/tools/language_processors.py"
+      - "inference/API/lfa_api.py"
+    reason: "No direct crate replacement is needed. pyproject, requirements, and uv.lock include model/UI/runtime packages and optional Japanese pyopenjtalk, but ZhG2p.py imports only os and reads project dictionary text files."
+legacy_kept:
+  - capability: "Dictionary file IO and bundled full dictionary data ownership"
+    reason: "The Rust seam is an independent library over injected maps. Python remains responsible for loading Dicts/mandarin and Dicts/cantonese files until a promotion record defines packaging and payload validation."
+  - capability: "LanguageProcessor, LyricMatcher, lfa_api file/lab/json orchestration, Japanese G2P, model execution, GUI/Web/CLI routing, and production bridge wiring"
+    reason: "These are adjacent units or runtime surfaces outside this deterministic dictionary-conversion helper."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_zh_g2p_dictionary_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml zh_g2p"

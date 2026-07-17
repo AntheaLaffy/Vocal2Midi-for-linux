@@ -1,0 +1,43 @@
+unit: ja_g2p_fallback_core
+status: done
+capabilities:
+  character_classification:
+    legacy: "inference/LyricFA/tools/JaG2p.py::is_letter/is_digit/is_japanese_char helpers"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/ja_g2p.rs"
+    reason: "The fallback path depends on deterministic Unicode range checks, Python str.isdigit() membership, ASCII letter/special-letter grouping, Japanese symbol recognition, and kana/small-kana classification."
+  token_splitting:
+    legacy: "inference/LyricFA/tools/JaG2p.py::JaG2p.split_input_string_no_regex and _split_japanese_segment"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/ja_g2p.rs"
+    reason: "The selected behavior is local tokenizer control flow over ASCII words, numeric-like runs, Japanese-character runs, kana contraction pairs, and long-vowel attachment."
+  fallback_conversion:
+    legacy: "inference/LyricFA/tools/JaG2p.py::JaG2p.convert, convert_list, split_string_no_regex, and split_kana_no_regex when pyopenjtalk is absent"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/ja_g2p.rs"
+    reason: "The Linux-compatible public fallback is deterministic table lookup, number mapping, recursive kana/kanji token handling, long-vowel expansion, romaji mora output, and kana mora output."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/ja_g2p_fallback_core.jsonl forces pyopenjtalk absence and covers helper classification, whitespace normalization, input splitting, Japanese segment splitting, kana-to-mora tables, ASCII/full-width/〇 number conversion and non-conversion, unsupported Unicode digit fallback, Latin passthrough, kanji fallback, contracted kana, long vowels, cl/N long-vowel skipping, and romaji-vs-kana public outputs."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion found that JaG2p.py imports optional pyopenjtalk, but pyopenjtalk is platform-markered for Windows and absent from the Linux uv environment. The manifest unit remains independently verifiable when scoped to the pyopenjtalk-absent fallback path and production frontend execution stays legacy-owned."
+hand_written_replacements:
+  - capability: "Japanese fallback G2P table and tokenizer behavior"
+    reference_sources:
+      - "inference/LyricFA/tools/JaG2p.py"
+      - "inference/LyricFA/tools/language_processors.py"
+      - "inference/API/lfa_api.py"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "uv.lock"
+    reason: "A direct OpenJTalk replacement is broader than this unit and unnecessary for the Linux fallback seam. The selected behavior is a narrow deterministic table/string implementation."
+legacy_kept:
+  - capability: "pyopenjtalk frontend analysis when the optional dependency is available"
+    reason: "OpenJTalk frontend execution is platform-specific and not required for the Linux fallback parity surface. It remains in Python until a separate promotion record defines package/runtime ownership and fallback behavior."
+  - capability: "LanguageProcessor, LyricMatcher, lfa_api file/lab/json orchestration, ASR phoneme conversion, model execution, GUI/Web/CLI routing, and production bridge wiring"
+    reason: "These are adjacent runtime surfaces outside this deterministic fallback helper."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_ja_g2p_fallback_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml ja_g2p"

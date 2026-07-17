@@ -1,0 +1,36 @@
+unit: slicer_grid_search_policy_core
+status: done
+capabilities:
+  grid_parameter_iteration:
+    legacy: "inference/API/slicer_api.py::grid_search_slice"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_grid.rs::GridSearchConfig::parameter_grid"
+    reason: "The grid unit owns the deterministic threshold/min_length product order and Slicer construction arguments, not the internals of Slicer slicing."
+  grid_score_selection:
+    legacy: "inference/API/slicer_api.py::grid_search_slice"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_grid.rs::apply_grid_search_policy"
+    reason: "The selected behavior is deterministic policy over dependency-provided Slicer outputs: skip errors, skip empty outputs, score short/long/count penalties, and update the best result only on a strict score improvement."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slicer_grid_search_policy_core.jsonl uses a fake Slicer to prove parameter order, constructor arguments, constructor/slice exception skipping, empty-output skipping, scoring exception skipping, short/long/count scoring, strict tie retention, all-failing empty output, and legacy len() duration behavior."
+inventory_impact:
+  decision: confirmed
+  reason: "After record 0047 split RMS/window and heuristic orchestration out, grid_search_slice is a single independently verifiable policy layer over default Slicer outputs."
+hand_written_replacements:
+  - capability: "grid search parameter and scoring policy"
+    reference_sources:
+      - "inference/API/slicer_api.py"
+    reason: "No package-level replacement is needed; the selected behavior is local Python control flow over fixture-backed segment dictionaries."
+legacy_kept:
+  - capability: "Default silence Slicer internals and RMS behavior"
+    reason: "Covered by slicer_rms_and_default_core and invoked as a dependency."
+  - capability: "Heuristic sliding-window splitting"
+    reason: "Covered by slicer_heuristic_policy_core and slicer_rms_db_window_split_core."
+  - capability: "Pitch/RMVPE smart slicing, librosa.pyin, multiprocessing, audio IO, CLI, filesystem, model, GUI, and Web behavior"
+    reason: "Out of scope for this deterministic non-inference backend unit."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_slicer_grid_search_policy_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slicer_grid"

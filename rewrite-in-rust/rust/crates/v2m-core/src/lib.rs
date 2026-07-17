@@ -14,11 +14,19 @@ pub mod download_models_cli;
 pub mod download_models_effectful;
 pub mod export;
 pub mod game;
+pub mod ja_g2p;
+pub mod lyric_matching_file;
+pub mod lyric_sequence;
 pub mod midi_export;
 pub mod quant;
 pub mod slice_bounds;
 pub mod slice_method;
+pub mod slicer_default;
+pub mod slicer_grid;
+pub mod slicer_heuristic;
+pub mod slicer_pitch;
 pub mod slicer_segment;
+pub mod slicer_window;
 pub mod ustx_pitch_curve;
 pub mod ustx_project;
 pub mod web_config;
@@ -33,6 +41,7 @@ pub mod web_pipeline_events;
 pub mod web_settings;
 pub mod web_stream;
 pub mod web_task;
+pub mod zh_g2p;
 
 /// Manifest states accepted by `rewrite-in-rust/manifest.yaml`.
 pub const STATUS_VALUES: &[&str] = &[

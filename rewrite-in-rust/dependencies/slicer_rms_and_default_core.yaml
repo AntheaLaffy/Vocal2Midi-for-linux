@@ -1,0 +1,46 @@
+unit: slicer_rms_and_default_core
+status: done
+capabilities:
+  rms_framing_and_padding:
+    legacy: "inference/slicer/slicer2.py::get_rms"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_default.rs::get_rms"
+    reason: "The checked behavior is deterministic numeric framing copied from librosa and only needs NumPy-like padding, windowing, and scalar math."
+  slicer_constructor_and_unit_conversion:
+    legacy: "inference/slicer/slicer2.py::Slicer.__init__"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_default.rs::Slicer::new"
+    reason: "Constructor checks and conversions are scalar comparisons, Python round behavior, and threshold conversion."
+  default_silence_state_machine:
+    legacy: "inference/slicer/slicer2.py::Slicer.slice and inference/API/slicer_api.py::default_slice"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/slicer_default.rs::Slicer::slice"
+    reason: "Default slicing depends on RMS frames, silence-tag selection, mono/stereo averaging, and sample slicing, not on model inference or filesystem effects."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/slicer_rms_and_default_core.jsonl is the durable legacy fixture table."
+    - "Fixtures cover RMS center padding/hop behavior, reflect padding, constructor conversion, constructor errors, direct default_slice caller defaults, short input, no silence, leading/middle/trailing silence, trailing EOF clipping, all three middle-silence max_sil_kept branches, and stereo averaging plus channel slicing."
+inventory_impact:
+  decision: confirmed
+  reason: "The boundary is pure RMS/default silence slicing. Heuristic/grid splitting, pitch/RMVPE smart slicing, audio IO, multiprocessing, CLI parsing, and filesystem behavior remain separate units or legacy-owned capabilities."
+hand_written_replacements:
+  - capability: "RMS framing and default silence slicing"
+    reference_sources:
+      - "inference/slicer/slicer2.py"
+      - "inference/API/slicer_api.py"
+      - "third_party/sources/numpy-1.26.4"
+      - "third_party/sources/librosa-0.11.0"
+    reason: "The project already carries a local get_rms copy and Slicer state machine. A narrow Rust implementation is smaller and more verifiable than package-level librosa/numpy parity."
+legacy_kept:
+  - capability: "Heuristic and grid slicing policies"
+    reason: "get_rms_db and _sliding_window_split are covered by slicer_rms_db_window_split_core; heuristic_slice and grid_search_slice are split into later policy units."
+  - capability: "Pitch/RMVPE smart slicing"
+    reason: "get_pitch_curve, _pitch_based_split, pitch_based_slice, ProcessPoolExecutor behavior, and RMVPE voiced-mask policy are covered by slicer_pitch_override_core or remain model-owned."
+  - capability: "Audio IO, SoundFile/libsndfile, FFmpeg, CLI parsing, multiprocessing, and filesystem behavior"
+    reason: "This unit uses synthetic arrays and does not load audio, write chunks, spawn processes, parse argv, or touch paths."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_slicer_rms_and_default_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml slicer_default"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "uv run python scripts/audit_vendored_sources.py"
