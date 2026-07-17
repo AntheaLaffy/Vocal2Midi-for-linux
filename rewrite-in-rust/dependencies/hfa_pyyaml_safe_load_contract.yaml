@@ -1,0 +1,63 @@
+unit: hfa_pyyaml_safe_load_contract
+status: planned
+capabilities:
+  utf8_file_loading:
+    legacy: "inference/HubertFA/tools/config_utils.py::load_yaml UTF-8 text open"
+    rust: "unselected"
+    reason: "File, directory, permission, and decode errors must compose with parser errors and retain Python path/error projections."
+  yaml_1_1_resolution:
+    legacy: "PyYAML 6.0.3 SafeLoader Resolver"
+    rust: "unselected parser/event crate plus PyYAML-compatible resolver adapter"
+    reason: "PyYAML resolves yes/on booleans, 077 octal, sexagesimal numbers, timestamps, merge keys, and other YAML 1.1 forms that candidate high-level Values resolve differently; lower-layer crate reuse remains valid if the adapter owns these deltas."
+  safe_python_value_construction:
+    legacy: "PyYAML 6.0.3 SafeConstructor"
+    rust: "unselected tagged compatibility value model over a crate or hand-written event source"
+    reason: "The contract includes bytes, sets, ordered mappings/pairs, dates, datetimes, duplicate replacement, aliases/merge behavior, and safe rejection of unsupported tags; only the Python-specific construction layer must be custom."
+  document_and_tag_errors:
+    legacy: "PyYAML Composer/SafeConstructor single-document and tag errors"
+    rust: "unselected parser/source-mark substrate plus Python error projection adapter"
+    reason: "Custom tags and multiple documents are rejected with marked Python errors; accepting or differently projecting them is a behavior change even if syntax scanning is delegated to a Rust crate."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+  rust_module: "unselected"
+  public_payload: "load UTF-8 path -> tagged PyYAML-safe value or structured file/decode/scanner/parser/composer/constructor error"
+  error_mapping: "Must retain path, operation, marks, problem/context text, Python exception class/message, and no unsafe/custom object construction."
+fixtures:
+  required:
+    - "Build a canonical tagged JSON projection for null/bool/int/float/string/list/mapping plus date/datetime/bytes/set/omap/pairs so Python and Rust can share golden data without erasing type distinctions."
+    - "Cover yes/on, true/false, binary/octal/hex/decimal/sexagesimal integers, PyYAML float resolver forms including 1e3 behavior, dates/datetimes/timezones, !!binary, !!set, !!omap, !!pairs, aliases, merge precedence, duplicate last-wins, custom-tag rejection, multi-document rejection, empty input, invalid syntax, UTF-8 decode, and filesystem errors."
+inventory_impact:
+  decision: confirmed
+  reason: "Full safe_load remains a real planned unit after the split, but it is not writer-ready until a compatible parser/value/error strategy and executable tagged fixtures exist."
+crate_reuse:
+  candidates:
+    - crate: "rust-yaml 1.1.0"
+      covered_capabilities:
+        - "safe Rust YAML scanning/parsing surface with public parser events and YAML 1.1 directive support"
+        - "lower-layer syntax/token/event handling that may be reusable before PyYAML value construction"
+      gaps:
+        - "PyYAML 6.0.3 YAML 1.1 implicit resolver details including octal, sexagesimal, float, date, and timestamp behavior"
+        - "SafeConstructor Python value shapes for bytes, set, omap, pairs, merge precedence, duplicate handling, and custom-tag rejection"
+        - "single-document enforcement and Python exception/mark projection"
+      adapter_plan: "Evaluate rust-yaml as a parser/event substrate, then implement PyYAML resolver, constructor, duplicate/merge, and error projection against vendored PyYAML source and fixtures."
+      decision: defer
+    - crate: "serde_yaml_ng 0.10.0"
+      covered_capabilities:
+        - "serde-oriented YAML 1.1 parsing and value deserialization"
+      gaps:
+        - "High-level Value behavior differs from PyYAML on resolver, merge, duplicate, tag, and Python value contracts"
+        - "Depends on unsafe-libyaml, so it requires explicit review if chosen as a lower-layer parser"
+      adapter_plan: "Do not use as a direct Value replacement; reconsider only if lower-layer access or libyaml compatibility meaningfully reduces the adapter surface versus rust-yaml."
+      decision: defer
+hand_written_replacements: []
+legacy_kept:
+  - capability: "Complete PyYAML 6.0.3 SafeLoader ownership"
+    reason: "serde_yaml_ng 0.10.0 and rust-yaml 1.1.0 both fail the authoritative high-level compatibility matrix; no narrower validator or direct crate Value may be promoted as full YAML parity without a proven PyYAML compatibility adapter."
+  - capability: "Production config loading"
+    reason: "No bridge, payload model, parser dependency, or rollback promotion decision exists."
+verification:
+  - "uv run python -c \"import yaml; assert yaml.__version__ == '6.0.3'\""
+  - "uv run python -m py_compile inference/HubertFA/tools/config_utils.py"
+  - "uv run python scripts/audit_vendored_sources.py"

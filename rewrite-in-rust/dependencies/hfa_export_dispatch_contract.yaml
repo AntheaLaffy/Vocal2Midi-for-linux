@@ -1,0 +1,43 @@
+unit: hfa_export_dispatch_contract
+status: planned
+capabilities:
+  exporter_membership_dispatch:
+    legacy: "inference/HubertFA/tools/export_tool.py::Exporter.export"
+    rust: "planned injected-sink dispatch contract"
+    reason: "Membership checks are case-sensitive and container-polymorphic, call TextGrid before HTK regardless of input order, ignore unknowns/duplicates, and raise naturally for None."
+  caller_defaults_and_status:
+    legacy: "inference/HubertFA/tools/infer_base.py::InferenceBase.export"
+    rust: "planned wrapper policy composing verified HTK/TextGrid planners"
+    reason: "None defaults to ['textgrid']; explicit empty does not, and the final status print occurs after downstream completion."
+  api_cli_routing_context:
+    legacy: "inference/HubertFA/onnx_infer.py and inference/API/hfa_api.py"
+    rust: "kept-legacy caller evidence only"
+    reason: "CLI lowercases a choice and hfa_api requests textgrid for artifact copying; they establish reachable format shapes without joining model/API routing to the unit."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "Injected call recorder with list/tuple/string/mapping/empty/None format inputs, duplicates, unknown/case variants, fixed TextGrid-before-HTK order, downstream error short-circuiting, returns, and repeated calls."
+    - "InferenceBase wrapper cases for None default versus explicit empty, provided output folder, final status line, and no status after downstream error."
+inventory_impact:
+  decision: split
+  reason: "Dispatch is caller/orchestration policy over two independent export implementations; it should compose them after their fixture gates rather than own either serializer."
+hand_written_replacements:
+  - capability: "Export selection/default policy"
+    reference_sources:
+      - "inference/HubertFA/tools/export_tool.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/HubertFA/onnx_infer.py"
+      - "inference/API/hfa_api.py"
+    reason: "A small injected-sink Rust policy is sufficient; no Click, model, filesystem, TextGrid, PyO3, CLI bridge, or runtime router dependency is needed."
+legacy_kept:
+  - capability: "HTK/TextGrid rendering and filesystem effects"
+    reason: "Separate units own deterministic planning; Python remains effectful runtime owner until promotion."
+  - capability: "ONNX CLI/API artifact routing and model execution"
+    reason: "Caller context stays legacy-owned and no model is run by fixtures."
+verification:
+  - "uv run python --version"
+  - "uv run python -m py_compile inference/HubertFA/tools/export_tool.py inference/HubertFA/tools/infer_base.py"
+  - "uv run python scripts/audit_vendored_sources.py"

@@ -1,0 +1,59 @@
+unit: lyric_language_processor_contract
+status: done
+capabilities:
+  processor_factory:
+    legacy: "inference/LyricFA/tools/language_processors.py::ProcessorFactory"
+    rust: "planned rewrite-in-rust/rust/crates/v2m-core/src/lyric_language.rs"
+    reason: "The selected behavior is deterministic language-code lowercasing, supported-language ordering, processor construction, and exact unsupported-language error text."
+  clean_text_policy:
+    legacy: "inference/LyricFA/tools/language_processors.py::LanguageProcessor.clean_text and JapaneseProcessor.clean_text"
+    rust: "planned rewrite-in-rust/rust/crates/v2m-core/src/lyric_language.rs"
+    reason: "The unit preserves base regex filtering and Python re \\s whitespace compaction, including the Chinese bracket-adjacent regex artifact, and the Japanese override that keeps Japanese content while normalizing whitespace."
+  english_processor_flow:
+    legacy: "inference/LyricFA/tools/language_processors.py::EnglishProcessor plus ZhG2p.split_string"
+    rust: "planned lyric_language module plus existing zh_g2p token-splitting behavior"
+    reason: "English processing lowercases cleaned text, reuses the legacy splitter for ASCII words and digits, and returns identity phonetics."
+  chinese_processor_flow:
+    legacy: "inference/LyricFA/tools/language_processors.py::ChineseProcessor plus inference/LyricFA/tools/ZhG2p.py"
+    rust: "planned lyric_language module plus verified zh_g2p_dictionary_core seam"
+    reason: "Chinese processing composes the processor clean/split flow with the already verified dictionary-backed G2P conversion over injected maps."
+  japanese_processor_flow:
+    legacy: "inference/LyricFA/tools/language_processors.py::JapaneseProcessor plus inference/LyricFA/tools/JaG2p.py"
+    rust: "planned lyric_language module plus verified ja_g2p_fallback_core seam"
+    reason: "Japanese processing composes whitespace-only cleaning, kana display-token splitting, romaji phonetic conversion, and build_reference_lyric behavior over the verified pyopenjtalk-absent fallback seam."
+  lyric_data_shape:
+    legacy: "inference/LyricFA/tools/language_processors.py::LyricData"
+    rust: "planned lyric_language data structure"
+    reason: "The caller-visible language processor output is a text_list, phonetic_list, and raw_text triple."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/lyric_language_processor_contract.jsonl covers factory selection and unsupported-language errors, LyricData output shape, Python re \\s whitespace handling, English clean/split/phonetic flow, Chinese bracket-regex clean/split/phonetic flow with injected mandarin maps including the empty-input [''] phonetic shape, Japanese fallback clean/split/phonetic flow, Japanese build_reference_lyric, and empty-input behavior."
+inventory_impact:
+  decision: confirmed
+  reason: "Dependency expansion found the unit can stay focused on processor orchestration because sequence alignment, Chinese G2P, Japanese fallback G2P, and file/state/JSON behavior already have separate seams. No split or merge is needed before writer work."
+hand_written_replacements:
+  - capability: "Language processor selection, cleaning, split/phonetic orchestration, and LyricData output shape"
+    reference_sources:
+      - "inference/LyricFA/tools/language_processors.py"
+      - "inference/LyricFA/tools/ZhG2p.py"
+      - "inference/LyricFA/tools/JaG2p.py"
+      - "rewrite-in-rust/records/0058-close-zh-g2p-dictionary-gate.md"
+      - "rewrite-in-rust/records/0060-close-ja-g2p-fallback-gate.md"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "uv.lock"
+    reason: "No third-party package parity is needed. The selected behavior is narrow processor control flow over already verified local G2P helper seams."
+legacy_kept:
+  - capability: "Bundled Chinese dictionary file IO and packaging"
+    reason: "The verified Chinese G2P seam uses injected maps; production dictionary asset loading remains Python-owned until a promotion record defines asset payloads."
+  - capability: "pyopenjtalk frontend-backed Japanese G2P"
+    reason: "pyopenjtalk is platform-markered for Windows and remains outside the Linux fallback seam. OpenJTalk runtime ownership requires a separate promotion decision."
+  - capability: "LyricMatcher file/state/JSON orchestration, sequence alignment internals, model execution, GUI/Web/CLI routing, and production bridge wiring"
+    reason: "These are adjacent units or runtime surfaces outside the language processor contract."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_lyric_language_processor_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml lyric_language"

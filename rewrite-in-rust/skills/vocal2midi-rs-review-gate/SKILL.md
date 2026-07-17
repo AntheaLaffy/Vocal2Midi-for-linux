@@ -29,8 +29,9 @@ Completion criterion: review findings cite code, fixtures, docs, or commands.
 - `behavior_reviewer`: Python/Rust parity, public inputs, outputs, ordering,
   errors, fixtures, and rollback.
 - `dependency_bootstrap_reviewer`: capability coverage, kept-legacy decisions,
-  seam choice, provisional inventory changes, hand-written replacement choices,
-  and missing crate/fixture risk.
+  seam choice, provisional inventory changes, crate reuse plus compatibility
+  adapter choices, hand-written replacement choices, and missing crate/fixture
+  risk.
 - `error_tracing_reviewer`: structured errors, context, redaction, logs, and
   diagnosability.
 - `data_algorithm_reviewer`: data structures, numeric behavior, complexity,
@@ -53,12 +54,16 @@ Completion criterion: one role and one unit are explicit.
 2. Confirm the unit stayed inside its minimum boundary, or that dependency
    expansion justifies the re-cut boundary.
 3. Confirm writer/reviewer separation.
-4. Inspect only the scope needed for the chosen role.
-5. Run non-mutating checks where useful.
-6. Report findings first, ordered by severity, with file/line references.
-7. Write `rewrite-in-rust/reviews/YYYY-MM-DD-<unit-id>-<role>.md`.
-8. Use decision `pass`, `pass-with-followups`, or `fail`.
-9. Do not mark the manifest `verified`; the coordinator updates state after
+4. For dependency reviews, judge coverage by capability, not package-name or
+   top-level API parity. A Rust crate can be acceptable when it owns a stable
+   lower layer and the dependency record names Python-specific gaps, reference
+   source, compatibility adapter plan, and fixture evidence.
+5. Inspect only the scope needed for the chosen role.
+6. Run non-mutating checks where useful.
+7. Report findings first, ordered by severity, with file/line references.
+8. Write `rewrite-in-rust/reviews/YYYY-MM-DD-<unit-id>-<role>.md`.
+9. Use decision `pass`, `pass-with-followups`, or `fail`.
+10. Do not mark the manifest `verified`; the coordinator updates state after
    required reviews pass.
 
 Completion criterion: the report can be used as durable promotion evidence.
@@ -72,6 +77,10 @@ Completion criterion: the report can be used as durable promotion evidence.
   rollback route.
 - Do not approve a unit boundary merely because it appeared in the initial
   manifest; check dependency expansion evidence when that is in scope.
+- Do not fail a dependency decision merely because no Rust crate is a perfect
+  Python package drop-in. Fail it only when the selected crate-owned layer,
+  compatibility adapter, Python-source reference, or fixtures are insufficient
+  for the claimed behavior.
 - If no issue is found, say so and document residual risk.
 
 ## Completion Response

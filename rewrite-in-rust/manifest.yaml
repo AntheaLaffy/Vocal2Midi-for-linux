@@ -16,7 +16,7 @@ policy:
   bridge_policy: "No Python/Rust bridge until a migration unit reaches promotion planning."
   dependency_policy: "Align by capability coverage, not by Python package name."
   dependency_expansion_policy: "Python dependency expansion is uncertain; every planned unit is provisional until dependency/capability discovery confirms or re-cuts it."
-  fallback_implementation_policy: "When Rust dependency coverage is poor, prefer a narrow hand-written Rust implementation against fixtures over forced package parity."
+  dependency_adapter_policy: "Prefer direct crate coverage when fixtures prove parity; otherwise use partial crate reuse plus a Python-source-guided compatibility adapter when the crate can own a stable lower layer; hand-write only the capabilities a crate cannot safely cover."
   unit_inventory_policy: "The units list is a working hypothesis and may be substantially rewritten after discovery."
   review_cadence: "Run one R0 behavior review per stage after 3-5 reimplemented units; run other reviews only for high-risk units or before promotion."
   python_environment: "Use uv Python 3.12.x; do not use the system python binary for project verification."
@@ -1240,7 +1240,7 @@ units:
 
   - id: lyric_matching_file_contract_core
     title: "Lyric matching file, state, and JSON contract"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1258,14 +1258,20 @@ units:
       - "rewrite-in-rust/dependencies/lyric_matching_file_contract_core.yaml"
       - "rewrite-in-rust/bootstrap/lyric_matching_file_contract_core.md"
       - "rewrite-in-rust/records/0061-split-lyric-matching-pipeline-contract.md"
+      - "rewrite-in-rust/records/0062-close-lyric-matching-file-gate.md"
       - "rewrite-in-rust/rust/crates/v2m-core/src/lyric_matching_file.rs"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml lyric_matching_file"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_matching_file_contract_core-dependency_bootstrap_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_matching_file_contract_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_matching_file_contract_core-error_tracing_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_matching_file_contract_core-product_ergonomics_reviewer-rerun.md"
+      - "Review follow-ups are promotion-gate only: add or assign IO-error branch fixtures, structured skip/error diagnostics, Python-facing JSON error mapping, exact console/log text policy, and directory glob/path-discovery coverage before any production bridge or execute() replacement."
     rollback: "Keep LyricMatchingPipeline as the runtime owner."
 
   - id: lyric_language_processor_contract
     title: "Lyric language processor selection and phonetic flow"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -1278,44 +1284,329 @@ units:
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "Add fixtures for zh/en/ja processor selection, unsupported language, regex cleaning, whitespace normalization, Chinese dictionary-backed processor output with injected mandarin maps, English lowercase split flow, Japanese fallback build_reference_lyric, and empty-input behavior."
+      - "rewrite-in-rust/fixtures/lyric_language_processor_contract.jsonl covers factory selection and unsupported-language errors, LyricData output shape, Python re \\s whitespace handling, English clean/split/phonetic flow, Chinese bracket-regex clean/split/phonetic flow with injected mandarin maps including the empty-input [''] phonetic shape, Japanese fallback clean/split/phonetic flow, Japanese build_reference_lyric, and empty-input behavior."
+      - "uv run python rewrite-in-rust/bootstrap/check_lyric_language_processor_contract.py"
+      - "rewrite-in-rust/dependencies/lyric_language_processor_contract.yaml"
+      - "rewrite-in-rust/bootstrap/lyric_language_processor_contract.md"
+      - "rewrite-in-rust/records/0063-confirm-lyric-language-processor-boundary.md"
+      - "rewrite-in-rust/records/0064-implement-lyric-language-processor-contract.md"
+      - "rewrite-in-rust/records/0065-close-lyric-language-processor-gate.md"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/lyric_language.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml lyric_language"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_language_processor_contract-dependency_bootstrap_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_language_processor_contract-behavior_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-17-lyric_language_processor_contract-data_algorithm_reviewer-rerun2.md"
+      - "All current reviews passed with no findings. Production promotion must still define Chinese dictionary asset packaging and validation, OpenJTalk ownership or explicit exclusion, Python-facing error/log mapping, and rollback."
     rollback: "Keep ProcessorFactory and LanguageProcessor implementations as runtime owners."
 
-  - id: hfa_word_interval_core
-    title: "HubertFA word and phoneme interval utilities"
-    status: planned
-    inventory_status: provisional
+  - id: hfa_word_model_core
+    title: "HubertFA phoneme and word interval model"
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
       - "inference/HubertFA/tools/align_word.py"
-    public_interface_policy: "Preserve Phoneme/Word validation and clamping, add/append phoneme warning behavior, overlap detection, AP interval subtraction, SP gap fill, small-gap boundary movement, language-prefix clearing, log accumulation, and check invariants."
+      - "inference/HubertFA/tools/decoder.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+    public_interface_policy: "Preserve Phoneme/Word negative-start clamping, strict interval validation and exact errors, optional initial phonemes, duration, contained add behavior, contiguous append/end growth, boundary mutation including empty-phoneme IndexError behavior, and exact warning/log-list outcomes."
     required_reviews:
       - dependency_bootstrap_reviewer
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "Add fixtures for invalid zero/negative intervals, out-of-bound phonemes, overlapping AP/SP intervals, leading/trailing gaps, small gap fill, language prefixes, and failed check messages."
-    rollback: "Keep inference.HubertFA.tools.align_word as the runtime owner."
+      - "rewrite-in-rust/fixtures/hfa_word_model_core.jsonl covers constructor clamping/errors including reversed intervals, negative zero, NaN, and infinities; initial phonemes; duration; add/append outcomes; finite and special-float boundary mutations; empty-phoneme move_start short-circuit warning and IndexError behavior; and warning/log sinks."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_word_model_core.py"
+      - "rewrite-in-rust/dependencies/hfa_word_model_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_word_model_core.md"
+      - "rewrite-in-rust/records/0066-split-hfa-word-lifecycle.md"
+      - "rewrite-in-rust/records/0067-implement-hfa-word-model-core.md"
+      - "rewrite-in-rust/records/0068-close-hfa-word-model-gate.md"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_word"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_word_model_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_word_model_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_word_model_core-data_algorithm_reviewer.md"
+      - "All current reviews passed with no findings. Production promotion must still define warning/error payloads, Python object-alias semantics versus Rust ownership, caller routing, and rollback."
+    rollback: "Keep inference.HubertFA.tools.align_word.Phoneme and Word as runtime owners."
 
-  - id: hfa_g2p_export_config_core
-    title: "HubertFA G2P, config, and label export helpers"
-    status: planned
-    inventory_status: provisional
+  - id: hfa_wordlist_collection_ap_core
+    title: "HubertFA WordList collection and AP policy"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/align_word.py"
+      - "inference/HubertFA/tools/decoder.py"
+      - "inference/HubertFA/tools/infer_base.py"
+    public_interface_policy: "Preserve canonical heterogeneous WordList-entry/log storage including raw invalid entries, append and overlap behavior, raw interval subtraction, AP original-vs-fragment aliasing/filtering/insertion/stable sorting/partial mutation, flattened projections, language-prefix clearing, and exact diagnostic/error order over hfa_word_model_core types."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "rewrite-in-rust/fixtures/hfa_wordlist_collection_ap_core.jsonl contains 45 cases covering raw invalid entries and append bypass, exact Python 3.12/Unicode 15 repr escaping and full-scalar printability, overlap scans, log lifecycle, finite/special-float interval subtraction, AP evaluation order/branch/default-and-explicit-min_dur/sort/alias/partial-mutation behavior, CPython 3.12.13 NaN/infinity sort matrices and long merge/gallop corpora, projections, prefix clearing including partial mutation before invalid entries, repeated calls, and invalid-entry errors."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_wordlist_collection_ap_core.py"
+      - "rewrite-in-rust/dependencies/hfa_wordlist_collection_ap_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_wordlist_collection_ap_core.md"
+      - "rewrite-in-rust/records/0066-split-hfa-word-lifecycle.md"
+      - "rewrite-in-rust/records/0069-implement-hfa-wordlist-collection-ap-core.md"
+      - "rewrite-in-rust/records/0070-close-hfa-wordlist-collection-ap-gate.md"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/python_15_nonprintable.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_wordlist_collection"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_collection_ap_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_collection_ap_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_collection_ap_core-data_algorithm_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_collection_ap_core-error_tracing_reviewer.md"
+      - "All current reviews passed with no findings. Production promotion must still define arbitrary Python invalid-object conversion, warning/error and user-text log handling, Python object alias mapping, caller routing, and rollback."
+    rollback: "Keep Python WordList construction and pre-aggregation AP/prefix behavior as runtime owners."
+
+  - id: hfa_wordlist_finalize_core
+    title: "HubertFA WordList gap, SP, and final-check policy"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/align_word.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+    public_interface_policy: "Preserve post-aggregation small-gap boundary repair, SP insertion/list replacement, shared-log behavior, caught error strings, and final check first-failure invariants over the canonical heterogeneous WordList-entry type."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "rewrite-in-rust/fixtures/hfa_wordlist_finalize_core.jsonl contains 53 Python 3.12.13 golden cases covering fill_small_gaps partial mutation/order/thresholds/special floats, add_SP replacement/identity/discard/error/log/repeat behavior, and check return/first-failure/repeat behavior."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_wordlist_finalize_core.py"
+      - "rewrite-in-rust/dependencies/hfa_wordlist_finalize_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_wordlist_finalize_core.md"
+      - "rewrite-in-rust/records/0066-split-hfa-word-lifecycle.md"
+      - "rewrite-in-rust/records/0071-bootstrap-hfa-wordlist-finalize-core.md"
+      - "rewrite-in-rust/records/0072-implement-hfa-wordlist-finalize-core.md"
+      - "rewrite-in-rust/records/0073-close-hfa-wordlist-finalize-gate.md"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_wordlist_finalize"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_wordlist_collection"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_word"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+      - "cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check"
+      - "cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings"
+      - "RUSTDOCFLAGS='-D warnings' cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_finalize_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_finalize_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_finalize_core-data_algorithm_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_wordlist_finalize_core-error_tracing_reviewer-rerun.md"
+      - "All current reviews passed with no findings. Production promotion must still define arbitrary Python object conversion, diagnostic presentation, alias ownership across hfa_api.py repair, caller routing, and rollback."
+      - "Extend the canonical Rust WordList from verified hfa_wordlist_collection_ap_core; do not duplicate interval, collection, or log storage."
+    rollback: "Keep Python WordList finalization and diagnostic behavior as runtime owners."
+
+  - id: hfa_phoneme_mora_g2p_core
+    title: "HubertFA raw-phoneme and Japanese mora G2P"
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
       - "inference/HubertFA/tools/g2p.py"
-      - "inference/HubertFA/tools/config_utils.py"
-      - "inference/HubertFA/tools/export_tool.py"
-    public_interface_policy: "Preserve phoneme/dictionary/Japanese-mora G2P output shapes, SP assertions, dictionary warnings, config file checks, TextGrid tier contents, HTK time scaling, output folder selection, and export format dispatch."
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+    public_interface_policy: "Preserve BaseG2P SP assertions and language prefixing plus PhonemeG2P and JapanesePhonemeMoraG2P literal-space tokenization, control-token filtering, mora grouping, fallback, output order, and phoneme-to-word indexes."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "rewrite-in-rust/fixtures/hfa_phoneme_mora_g2p_core.jsonl contains 28 Python 3.12 golden cases covering empty/literal-space phoneme input, Python strip controls, SP/base assertion errors, language None/empty/string prefixes, Japanese vowels/N/cl/control tokens, joined mora spellings, separated consonant-vowel tokens, palatal/fallback forms, unknown/case tokens, Unicode 15 contextual/newer-identity lowercase behavior, a full 1,112,064-scalar lowercase digest, and exact index maps."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_phoneme_mora_g2p_core.py"
+      - "rewrite-in-rust/dependencies/hfa_phoneme_mora_g2p_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_phoneme_mora_g2p_core.md"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "rewrite-in-rust/records/0075-implement-hfa-phoneme-mora-g2p-core.md"
+      - "rewrite-in-rust/records/0076-close-hfa-phoneme-mora-g2p-gate.md"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_phoneme_mora_g2p_core"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+      - "cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check"
+      - "cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings"
+      - "RUSTDOCFLAGS='-D warnings' cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_phoneme_mora_g2p_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_phoneme_mora_g2p_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_phoneme_mora_g2p_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_phoneme_mora_g2p_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_phoneme_mora_g2p_core-data_algorithm_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_phoneme_mora_g2p_core-data_algorithm_reviewer-rerun.md"
+      - "The first behavior and data/algorithm reviews found a 55-scalar Rust Unicode 17 versus Python Unicode 15 lowercase blocker. The writer added a version-pinned compatibility layer, four-category public coverage, contextual lowercase coverage, and a full-scalar digest; all three independent reruns passed with no findings."
+      - "Production promotion must still define payload validation, Python-facing error mapping, caller routing, and rollback."
+    rollback: "Keep BaseG2P, PhonemeG2P, and JapanesePhonemeMoraG2P as runtime owners."
+
+  - id: hfa_dictionary_g2p_core
+    title: "HubertFA dictionary file and warning G2P policy"
+    status: verified
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/g2p.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+    public_interface_policy: "Preserve dictionary text loading/parsing, duplicate-key replacement, literal-space phone/input behavior, missing-word and edge-SP warning order/text, accepted interior SP, language prefixing, output order, and phoneme-to-word indexes over the shared HFA G2P output contract."
     required_reviews:
       - dependency_bootstrap_reviewer
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add fixtures for raw phoneme input, Japanese mora grouping, dictionary missing words, malformed dictionaries, missing config/vocab/dictionary files, TextGrid serialization, HTK labels, and combined export dispatch."
-    rollback: "Keep HubertFA G2P/config/export helpers as runtime owners."
+      - "rewrite-in-rust/fixtures/hfa_dictionary_g2p_core.jsonl contains 43 Python 3.12/Linux UTF-8 tempfile golden cases covering parser maps, whole-file and row trimming, duplicate and extra-tab rows, literal-space empty tokens, CRLF/lone-CR translation, missing/empty words, edge/interior/consecutive SP, exact output/index arrays and ordered UserWarnings, malformed/empty files, invalid-start/continuation/overlong/surrogate/out-of-range/truncated UTF-8 spans, Python 3.12/Unicode 15 filename repr, filesystem errors, repeated calls, constructor snapshotting, and recovery after conversion errors."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_dictionary_g2p_core.py"
+      - "rewrite-in-rust/dependencies/hfa_dictionary_g2p_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_dictionary_g2p_core.md"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "rewrite-in-rust/records/0077-implement-hfa-dictionary-g2p-core.md"
+      - "rewrite-in-rust/records/0078-close-hfa-dictionary-g2p-gate.md"
+      - "Reuse the verified hfa_phoneme_mora_g2p_core HfaG2pOutput/base-contract types; keep ordered warning values and structured file/decode/row errors inside the independent Rust library until promotion defines Python reconstruction."
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_dictionary_g2p_core"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+      - "cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check"
+      - "cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings"
+      - "RUSTDOCFLAGS='-D warnings' cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_dictionary_g2p_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_dictionary_g2p_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_dictionary_g2p_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_dictionary_g2p_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_dictionary_g2p_core-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-17-hfa_dictionary_g2p_core-error_tracing_reviewer-rerun.md"
+      - "Initial behavior and error/tracing reviews found incomplete multi-byte UnicodeDecodeError spans and filename repr projection. The writer added explicit start/exclusive-end fields, CPython singular/plural rendering, truncated-span coverage, shared Python 3.12/Unicode 15 string repr, and 13 cross-runtime fixture cases; all three required reruns passed with no findings."
+      - "Python remains the runtime owner; production promotion must still define non-UTF-8 path payloads, warning/error reconstruction and presentation, caller routing, and rollback."
+    rollback: "Keep DictionaryG2P and InferenceBase.get_dataset dictionary selection as runtime owners."
+
+  - id: hfa_config_validation_core
+    title: "HubertFA config existence and dictionary validation"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/config_utils.py"
+      - "inference/HubertFA/onnx_infer.py"
+      - "inference/API/hfa_api.py"
+    public_interface_policy: "Preserve check_configs vocab/config existence order, string/None suffix rendering, injected loader outcome call/error order over JSON-compatible values, dictionaries dynamic shape failures, None skipping, relative/absolute/Unicode path resolution, exact errors, repeated calls, and the legacy fact that config file contents are not parsed."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl contains 34 Python 3.12 temp-directory cases covering suffixes, existence and loader order, injected JSON-compatible value/error shapes, dictionary path policies, exact failures, unparsed config, and repeated calls."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py"
+      - "rewrite-in-rust/dependencies/hfa_config_validation_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_config_validation_core.md"
+      - "rewrite-in-rust/dependencies/hfa_config_file_contract_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_config_file_contract_core.md"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "rewrite-in-rust/records/0079-recut-hfa-config-file-contract.md"
+      - "Do not add a YAML parser or claim full load_yaml parity in this writer unit; it consumes an injected outcome and composes with the separate planned loader only after that wider contract is proven."
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_config.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_config_validation_core"
+    rollback: "Keep config_utils.check_configs and load_yaml as runtime owners; no bridge or production caller changes during implementation."
+
+  - id: hfa_pyyaml_safe_load_contract
+    title: "HubertFA PyYAML safe-load value and error contract"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/config_utils.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/resolver.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/constructor.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/composer.py"
+    public_interface_policy: "Preserve UTF-8 file loading and complete PyYAML 6.0.3 safe_load behavior: YAML 1.1 implicit resolution, Python value types for dates/datetimes/bytes/sets/omap/pairs, aliases and merges, duplicate last-wins, safe custom-tag rejection, single-document enforcement, and structured file/decode/scanner/parser/composer/constructor errors."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Define a tagged cross-runtime value projection and executable Python 3.12/PyYAML 6.0.3 golden matrix before writer work; JSON Value alone is insufficient because safe_load returns non-JSON Python values."
+      - "Neither serde_yaml_ng 0.10.0 nor rust-yaml 1.1.0 passes the authoritative resolver/constructor/error probe; do not add either as a direct parity dependency without an explicit compatibility layer and rerun evidence."
+      - "rewrite-in-rust/dependencies/hfa_pyyaml_safe_load_contract.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_pyyaml_safe_load_contract.md"
+      - "rewrite-in-rust/dependencies/hfa_config_file_contract_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_config_file_contract_core.md"
+      - "rewrite-in-rust/records/0079-recut-hfa-config-file-contract.md"
+    rollback: "Keep config_utils.load_yaml and PyYAML 6.0.3 as sole runtime owners; hfa_config_validation_core is not a replacement for this loader."
+
+  - id: hfa_htk_label_export_core
+    title: "HubertFA HTK label planning and cumulative output"
+    status: planned
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/export_tool.py"
+      - "inference/HubertFA/tools/infer_base.py"
+    public_interface_policy: "Preserve prediction order, int(float(time) * 10000000) rendering, unescaped text/newlines, output-folder versus wav-parent paths, basename replacement, directory/file plan, and the observable cross-prediction cumulative w_out/ph_out buffers."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Create planned-file fixtures for empty/single/multiple predictions, fractional/negative/special times, Unicode/quote/newline text, nested paths, duplicate basenames, output-folder and wav-parent modes, write errors, and cumulative second/later prediction contents."
+      - "rewrite-in-rust/dependencies/hfa_htk_label_export_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_htk_label_export_core.md"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+    rollback: "Keep Exporter.save_htk as the runtime owner, including its cumulative-buffer behavior."
+
+  - id: hfa_textgrid_export_core
+    title: "HubertFA TextGrid serialization and output planning"
+    status: planned
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/export_tool.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+      - "third_party/sources/textgrid-1.6.1/textgrid/textgrid.py"
+    public_interface_policy: "Preserve words/phones tier construction, phone-start max(0, start), textgrid 1.6.1 ordering/overlap errors/gap filling/quote escaping/UTF-8 and float rendering, output-folder versus wav-parent paths, basename replacement, and per-prediction writes."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Create exact UTF-8 TextGrid byte and planned-path fixtures for empty/gapped/contiguous tiers, negative phone starts, quotes/newlines/Unicode, invalid/overlapping/out-of-range intervals, nested paths, duplicate basenames, output-folder/wav-parent modes, and multiple predictions."
+      - "rewrite-in-rust/dependencies/hfa_textgrid_export_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_textgrid_export_core.md"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+    rollback: "Keep Exporter.save_textgrids and textgrid 1.6.1 as runtime owners."
+
+  - id: hfa_export_dispatch_contract
+    title: "HubertFA export format dispatch and caller defaults"
+    status: planned
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/HubertFA/tools/export_tool.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/HubertFA/onnx_infer.py"
+      - "inference/API/hfa_api.py"
+    public_interface_policy: "Preserve membership-based lowercase textgrid/htk dispatch, fixed TextGrid-before-HTK order, duplicate/unknown/case-sensitive/string/mapping inputs, None errors, InferenceBase default ['textgrid'], status output, and legacy runtime routing to the two export owners."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Create injected-sink fixtures for list/tuple/string/mapping/empty/None formats, duplicates, unknown/case variants, fixed call order, default versus explicit empty formats, return values, status prints, and downstream error short-circuiting."
+      - "rewrite-in-rust/dependencies/hfa_export_dispatch_contract.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_export_dispatch_contract.md"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+    rollback: "Keep Exporter.export, InferenceBase.export, ONNX CLI selection, and hfa_api artifact routing as runtime owners."
 
   - id: hfa_metrics_core
     title: "HubertFA alignment metric helpers"

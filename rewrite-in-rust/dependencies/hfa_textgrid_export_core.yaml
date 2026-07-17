@@ -1,0 +1,43 @@
+unit: hfa_textgrid_export_core
+status: planned
+capabilities:
+  textgrid_tier_construction:
+    legacy: "inference/HubertFA/tools/export_tool.py::Exporter.save_textgrids"
+    rust: "planned narrow words/phones tier planner reusing verified HFA Word state"
+    reason: "Tier names/order, word intervals, max(0, phoneme.start), interval validation, and prediction isolation are caller-visible."
+  textgrid_1_6_1_serialization:
+    legacy: "textgrid 1.6.1 TextGrid/IntervalTier/Interval write behavior"
+    rust: "hand-written exact selected long TextGrid serializer"
+    reason: "The selected subset is small: sorted strict intervals, blank-gap insertion, quote doubling, Python float text, UTF-8, headers, tabs, and newlines."
+  textgrid_path_planning:
+    legacy: "save_textgrids output_folder/wav-parent path and mkdir/write calls"
+    rust: "in-memory planned path/bytes; filesystem effects remain legacy-owned"
+    reason: "TextGrid basename/path/collision order can be verified separately from mkdir and open errors."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "Exact UTF-8 long-TextGrid bytes and ordered planned paths from prediction snapshots."
+    - "Cover empty/gapped/contiguous words and phones, negative phone starts, quotes/newlines/Unicode, float forms, invalid zero/reversed/out-of-range/overlapping intervals, prediction isolation, nested paths, duplicate basenames, output-folder/wav-parent modes, and repeated calls."
+inventory_impact:
+  decision: split
+  reason: "TextGrid has a pinned third-party serialization contract absent from HTK and dispatch; it is independently fixture-testable against vendored 1.6.1 source."
+hand_written_replacements:
+  - capability: "Long TextGrid subset used by HubertFA"
+    reference_sources:
+      - "inference/HubertFA/tools/export_tool.py"
+      - "third_party/sources/textgrid-1.6.1/textgrid/textgrid.py"
+      - "third_party/sources/textgrid-1.6.1/textgrid/exceptions.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs"
+    reason: "Direct package parity is broader than two IntervalTiers and exact writer bytes; a narrow implementation needs no new crate."
+legacy_kept:
+  - capability: "General TextGrid read/PointTier/MLF APIs"
+    reason: "HubertFA export does not call them."
+  - capability: "Directory creation, writes, IO errors, status printing, artifact copying, and production routing"
+    reason: "Keep Python/textgrid runtime effects until promotion defines planned-file application and rollback."
+verification:
+  - "uv run python --version"
+  - "uv run python -m py_compile inference/HubertFA/tools/export_tool.py third_party/sources/textgrid-1.6.1/textgrid/textgrid.py"
+  - "uv run python scripts/audit_vendored_sources.py"

@@ -1,0 +1,30 @@
+unit: hfa_config_file_contract_core
+status: done
+capabilities:
+  config_validation:
+    legacy: "inference/HubertFA/tools/config_utils.py::check_configs"
+    rust: "re-cut to hfa_config_validation_core over an injected loader outcome"
+    reason: "Existence order, suffix rendering, loader call position, dynamic dictionaries access, path resolution, exact errors, and repeated calls are independently fixture-testable without choosing a YAML parser."
+  safe_yaml_loading:
+    legacy: "inference/HubertFA/tools/config_utils.py::load_yaml plus PyYAML 6.0.3 safe_load"
+    rust: "re-cut to explicit planned hfa_pyyaml_safe_load_contract"
+    reason: "The full YAML 1.1 resolver, constructor, Python value, and error surface is materially broader than config validation and has no proven direct Rust replacement."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl and its real check_configs checker close the first child writer gate."
+    - "hfa_pyyaml_safe_load_contract retains its own unresolved tagged-value/error fixture matrix and must not be inferred from the validation child."
+inventory_impact:
+  decision: split
+  reason: "Dependency expansion proved that deterministic check_configs control flow and arbitrary PyYAML safe_load construction have different dependencies, payloads, fixture representations, and writer readiness."
+hand_written_replacements: []
+legacy_kept:
+  - capability: "All production config loading and validation"
+    reason: "This is a control-plane re-cut only; neither child has a runtime bridge or owner change."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py"
+  - "uv run python -m py_compile inference/HubertFA/tools/config_utils.py rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py"
+  - "uv run python scripts/audit_vendored_sources.py"

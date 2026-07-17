@@ -1,0 +1,54 @@
+unit: hfa_config_validation_core
+status: done
+capabilities:
+  ordered_file_validation:
+    legacy: "inference/HubertFA/tools/config_utils.py::check_configs lines 13-20"
+    rust: "narrow validator over model path, suffix, filesystem, and injected loader outcome"
+    reason: "Vocab existence precedes config existence; only after both pass is the vocab loader outcome consumed. Config contents are never read."
+  injected_value_shape:
+    legacy: "check_configs vocab.get('dictionaries', []) and dictionaries.items()"
+    rust: "JSON-compatible loaded-value enum with exact representative AttributeError and TypeError projections"
+    reason: "The selected first seam preserves observed project JSON-like vocab values and dynamic failure order without claiming to construct arbitrary YAML values."
+  dictionary_path_validation:
+    legacy: "check_configs model_dir / dictionary plus Path.exists/absolute assertion"
+    rust: "ordered path validator"
+    reason: "None skipping, empty paths, files/directories, relative/absolute/Unicode paths, first failure, and exact assertion text are deterministic."
+  loader_error_propagation:
+    legacy: "check_configs direct load_yaml call"
+    rust: "opaque structured injected-loader error pass-through"
+    reason: "Validation neither catches nor rewrites loader errors and must not acquire parser-specific reconstruction logic."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+  rust_module: "v2m-core::hfa_config"
+  public_payload: "validate(model_dir, nullable/string suffix, injected loader outcome over JSON-compatible values or structured error) -> unit or structured compatibility error"
+  error_mapping: "Retain operation order, path, loader error type/message, Python value kind, dictionary entry position, and exact AssertionError/AttributeError/TypeError projection without logging config contents."
+  repeated_calls: "No cache or mutation; every call repeats existence checks and consumes a fresh supplied loader outcome."
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl contains 34 Python 3.12 temp-directory cases consumed by the real check_configs function with a monkeypatched loader."
+    - "Cover default/json/empty/None suffixes; missing vocab/config order; loader error propagation; null/list/string/bool top values; missing/null/list/string/int dictionaries; None/empty/file/directory/relative/absolute/Unicode dictionary values; first failure; invalid value types; unparsed invalid config; and repeated calls."
+inventory_impact:
+  decision: confirmed
+  reason: "The injected-outcome boundary is one independently verifiable deterministic validator and requires no YAML crate, bridge, model runtime, or production caller change."
+hand_written_replacements:
+  - capability: "Ordered config and dictionary path validation"
+    reference_sources:
+      - "inference/HubertFA/tools/config_utils.py"
+      - "inference/HubertFA/onnx_infer.py"
+      - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl"
+      - "rewrite-in-rust/records/0079-recut-hfa-config-file-contract.md"
+    reason: "The logic is project-specific filesystem control flow; a narrow fixture-bound implementation is smaller and more exact than adding a YAML or config framework."
+legacy_kept:
+  - capability: "PyYAML safe_load parsing and Python-specific YAML values"
+    reason: "Owned by the separate planned hfa_pyyaml_safe_load_contract; this validator consumes an outcome and does not parse bytes or YAML."
+  - capability: "Arbitrary non-JSON PyYAML value composition"
+    reason: "Dates, datetimes, bytes, sets, ordered pairs, and arbitrary mapping keys require the full loader value model before cross-unit composition or promotion."
+  - capability: "VERSION/config parsing, vocab assignment, ONNX session, and callers"
+    reason: "InferenceOnnx.load_config and API/model routing remain outside this deterministic validation seam."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_config_validation_core"
+  - "uv run python -m py_compile inference/HubertFA/tools/config_utils.py rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py"
+  - "uv run python scripts/audit_vendored_sources.py"

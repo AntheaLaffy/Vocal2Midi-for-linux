@@ -1,0 +1,51 @@
+unit: hfa_word_model_core
+status: done
+capabilities:
+  phoneme_interval_model:
+    legacy: "inference/HubertFA/tools/align_word.py::Phoneme"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::Phoneme"
+    reason: "Phoneme construction is deterministic start clamping, strict interval validation, exact error text, and field storage."
+  word_interval_model:
+    legacy: "inference/HubertFA/tools/align_word.py::Word.__init__ and Word.dur"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::Word"
+    reason: "Word construction shares the interval invariant, optionally creates one full-span phoneme, and exposes duration without external dependencies."
+  bounded_phoneme_addition:
+    legacy: "inference/HubertFA/tools/align_word.py::Word.add_phoneme"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::Word.add_phoneme"
+    reason: "The behavior is a local containment check with exact warning/log outcomes and no collection dependency."
+  contiguous_phoneme_append:
+    legacy: "inference/HubertFA/tools/align_word.py::Word.append_phoneme"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::Word.append_phoneme"
+    reason: "The behavior is a local adjacency check that updates Word.end and preserves exact warning/log outcomes."
+  boundary_mutation:
+    legacy: "inference/HubertFA/tools/align_word.py::Word.move_start and Word.move_end"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::Word.move_start and Word.move_end"
+    reason: "Boundary repair mutates the Word and its first or last phoneme together and is independently fixture-testable."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_word_model_core.jsonl covers negative-start clamping, reversed and special-float intervals with exact error text, optional initial phonemes, duration, contained/out-of-bound/zero-length add behavior, contiguous/non-contiguous append behavior, finite and special-float boundary mutation, empty-phoneme move_start short-circuit warning and IndexError behavior, and warning-vs-log delivery."
+inventory_impact:
+  decision: split
+  reason: "The original hfa_word_interval_core mixed local Phoneme/Word invariants with pre-aggregation WordList/AP behavior and post-aggregation gap/SP/final checks. This prerequisite owns the canonical shared Phoneme and Word types only."
+hand_written_replacements:
+  - capability: "HubertFA Phoneme and Word interval state plus local mutations"
+    reference_sources:
+      - "inference/HubertFA/tools/align_word.py"
+      - "inference/HubertFA/tools/decoder.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+    reason: "align_word.py uses only warnings and dataclasses. A narrow Rust type implementation is smaller and more stable than importing NumPy/librosa/model-runtime dependencies used only by callers."
+legacy_kept:
+  - capability: "WordList storage and policies"
+    reason: "Base collection/AP behavior and post-aggregation finalization are separate ordered units that reuse these canonical types."
+  - capability: "HubertFA decoding, audio loading, aggregation, export, and model inference"
+    reason: "NumPy decoding, librosa audio IO, exporter behavior, ONNX sessions, and model execution are caller-owned and outside this fixture-bound data-model seam."
+  - capability: "Production Python/Rust routing"
+    reason: "Decoder, infer_base, and hfa_api remain Python runtime owners until a later promotion record defines payloads, error/warning mapping, ownership, and rollback."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_word_model_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_word"

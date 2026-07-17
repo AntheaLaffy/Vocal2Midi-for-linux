@@ -1,0 +1,49 @@
+unit: hfa_wordlist_collection_ap_core
+status: done
+capabilities:
+  collection_and_log_state:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.__init__, append, log, and clear_log"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList and WordListEntry over hfa_word_model_core types"
+    reason: "This unit introduces the one canonical heterogeneous WordList entry storage and diagnostic buffer used by later finalization behavior. Raw construction and extend can retain non-Word and otherwise invalid entries, so the Rust representation must not silently narrow storage to Vec<Word>."
+  append_and_overlap_policy:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.append and overlapping_words"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList.append and overlapping_words"
+    reason: "Decoder output construction depends on rejecting empty-phoneme and overlapping words while preserving insertion order and exact diagnostics."
+  ap_interval_policy:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.remove_overlapping_intervals and add_AP"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList.remove_overlapping_intervals and add_ap"
+    reason: "Before multi-pass aggregation, infer_base subtracts lexical intervals from non-lexical AP candidates, filters short fragments, inserts full-span AP words, and sorts."
+  projections_and_prefix_cleanup:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.phonemes, intervals, and clear_language_prefix"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList.phoneme_texts, intervals, and clear_language_prefix"
+    reason: "Decoder and pre-aggregation callers consume flattened projections and remove language prefixes before duplicate-pass selection."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_wordlist_collection_ap_core.jsonl contains 45 cases covering raw seed/extend bypass and invalid entries; append success, touching, empty/overlap exact repr escaping/logs, and insertion order; overlap scans; log lifecycle; finite and special-float interval subtraction; AP branch/evaluation/default-and-explicit-min_dur behavior; exact CPython 3.12.13 sorting across equal keys, eight NaN/infinity matrices, repeated calls, and 65/127/257-entry merge corpora; source and entry-obtained handle aliasing; Unicode 15.0 full-scalar printability digest and repr escape widths; projections, prefix partial mutation, and exact errors."
+inventory_impact:
+  decision: split
+  reason: "This is the decoder/pre-aggregation collection phase of the former hfa_word_interval_core. It depends on hfa_word_model_core and owns the single shared heterogeneous WordList-entry/log type that hfa_wordlist_finalize_core later extends."
+hand_written_replacements:
+  - capability: "HubertFA heterogeneous WordList storage, projections, and AP policies"
+    reference_sources:
+      - "inference/HubertFA/tools/align_word.py"
+      - "inference/HubertFA/tools/decoder.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "rewrite-in-rust/dependencies/hfa_word_model_core.yaml"
+      - "https://github.com/python/cpython/blob/v3.12.13/Objects/listobject.c"
+      - "https://github.com/python/cpython/blob/v3.12.13/Objects/listsort.txt"
+    reason: "The selected behavior is standard-library heterogeneous-list, interval, CPython 3.12.13 comparison scheduling, encapsulated identity aliasing, Unicode 15.0 repr printability, string, and diagnostic control flow. NumPy decoding and model execution are only caller context; no new Rust dependency was required."
+legacy_kept:
+  - capability: "Post-aggregation gap repair, SP insertion, and final checks"
+    reason: "infer_base invokes these only after multi-pass aggregation; they form hfa_wordlist_finalize_core and extend this unit's canonical WordList type."
+  - capability: "HubertFA decoder and infer orchestration"
+    reason: "NumPy logits/DP decoding, librosa audio loading, multi-pass model aggregation, export, ONNX Runtime, and model execution remain Python-owned."
+  - capability: "Production Python/Rust routing and warning presentation"
+    reason: "The Rust seam stays independent. A promotion record must define diagnostic payloads, Python warning/log mapping, caller ownership, and rollback."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_wordlist_collection_ap_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_wordlist_collection"

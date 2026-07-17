@@ -31,6 +31,9 @@ The manifest inventory is provisional. Before editing, confirm one of these is
 true:
 
 - `rewrite-in-rust/dependencies/<unit-id>.yaml` confirms the current boundary
+- the dependency record selects a Rust crate plus a compatibility adapter, names
+  the crate-owned lower layer, and lists Python-specific gaps covered by
+  fixtures
 - the unit is pure stdlib/local behavior with no meaningful third-party/native
   dependency expansion
 - the coordinator explicitly records why dependency bootstrap is unnecessary
@@ -50,16 +53,19 @@ list entry.
    starts.
 4. Shrink the work to one independently verifiable behavior.
 5. Add or update Python/Rust fixtures before changing production routing.
-6. Implement in `rewrite-in-rust/rust/` unless the manifest explicitly permits a
+6. Reuse selected Rust crates where dependency/bootstrap proved a lower-layer
+   capability match, and implement only the Python compatibility gaps named in
+   the dependency record.
+7. Implement in `rewrite-in-rust/rust/` unless the manifest explicitly permits a
    production bridge.
-7. Preserve Python behavior, including accepted inputs, output shape, ordering,
+8. Preserve Python behavior, including accepted inputs, output shape, ordering,
    error behavior, and edge cases named by fixtures.
-8. Run the narrowest useful Rust test, then relevant Python parity checks.
-9. If Rust implementation exists but independent review is incomplete, mark the
+9. Run the narrowest useful Rust test, then relevant Python parity checks.
+10. If Rust implementation exists but independent review is incomplete, mark the
    unit `reimplemented`, not `verified`.
-10. Add a rewrite record when the work changes a boundary or reveals a reusable
+11. Add a rewrite record when the work changes a boundary or reveals a reusable
    lesson.
-11. Final response must request the required review roles.
+12. Final response must request the required review roles.
 
 Completion criterion: one unit is implemented or the blocker is concrete.
 
@@ -69,6 +75,9 @@ Completion criterion: one unit is implemented or the blocker is concrete.
   is explicitly in promotion planning.
 - Do not add PyO3, CLI/subprocess, HTTP, or runtime router architecture as a
   shortcut.
+- Do not hand-write lower-level dependency machinery when the accepted boundary
+  already selected a Rust crate that covers it. Keep custom code focused on the
+  Python semantic delta and fixture-bound projections.
 - Do not migrate model inference, ONNX Runtime ownership, Qwen ASR, PyQt, or
   Flask as part of a small library unit.
 - Do not broaden a unit to nearby modules because they are convenient.

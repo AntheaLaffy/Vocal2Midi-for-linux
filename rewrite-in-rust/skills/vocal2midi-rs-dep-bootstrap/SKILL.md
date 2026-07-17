@@ -1,6 +1,6 @@
 ---
 name: vocal2midi-rs-dep-bootstrap
-description: Expand Python dependencies and align capability coverage, fixtures, hand-written Rust replacements, and seam/bootstrap records for Vocal2Midi. Use before implementation when imports, native/FFI sources, dependency mismatch, fixture strategy, or manifest re-cut decisions affect a migration unit.
+description: Expand Python dependencies and align capability coverage, Rust crate reuse, compatibility adapters, hand-written replacements, fixtures, and seam/bootstrap records for Vocal2Midi. Use before implementation when imports, native/FFI sources, dependency mismatch, fixture strategy, or manifest re-cut decisions affect a migration unit.
 ---
 
 # Vocal2Midi Rust Dependency And Bootstrap
@@ -56,13 +56,26 @@ Decide by capability, not by Python package name.
 
 - Pure validation, parsing, formatting, alignment, and deterministic algorithms
   can be hand-written in Rust against fixtures.
+- A Rust crate does not need to be a perfect drop-in to be useful. When a crate
+  covers a stable lower layer, such as tokenization, parsing events, IO,
+  Unicode tables, numeric primitives, or data structures, prefer reusing that
+  layer and writing a small compatibility adapter for the Python-specific
+  behavior it does not cover.
+- If Python source for the legacy behavior is available in project files,
+  `third_party/`, or another recorded source snapshot, use it to implement only
+  the observed semantic delta between the Rust crate and Python behavior. Do not
+  reject a crate merely because its high-level API disagrees with the Python
+  package.
 - Heavy model inference, ONNX Runtime, Qwen ASR, PyQt, and Flask remain
   legacy-owned unless the manifest changes.
 - Local vendored Python, Rust, and native sources may be used as references.
 - Use `third_party/source_audit.json` and the source manifests to justify the
-  exact reference source path used for a hand-written replacement.
+  exact reference source path used for a compatibility adapter or hand-written
+  replacement.
 - A direct crate replacement is optional. A narrow Rust replacement is preferred
-  when package parity is broader, less stable, or harder to verify.
+  when package parity is broader, less stable, or harder to verify, but a
+  partial crate plus a focused adapter is preferred over fully hand-writing the
+  same lower-level machinery.
 - If a planned unit is too broad after expansion, split it. If several units
   share the same required Rust data model or fixture harness, merge or extract a
   prerequisite unit.
@@ -118,14 +131,23 @@ seam:
 fixtures:
   required:
     - "fixture or golden output needed before writer starts"
+crate_reuse:
+  candidates:
+    - crate: "crate-name"
+      covered_capabilities:
+        - "what the crate can own safely"
+      gaps:
+        - "Python behavior not covered by crate"
+      adapter_plan: "how the unit will patch the gaps using legacy source/fixtures"
+      decision: use | reject | defer
 inventory_impact:
   decision: confirmed | split | merged | renamed | deferred | replaced
   reason: "why the manifest unit boundary did or did not change"
 hand_written_replacements:
-  - capability: "behavior implemented directly in Rust"
+  - capability: "behavior implemented directly in Rust instead of by crate"
     reference_sources:
       - "third_party/sources/package-version or native/upstream/cargo source path"
-    reason: "why this is better than package parity"
+    reason: "why this is better than crate reuse plus an adapter"
 legacy_kept:
   - capability: "capability retained in Python"
     reason: "why not moving now"

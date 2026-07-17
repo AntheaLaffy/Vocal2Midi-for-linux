@@ -40,11 +40,20 @@ change the unit boundary:
   source boundaries
 - the planned unit mixes several separately verifiable capabilities
 - a direct crate replacement looks broader than a narrow Rust implementation
+- a Rust crate covers useful lower-level behavior but differs from Python at the
+  public API, resolver, constructor, formatting, or error-projection layer
 - fixtures or shared Rust data structures are missing
 - rollback is unclear after dependency expansion
 
 If any signal is present, route to `vocal2midi-rs-dep-bootstrap` before writer
 work. Re-cut planned units when that creates a smaller or more verifiable path.
+Do not treat dependency alignment as a binary choice between perfect crate
+parity and fully hand-written Rust. The preferred ladder is:
+
+1. direct crate coverage when fixtures prove it;
+2. partial crate reuse plus a fixture-bound compatibility adapter when Python
+   source explains the semantic gaps;
+3. narrow hand-written Rust only for capabilities the crate cannot safely own.
 
 Completion criterion: continuing with the current unit boundary is justified, or
 the plan is routed to dependency/bootstrap discovery.
@@ -112,7 +121,9 @@ obvious.
 - Runtime/control-plane code must not contain business logic.
 - A writer must not review its own work.
 - A reviewer must not patch production code.
-- Dependency alignment is by capability coverage, not package-name matching.
+- Dependency alignment is by capability coverage, not package-name matching;
+  partial crate coverage plus a Python-source-guided adapter is valid when it is
+  smaller and more verifiable than fully hand-writing the lower layer.
 - The initial module list is temporary; do not preserve it when dependency
   expansion proves a better boundary.
 - Use uv Python 3.12.x for Python checks; do not use the system `python`.

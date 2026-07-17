@@ -19,6 +19,7 @@ Third-party components, vendored code, bundled data, dictionaries, and other emb
 | llama.cpp | CPU decoder runtime used by the Qwen3-ASR DML path | https://github.com/ggml-org/llama.cpp |
 | ONNX Runtime | DirectML and CPU inference execution | https://github.com/microsoft/onnxruntime |
 | PyQt-Fluent-Widgets | Fluent-style desktop UI components | https://github.com/zhiyiYo/PyQt-Fluent-Widgets |
+| CPython / Python Software Foundation | reference algorithm for the Rust adaptation of Python 3.12.13 list-sort comparison scheduling and Unicode 15.0 printability | https://github.com/python/cpython/tree/v3.12.13 |
 
 ## Vendored components in this repository
 

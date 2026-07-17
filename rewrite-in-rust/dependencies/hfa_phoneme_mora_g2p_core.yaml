@@ -1,0 +1,50 @@
+unit: hfa_phoneme_mora_g2p_core
+status: done
+capabilities:
+  base_output_contract:
+    legacy: "inference/HubertFA/tools/g2p.py::BaseG2P.__call__"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::apply_base_g2p_contract"
+    reason: "Both pure G2P modes share exact leading/trailing SP assertions, consecutive-SP rejection, language prefixing, tuple order, and index-map shape."
+  raw_phoneme_g2p:
+    legacy: "inference/HubertFA/tools/g2p.py::PhonemeG2P"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::phoneme_g2p"
+    reason: "This path is deterministic string/list control flow and intentionally retains empty tokens produced by split(' ')."
+  japanese_mora_g2p:
+    legacy: "inference/HubertFA/tools/g2p.py::JapanesePhonemeMoraG2P"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::japanese_phoneme_mora_g2p"
+    reason: "The vowel/join/consonant/control tables and fallback order are pure and fixture-bound; no Japanese frontend or model is called."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_phoneme_mora_g2p_core.jsonl contains 28 JSONL rows with case_id, kind, language (string or null), text/output, and exact expected phonemes/words/phoneme_to_word, legacy error projection, or Python Unicode 15 lowercase digest."
+    - "Cover empty and literal repeated spaces, only/control SP/AP/EP, language None and empty/string prefixes, N/cl and I/U normalization, joined mora spellings, separated consonant-vowel tokens, palatal/fy/hu fallbacks, unknown/case variants, and repeated calls."
+    - "Retain the observed legacy distinction: PhonemeG2P('') yields one empty word and prefixed empty phone, while JapanesePhonemeMoraG2P('') yields only SP and no words."
+    - "Pin Python 3.12 Unicode 15 lowercase behavior across all 1,112,064 valid scalar values so newer Rust Unicode tables cannot change unknown mora words."
+inventory_impact:
+  decision: split
+  reason: "This is the first pure phase split from hfa_g2p_export_config_core. It shares one output contract but no file, warning, YAML, export, TextGrid, or model dependency."
+hand_written_replacements:
+  - capability: "Base/phoneme/Japanese-mora deterministic G2P"
+    reference_sources:
+      - "inference/HubertFA/tools/g2p.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+    reason: "A direct Rust table/string implementation is smaller than adding a G2P package and preserves repository-specific mora ordering."
+legacy_kept:
+  - capability: "Dictionary file G2P"
+    reason: "Dictionary parsing and warnings form the following hfa_dictionary_g2p_core unit."
+  - capability: "Dataset discovery, lab IO, decoder/model execution, and routing"
+    reason: "InferenceBase.get_dataset and ONNX/API callers remain Python-owned; fixtures call only G2P objects."
+  - capability: "Config and label export"
+    reason: "Those have independent dependencies, caller phases, and rollback routes."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_phoneme_mora_g2p_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_phoneme_mora_g2p_core"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check"
+  - "cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings"
+  - "RUSTDOCFLAGS='-D warnings' cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps"
+  - "uv run python scripts/audit_vendored_sources.py"

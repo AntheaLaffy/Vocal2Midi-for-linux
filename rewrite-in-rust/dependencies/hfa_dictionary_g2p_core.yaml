@@ -1,0 +1,65 @@
+unit: hfa_dictionary_g2p_core
+status: done
+capabilities:
+  linux_utf8_dictionary_snapshot:
+    legacy: "inference/HubertFA/tools/g2p.py::DictionaryG2P.__init__"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::HfaDictionaryG2p::from_path"
+    reason: "The constructor reads once with locale-default text mode; on the supported Linux UTF-8 environment, missing/directory paths, invalid UTF-8, newline translation, and the snapshot boundary are observable."
+  dictionary_row_parser:
+    legacy: "inference/HubertFA/tools/g2p.py::DictionaryG2P.__init__ dictionary comprehension"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::parse_dictionary"
+    reason: "Whole-file strip, newline splitting, required tab index 1, ignored later tab fields, stripped keys/values, literal-space phone splitting, empty phone tokens, and last-value duplicate replacement are repository-specific behavior."
+  dictionary_lookup_and_indexes:
+    legacy: "inference/HubertFA/tools/g2p.py::DictionaryG2P._g2p plus BaseG2P.__call__"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::HfaDictionaryG2p::convert"
+    reason: "Literal-space input tokens, missing-word omission, accepted-word index advancement, inserted SP, language prefixing, output order, and the shared SP assertions are caller-visible."
+  ordered_warning_policy:
+    legacy: "inference/HubertFA/tools/g2p.py::DictionaryG2P._g2p warnings.warn calls"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_g2p.rs::HfaDictionaryG2pWarning"
+    reason: "Every missing token and every rejected edge SP emits one UserWarning with exact text and call order; Rust must retain these diagnostics without introducing a Python bridge."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+  rust_module: "v2m-core::hfa_g2p (extend the verified shared HFA G2P types)"
+  public_payload: "constructor(path, nullable language) -> immutable converter; convert(input_text) -> HfaG2pOutput plus ordered warnings, or a structured compatibility error"
+  error_mapping: "Retain IO path/kind/source, Python 3.12/Unicode 15 filename repr for supported Linux UTF-8 paths, UTF-8 decode start/exclusive-end/leading-byte/reason, malformed-row IndexError compatibility text, and the prerequisite shared AssertionError projection; Python warning/exception reconstruction waits for promotion."
+  trace_context: "Attach operation (open/read/parse/convert), dictionary path for constructor errors, and input word position for conversion diagnostics without logging input contents."
+  repeated_calls: "The dictionary is loaded once; later file changes and earlier conversion errors do not mutate the converter, and identical calls repeat identical warnings/results."
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_dictionary_g2p_core.jsonl contains 43 tempfile-backed Python 3.12/Linux UTF-8 golden cases with exact parsed maps, output arrays, ordered warning categories/text, decode span/reason projections, filename repr, and normalized exception projections."
+    - "Cover empty/whitespace/malformed files; invalid start, continuation, overlong, surrogate, out-of-range, multi-byte invalid-continuation, and truncated UTF-8; missing/directory and apostrophe/control/backslash/non-ASCII UTF-8 paths; duplicate, extra-tab, CRLF/lone-CR, trimmed Unicode, empty-key, empty-phone, and repeated-space rows; missing/empty/repeated-space input; edge/interior/consecutive SP; nullable/empty/string language; repeated calls, file snapshotting, and recovery after a conversion error."
+inventory_impact:
+  decision: confirmed
+  reason: "Expansion confirms the record-0074 split: file parsing, immutable lookup, warning order, and the shared output contract form one fixture-complete library unit without dataset discovery, model runtime, config, or export behavior."
+hand_written_replacements:
+  - capability: "Dictionary snapshot, row parser, lookup, index, and warning policy"
+    reference_sources:
+      - "inference/HubertFA/tools/g2p.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+      - "rewrite-in-rust/fixtures/hfa_dictionary_g2p_core.jsonl"
+      - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "pyproject.toml"
+      - "requirements.txt"
+      - "uv.lock"
+      - "third_party/source_audit.json"
+    reason: "Selected code imports only pathlib and warnings. A std-backed, fixture-bound implementation is narrower and more exact than adding a dictionary/G2P crate; the audited third-party inventory supplies no capability needed by this seam."
+legacy_kept:
+  - capability: "Dictionary path selection and dataset/lab discovery"
+    reason: "InferenceBase.get_dataset and hfa_api select paths and enumerate wav/lab files outside this constructor/conversion seam."
+  - capability: "Python warning/exception presentation and runtime routing"
+    reason: "Rust records ordered diagnostics and structured errors, but Python remains runtime owner until a promotion unit defines bridge payload validation and reconstruction."
+  - capability: "HubertFA config, vocab, decoder, model inference, alignment, and export"
+    reason: "These are separate migration units or stage exclusions and are not imported or executed by the fixture harness."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_dictionary_g2p_core.py"
+  - "uv run python -m py_compile inference/HubertFA/tools/g2p.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_dictionary_g2p_core"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_phoneme_mora_g2p_core"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
+  - "cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check"
+  - "cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings"
+  - "RUSTDOCFLAGS='-D warnings' cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps"
+  - "uv run python scripts/audit_vendored_sources.py"

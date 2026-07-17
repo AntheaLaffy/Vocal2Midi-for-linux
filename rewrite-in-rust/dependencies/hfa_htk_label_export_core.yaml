@@ -1,0 +1,42 @@
+unit: hfa_htk_label_export_core
+status: planned
+capabilities:
+  htk_label_rendering:
+    legacy: "inference/HubertFA/tools/export_tool.py::Exporter.save_htk"
+    rust: "planned in-memory planned-file renderer reusing verified HFA Word state"
+    reason: "HTK output is deterministic time scaling, truncation, text concatenation, and prediction-order behavior."
+  cumulative_prediction_state:
+    legacy: "save_htk w_out/ph_out initialized before the prediction loop"
+    rust: "explicit compatibility accumulator in the planned-file result"
+    reason: "Each later prediction file contains all earlier labels; controlled Python 3.12 probes prove this observable legacy bug/contract."
+  htk_path_planning:
+    legacy: "save_htk output_folder/wav-parent path and mkdir/write calls"
+    rust: "in-memory relative/absolute path plan; filesystem effects remain legacy-owned"
+    reason: "Basename replacement, Phones/Words directories, collision/overwrite order, and output-folder selection are independently testable without writing production paths."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "Prediction snapshots and output-folder mode yielding ordered planned paths and exact UTF-8 phone/word bytes or numeric/conversion errors."
+    - "Cover empty/single/multiple predictions, cumulative second/later contents, duplicate basenames/overwrite order, nested inputs, output_folder None/empty/Path, fractional/negative/NaN/infinite/large times, Unicode/quote/newline text, empty words/phones, and repeated exporter calls."
+inventory_impact:
+  decision: split
+  reason: "HTK rendering has no TextGrid dependency and its cross-prediction accumulator is a separate state contract that must not be hidden inside generic export."
+hand_written_replacements:
+  - capability: "HTK label content and path plan"
+    reference_sources:
+      - "inference/HubertFA/tools/export_tool.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs"
+    reason: "Standard f64 conversion, integer truncation, strings, and paths cover the selected behavior; no HTK crate is needed."
+legacy_kept:
+  - capability: "Directory creation, file writes, IO errors, status printing, and production routing"
+    reason: "The independent library returns planned files; Python Exporter remains runtime owner until promotion defines effects and rollback."
+  - capability: "TextGrid serialization and format dispatch"
+    reason: "They have distinct dependency and orchestration units."
+verification:
+  - "uv run python --version"
+  - "uv run python -m py_compile inference/HubertFA/tools/export_tool.py"
+  - "uv run python scripts/audit_vendored_sources.py"

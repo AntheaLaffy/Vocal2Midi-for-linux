@@ -1,0 +1,57 @@
+unit: hfa_wordlist_finalize_core
+status: done
+capabilities:
+  small_gap_repair:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.fill_small_gaps"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList.fill_small_gaps and fill_small_gaps_default"
+    reason: "After multi-pass aggregation, leading, interior, and trailing gaps repair Word and edge-phoneme state through the shared mutation API, preserving strict thresholds, operation order, warnings, and caught outer errors."
+  sp_insertion:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.add_SP"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList.add_sp and add_sp_default"
+    reason: "SP insertion fills leading, interior, and trailing gaps, preserves source Word identity and the shared log while replacing list contents, applies validated append's implicit empty/overlap discard, and invokes check."
+  final_invariant_check:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.check"
+    rust: "rewrite-in-rust/rust/crates/v2m-core/src/hfa_word.rs::WordList.check"
+    reason: "The exact return value, first-failure branch order, warning strings, special-float comparison behavior, and repeated log accumulation are caller-visible."
+  caught_error_logging:
+    legacy: "inference/HubertFA/tools/align_word.py::WordList.fill_small_gaps and add_SP exception handlers"
+    rust: "structured HfaWordListError integrity results plus exact compatibility diagnostics in v2m-core::hfa_word"
+    reason: "Legacy finalization catches broad exceptions and appends exact ERROR lines; shared fixtures preserve reachable errors while bootstrap records exclude monkeypatch-only control-flow probes from the production API."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/hfa_wordlist_finalize_core.jsonl contains 53 Python 3.12.13 golden cases with exact returns, heterogeneous entries, source/new identity labels, and accumulated logs."
+    - "fill_small_gaps cases cover empty outer error; negative-start integer-zero partial mutation; leading strict inequalities and start/duration equality; trailing equality/below; interior touch/equal/above/overlap; invalid-middle after trailing mutation; empty-phone partial error; helper warning continuation; NaN/+inf/-inf gap, wav, and endpoint values; repeated larger-wav calls; and repeated WordHandle positions."
+    - "add_SP cases cover empty outer error; leading/interior/trailing/custom/no-gap/touch insertion; source versus generated identity; implicit empty/overlap discard and original-last-end behavior; invalid first/middle/last partial state; natural raw-negative endpoint interior/trailing ValueError branches; pre-existing log ordering; NaN/+inf/-inf wav; repeated same/larger wav; alias positions; and clear/extend replacement."
+    - "check cases cover empty/valid true, invalid-entry/word-interval/empty-phone/first-edge/last-edge/phone-interval/phone-adjacency/word-adjacency first failures, crossing-defect order, NaN invalid and +inf valid intervals, and repeated warning logs."
+    - "rewrite-in-rust/bootstrap/check_hfa_wordlist_finalize_core.py parses the shared special-float schema, emits fixtures with --generate from uv Python 3.12.13, and is silent on successful default verification."
+inventory_impact:
+  decision: split
+  reason: "This is the post-aggregation finalization phase of the former hfa_word_interval_core. It extends the verified model and the canonical heterogeneous WordListEntry/WordHandle/log storage from hfa_wordlist_collection_ap_core without duplicating types or adding discarded-entry APIs."
+hand_written_replacements:
+  - capability: "HubertFA gap repair, SP insertion, and final checks"
+    reference_sources:
+      - "inference/HubertFA/tools/align_word.py"
+      - "inference/HubertFA/tools/infer_base.py"
+      - "inference/API/hfa_api.py"
+      - "rewrite-in-rust/dependencies/hfa_word_model_core.yaml"
+      - "rewrite-in-rust/dependencies/hfa_wordlist_collection_ap_core.yaml"
+    reason: "The selected behavior is deterministic interval mutation, SP construction, list replacement, validation, and diagnostics over existing shared types; NumPy, librosa, model, and export dependencies are not needed."
+legacy_kept:
+  - capability: "Pre-aggregation WordList construction, AP policy, projections, and prefix clearing"
+    reason: "Those capabilities are independently verified by hfa_wordlist_collection_ap_core and are prerequisites rather than duplicated finalization scope."
+  - capability: "Multi-pass aggregation, audio loading, export, and HubertFA model execution"
+    reason: "The caller computes aggregate boundaries before invoking finalization. NumPy, librosa, TextGrid/export, ONNX Runtime, and model sessions remain Python-owned."
+  - capability: "hfa_api.py short-word repair and clear/extend alias workflow"
+    reason: "hfa_api.py consumes the same prediction objects after infer and mutates/rewrites list contents; promotion must define this alias boundary explicitly."
+  - capability: "Production diagnostic and bridge mapping"
+    reason: "A later promotion record must decide whether exact legacy WARNING/ERROR strings or structured Rust payloads cross into Python, including broad-exception and user warning handling, with rollback."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_wordlist_finalize_core.py"
+  - "uv run python --version  # must be Python 3.12.13 under the project uv pin"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_wordlist_finalize"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_wordlist_collection"
+  - "git diff --check"
