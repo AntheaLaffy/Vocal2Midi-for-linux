@@ -10,52 +10,79 @@ use std::collections::{BTreeSet, HashSet};
 /// Filesystem root entry returned to the Web picker.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PickerRoot {
+    /// The label.
     pub label: String,
+    /// The filesystem path.
     pub path: String,
+    /// The input path.
     pub input_path: String,
 }
 
 /// Fake filesystem entry used by fixture-backed listing.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PickerEntrySpec {
+    /// The name.
     pub name: String,
+    /// The entry type.
     pub entry_type: String,
 }
 
 /// Filesystem entry returned to the Web picker.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PickerEntry {
+    /// The name.
     pub name: String,
+    /// The entry type.
     pub entry_type: String,
+    /// The filesystem path.
     pub path: String,
+    /// The input path.
     pub input_path: String,
 }
 
 /// Result shape modeled from `GET /api/filesystem/list`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PickerListResponse {
+    /// The HTTP status code.
     pub status_code: u16,
+    /// Whether the operation succeeded.
     pub success: bool,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The optional mode.
     pub mode: Option<String>,
+    /// The optional filesystem path.
     pub path: Option<String>,
+    /// The optional input path.
     pub input_path: Option<String>,
+    /// The optional parent.
     pub parent: Option<String>,
+    /// The optional parent input path.
     pub parent_input_path: Option<String>,
+    /// The ordered entries.
     pub entries: Vec<PickerEntry>,
+    /// The ordered roots.
     pub roots: Vec<PickerRoot>,
 }
 
 /// Inputs needed to model `GET /api/filesystem/list`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PickerListInput<'a> {
+    /// The project root.
     pub project_root: &'a str,
+    /// The home dir.
     pub home_dir: &'a str,
+    /// The path text.
     pub path_text: &'a str,
+    /// The mode.
     pub mode: &'a str,
+    /// The extensions.
     pub extensions: &'a str,
+    /// The path state.
     pub path_state: &'a str,
+    /// The optional scandir error.
     pub scandir_error: Option<&'a str>,
+    /// The ordered children.
     pub children: Vec<PickerEntrySpec>,
 }
 

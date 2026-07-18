@@ -61,3 +61,33 @@ replacement is acceptable only when fixture-bound.
 
 A stable input and expected output used to prove Python/Rust behavior parity.
 Fixtures should be narrow, deterministic, and tied to one migration unit.
+
+## Verification
+
+Evidence that Rust matches the named legacy behavior at a fixture-backed public
+boundary. Verification does not change runtime ownership and must not be
+described as production migration.
+
+## Compatibility Adapter
+
+A narrow layer that projects a maintained Rust crate's API or semantics onto the
+legacy Python public contract. The adapter owns only the documented gap; the
+crate owns the stable lower-level capability.
+
+## Runtime Owner
+
+The implementation selected by production callers by default. `current_owner`
+in `manifest.yaml` is authoritative. A verified Rust implementation is not the
+runtime owner until a promotion changes that field.
+
+## Living Contract
+
+A current-state document that may be updated in place, such as a bootstrap
+contract, dependency YAML file, maintainer guide, or manifest entry. A changed
+migration boundary also requires a new decision record.
+
+## Historical Evidence
+
+A dated decision or review report that preserves what was concluded from the
+evidence available at that time. Historical evidence is append-only; corrections
+use a later record or rerun.

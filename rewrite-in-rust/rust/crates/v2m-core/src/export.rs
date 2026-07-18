@@ -6,30 +6,40 @@
 /// One note row accepted by the TXT/CSV formatter.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct NoteInfo<'a> {
+    /// The onset.
     pub onset: f64,
+    /// The offset.
     pub offset: f64,
+    /// The pitch.
     pub pitch: f64,
+    /// The lyric.
     pub lyric: &'a str,
 }
 
 /// Text export container format.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextFileFormat {
+    /// Represents the Python-compatible txt case.
     Txt,
+    /// Represents the Python-compatible csv case.
     Csv,
 }
 
 /// Pitch rendering mode used by the Python export path.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PitchFormat {
+    /// Represents the Python-compatible number case.
     Number,
+    /// Represents the Python-compatible name case.
     Name,
 }
 
 /// Rendered export content plus the number of invalid notes skipped.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TextExport {
+    /// The content.
     pub content: String,
+    /// The skipped invalid notes.
     pub skipped_invalid_notes: usize,
 }
 

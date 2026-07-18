@@ -13,28 +13,59 @@ const PIPELINE_INTERRUPTED_MESSAGE: &str = "Pipeline was interrupted by user.";
 /// Minimal application job inputs needed by the guard contract.
 #[derive(Debug, Clone, Copy)]
 pub struct ApplicationJobConfig<'a> {
+    /// The GAME model directory.
     pub game_model_dir: &'a Path,
+    /// The HubertFA model directory.
     pub hfa_model_dir: &'a Path,
+    /// The ASR model path.
     pub asr_model_path: &'a Path,
+    /// Whether lyric output is enabled.
     pub output_lyrics: bool,
+    /// Whether cancellation is requested before dispatch.
     pub cancel_before_start: bool,
 }
 
 /// Legacy hybrid pipeline result used to model Python call/error mapping.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LegacyPipelineResult<'a> {
+    /// Represents the Python-compatible completed case.
     Completed,
+    /// Represents the Python-compatible interrupted case.
     Interrupted,
-    Vocal2MidiError { message: &'a str, details: &'a str },
-    OtherError { display: &'a str },
+    /// A legacy application error that must pass through unchanged.
+    Vocal2MidiError {
+        /// The user-facing error message.
+        message: &'a str,
+        /// The detailed error context.
+        details: &'a str,
+    },
+    /// A non-application error that must be wrapped at the job boundary.
+    OtherError {
+        /// The legacy exception display text.
+        display: &'a str,
+    },
 }
 
 /// Application-layer failure compatible with the Python exception contract.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ApplicationJobError {
-    ModelNotFound { details: String },
-    Cancelled { message: &'static str },
-    Vocal2Midi { message: String, details: String },
+    /// One or more required model paths do not exist.
+    ModelNotFound {
+        /// The ordered Python-compatible path validation details.
+        details: String,
+    },
+    /// The operation was cancelled before or during pipeline dispatch.
+    Cancelled {
+        /// The Python-compatible cancellation message.
+        message: &'static str,
+    },
+    /// A pipeline failure projected into the application error contract.
+    Vocal2Midi {
+        /// The user-facing error message.
+        message: String,
+        /// The detailed error context.
+        details: String,
+    },
 }
 
 impl ApplicationJobError {
@@ -75,6 +106,11 @@ impl std::fmt::Display for ApplicationJobError {
 impl std::error::Error for ApplicationJobError {}
 
 /// Validates the model paths required before the hybrid pipeline starts.
+///
+/// # Errors
+///
+/// Returns [`ApplicationJobError::ModelNotFound`] with ordered path details
+/// when a required model path is empty or does not exist.
 pub fn validate_model_paths(config: &ApplicationJobConfig<'_>) -> Result<(), ApplicationJobError> {
     let mut errors = Vec::new();
     collect_missing_path(&mut errors, "GAME 模型目录", config.game_model_dir);
@@ -99,6 +135,11 @@ fn collect_missing_path(errors: &mut Vec<String>, label: &str, path: &Path) {
 }
 
 /// Runs the application job contract around a legacy pipeline closure.
+///
+/// # Errors
+///
+/// Returns [`ApplicationJobError`] for model-path validation, cancellation, a
+/// legacy application error, or a wrapped non-application pipeline error.
 pub fn run_auto_lyric_job_contract<'a, F>(
     config: &ApplicationJobConfig<'_>,
     run_pipeline: F,

@@ -8,11 +8,17 @@ use serde_json::{Map, Value, json};
 /// Response produced by a settings update operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SettingsUpdateResponse {
+    /// The HTTP status code.
     pub status_code: u16,
+    /// Whether the operation succeeded.
     pub success: bool,
+    /// The optional message text.
     pub message: Option<String>,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The optional settings.
     pub settings: Option<Value>,
+    /// The optional saved payload.
     pub saved_payload: Option<String>,
 }
 
@@ -107,6 +113,11 @@ pub fn load_settings_payload(defaults: &Value, payload: Option<&str>) -> Value {
 }
 
 /// Serializes settings like Python `json.dumps(..., ensure_ascii=False, indent=2) + "\n"`.
+///
+/// # Panics
+///
+/// Panics only if `serde_json` fails to serialize an already materialized JSON
+/// [`Value`].
 pub fn save_settings_payload(settings: &Value) -> String {
     format!("{}\n", serde_json::to_string_pretty(settings).unwrap())
 }

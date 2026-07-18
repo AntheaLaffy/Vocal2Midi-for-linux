@@ -13,7 +13,9 @@ use std::fmt;
 /// One synthetic TextGrid point used by the metrics fixture seam.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Point {
+    /// The time.
     pub time: f64,
+    /// The mark.
     pub mark: String,
 }
 
@@ -33,6 +35,7 @@ impl Point {
 /// validation and inserts at the `bisect_left` position by time.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct PointTier {
+    /// The ordered points.
     pub points: Vec<Point>,
 }
 
@@ -206,7 +209,9 @@ impl VlabelerEditsCount {
 /// `VlabelerEditRatio` wrapper over `VlabelerEditsCount`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct VlabelerEditRatio {
+    /// The edit distance.
     pub edit_distance: VlabelerEditsCount,
+    /// The total.
     pub total: i64,
 }
 
@@ -250,7 +255,9 @@ impl VlabelerEditRatio {
 /// IoU metric over adjacent point spans.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct IntersectionOverUnion {
+    /// The intersection.
     pub intersection: BTreeMap<String, f64>,
+    /// The sum.
     pub sum: BTreeMap<String, f64>,
 }
 
@@ -418,8 +425,11 @@ pub fn get_matched_pairs(pred: &PointTier, target: &PointTier) -> (Vec<Point>, V
 /// Boundary edit distance metric.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct BoundaryEditDistance {
+    /// The distance.
     pub distance: f64,
+    /// The phonemes.
     pub phonemes: usize,
+    /// The error phonemes.
     pub error_phonemes: usize,
 }
 
@@ -472,7 +482,9 @@ impl BoundaryEditDistance {
 /// Boundary edit ratio metric.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct BoundaryEditRatio {
+    /// The distance metric.
     pub distance_metric: BoundaryEditDistance,
+    /// The duration.
     pub duration: f64,
 }
 
@@ -513,6 +525,10 @@ impl BoundaryEditRatio {
     }
 
     /// Legacy inherited reset gap.
+    ///
+    /// # Errors
+    ///
+    /// Always returns the legacy `NotImplementedError` projection.
     pub fn reset(&mut self) -> Result<(), HfaMetricError> {
         Err(HfaMetricError::not_implemented())
     }
@@ -521,9 +537,13 @@ impl BoundaryEditRatio {
 /// Weighted boundary edit ratio metric.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct BoundaryEditRatioWeighted {
+    /// The distance metric.
     pub distance_metric: BoundaryEditDistance,
+    /// The duration.
     pub duration: f64,
+    /// The counts.
     pub counts: usize,
+    /// The error message.
     pub error: usize,
 }
 
@@ -574,6 +594,10 @@ impl BoundaryEditRatioWeighted {
     }
 
     /// Legacy inherited reset gap.
+    ///
+    /// # Errors
+    ///
+    /// Always returns the legacy `NotImplementedError` projection.
     pub fn reset(&mut self) -> Result<(), HfaMetricError> {
         Err(HfaMetricError::not_implemented())
     }

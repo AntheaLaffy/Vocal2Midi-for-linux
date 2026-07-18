@@ -8,7 +8,9 @@
 /// Synthetic waveform payload used by segment-merge parity fixtures.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Waveform {
+    /// Carries the Python-compatible mono value.
     Mono(Vec<f64>),
+    /// Carries the Python-compatible stereo value.
     Stereo(Vec<Vec<f64>>),
 }
 
@@ -38,11 +40,17 @@ impl Waveform {
 /// One segment dictionary accepted by legacy merge helpers.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Segment {
+    /// The offset.
     pub offset: f64,
+    /// The waveform.
     pub waveform: Waveform,
 }
 
 /// Concatenates waveforms with the same axis choice as Python `_concat_waveforms`.
+///
+/// # Panics
+///
+/// Panics when one waveform is mono and the other is stereo.
 pub fn concat_waveforms(left: &Waveform, right: &Waveform) -> Waveform {
     match (left, right) {
         (Waveform::Mono(left), Waveform::Mono(right)) => {
@@ -105,6 +113,11 @@ pub fn merge_segments(left: &Segment, right: &Segment, sample_rate: f64) -> Segm
 }
 
 /// Greedily merges adjacent short segments toward the target duration range.
+///
+/// # Panics
+///
+/// Panics only if the internal merged list becomes empty after initialization
+/// from a non-empty `chunks` input.
 pub fn merge_short_segments(
     chunks: &[Segment],
     sample_rate: f64,

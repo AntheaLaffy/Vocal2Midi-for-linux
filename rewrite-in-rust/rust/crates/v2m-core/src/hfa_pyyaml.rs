@@ -24,7 +24,9 @@ type LoadResult<T> = Result<T, Box<HfaPyyamlError>>;
 /// Result of one compatibility load call.
 #[derive(Debug, Clone)]
 pub enum HfaPyyamlLoadResult {
+    /// Carries the Python-compatible ok value.
     Ok(HfaPyyamlValue),
+    /// Carries the Python-compatible err value.
     Err(Box<HfaPyyamlError>),
 }
 
@@ -58,14 +60,23 @@ impl HfaPyyamlValue {
 /// PyYAML-compatible load failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaPyyamlError {
+    /// The phase.
     pub phase: &'static str,
+    /// The class name.
     pub class_name: &'static str,
+    /// The message text.
     pub message: String,
+    /// The optional context.
     pub context: Option<String>,
+    /// The optional problem.
     pub problem: Option<String>,
+    /// The optional note.
     pub note: Option<String>,
+    /// The optional context mark.
     pub context_mark: Option<PyMark>,
+    /// The optional problem mark.
     pub problem_mark: Option<PyMark>,
+    /// The extra.
     pub extra: ErrorExtra,
 }
 
@@ -149,20 +160,34 @@ fn boxed_error(error: HfaPyyamlError) -> Box<HfaPyyamlError> {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Additional structured fields attached to a projected Python exception.
 pub enum ErrorExtra {
+    /// Represents the Python-compatible none case.
     None,
+    /// Represents the Python-compatible io case.
     Io {
+        /// The errno.
         errno: i32,
+        /// The strerror.
         strerror: String,
+        /// The optional filename.
         filename: Option<String>,
+        /// The optional filename2.
         filename2: Option<String>,
     },
+    /// Represents the Python-compatible decode case.
     Decode {
+        /// The encoding.
         encoding: &'static str,
+        /// The reason.
         reason: String,
+        /// The start.
         start: usize,
+        /// The end.
         end: usize,
+        /// The object len.
         object_len: usize,
+        /// The object hex.
         object_hex: String,
     },
 }
@@ -875,10 +900,15 @@ impl DateTimeValue {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+/// Source location compatible with PyYAML's zero-based `Mark` fields.
 pub struct PyMark {
+    /// The name.
     pub name: String,
+    /// The index.
     pub index: usize,
+    /// The line.
     pub line: usize,
+    /// The column.
     pub column: usize,
 }
 

@@ -17,39 +17,60 @@ use crate::lyric_sequence::calculate_difference_count;
 /// Processed lyric data produced by a language processor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LyricData {
+    /// The ordered text list.
     pub text_list: Vec<String>,
+    /// The ordered phonetic list.
     pub phonetic_list: Vec<String>,
+    /// The raw text.
     pub raw_text: String,
 }
 
 /// Result from processing one lab file against one lyric reference.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcessResult {
+    /// The lab name.
     pub lab_name: String,
+    /// The matched text.
     pub matched_text: String,
+    /// The matched phonetic.
     pub matched_phonetic: String,
+    /// The ordered asr phonetic.
     pub asr_phonetic: Vec<String>,
+    /// The ordered asr text.
     pub asr_text: Vec<String>,
+    /// The reason.
     pub reason: String,
 }
 
 /// Mutable counters tracked by legacy `LyricMatchingPipeline`.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct PipelineState {
+    /// The total files.
     pub total_files: usize,
+    /// The success count.
     pub success_count: usize,
+    /// The diff count.
     pub diff_count: usize,
+    /// The no match count.
     pub no_match_count: usize,
+    /// The ordered missing lyrics.
     pub missing_lyrics: Vec<String>,
 }
 
 /// Backend used to inject language and alignment behavior into the file
 /// contract seam.
 pub trait LyricMatcherBackend {
+    /// Loads and processes one lyric file.
+    ///
+    /// # Errors
+    ///
+    /// Returns a backend-defined message when the lyric cannot be processed.
     fn process_lyric_file(&mut self, lyric_path: &Path) -> Result<LyricData, String>;
 
+    /// Converts one `.lab` payload into phonetic and display token lists.
     fn process_asr_content(&mut self, lab_content: &str) -> (Vec<String>, Vec<String>);
 
+    /// Aligns ASR phonetics with the processed lyric and returns display fields.
     fn align_lyric_with_asr(
         &mut self,
         asr_phonetic: &[String],
@@ -61,11 +82,17 @@ pub trait LyricMatcherBackend {
 /// File/state portion of `LyricMatchingPipeline`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LyricMatchingFilePipeline {
+    /// The lyric folder.
     pub lyric_folder: PathBuf,
+    /// The lab folder.
     pub lab_folder: PathBuf,
+    /// The json folder.
     pub json_folder: PathBuf,
+    /// The language.
     pub language: String,
+    /// The diff threshold.
     pub diff_threshold: i64,
+    /// The state.
     pub state: PipelineState,
 }
 
@@ -157,6 +184,11 @@ impl LyricMatchingFilePipeline {
     }
 
     /// Applies no-match/diff-threshold logic and writes result JSON.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`io::Error`] when the result JSON cannot be serialized or
+    /// written.
     pub fn compare_and_save_result(&mut self, result: &ProcessResult) -> io::Result<()> {
         if result.matched_text.is_empty() && result.matched_phonetic.is_empty() {
             return self.handle_no_match(result);
@@ -191,6 +223,11 @@ impl LyricMatchingFilePipeline {
     }
 
     /// Executes a caller-supplied single batch of lyric/lab paths.
+    ///
+    /// # Errors
+    ///
+    /// Returns an [`io::Error`] when the output directory or a result JSON file
+    /// cannot be created.
     pub fn execute_with_paths<B: LyricMatcherBackend>(
         &mut self,
         lyric_paths: &[PathBuf],
@@ -238,6 +275,10 @@ pub fn json_payload(text: &str, phonetic: &str) -> Value {
 }
 
 /// Serializes the JSON payload with the legacy three-space indentation.
+///
+/// # Errors
+///
+/// Returns [`serde_json::Error`] if a supplied string cannot be serialized.
 pub fn json_payload_string(text: &str, phonetic: &str) -> serde_json::Result<String> {
     Ok(format!(
         "{{\n   \"raw_text\": {},\n   \"lab\": {},\n   \"lab_without_tone\": {}\n}}",
@@ -248,6 +289,10 @@ pub fn json_payload_string(text: &str, phonetic: &str) -> serde_json::Result<Str
 }
 
 /// Writes the stable result JSON payload.
+///
+/// # Errors
+///
+/// Returns an [`io::Error`] when serialization or the filesystem write fails.
 pub fn save_to_json(path: &Path, text: &str, phonetic: &str) -> io::Result<()> {
     let payload = json_payload_string(text, phonetic).map_err(io::Error::other)?;
     fs::write(path, payload)

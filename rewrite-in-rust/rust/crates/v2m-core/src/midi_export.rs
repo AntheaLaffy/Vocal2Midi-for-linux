@@ -16,36 +16,58 @@ const CHANNEL: u8 = 0;
 /// One note row accepted by the MIDI formatter.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct MidiNoteInfo<'a> {
+    /// The onset.
     pub onset: f64,
+    /// The offset.
     pub offset: f64,
+    /// The pitch.
     pub pitch: f64,
+    /// The lyric.
     pub lyric: &'a str,
 }
 
 /// MIDI event subset emitted by the legacy `_save_midi` path.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MidiEvent<'a> {
+    /// Represents the Python-compatible set tempo case.
     SetTempo {
+        /// The delta ticks.
         delta_ticks: u64,
+        /// The tempo.
         tempo: u32,
     },
+    /// Represents the Python-compatible lyrics case.
     Lyrics {
+        /// The delta ticks.
         delta_ticks: u64,
+        /// The text.
         text: &'a str,
     },
+    /// Represents the Python-compatible note on case.
     NoteOn {
+        /// The delta ticks.
         delta_ticks: u64,
+        /// The note.
         note: u8,
+        /// The velocity.
         velocity: u8,
+        /// The channel.
         channel: u8,
     },
+    /// Represents the Python-compatible note off case.
     NoteOff {
+        /// The delta ticks.
         delta_ticks: u64,
+        /// The note.
         note: u8,
+        /// The velocity.
         velocity: u8,
+        /// The channel.
         channel: u8,
     },
+    /// Represents the Python-compatible end of track case.
     EndOfTrack {
+        /// The delta ticks.
         delta_ticks: u64,
     },
 }
@@ -53,19 +75,28 @@ pub enum MidiEvent<'a> {
 /// Rendered MIDI data plus the number of invalid input notes skipped.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MidiExport<'a> {
+    /// The file type.
     pub file_type: u16,
+    /// The ticks per beat.
     pub ticks_per_beat: u16,
+    /// The ordered events.
     pub events: Vec<MidiEvent<'a>>,
+    /// The ordered midi bytes.
     pub midi_bytes: Vec<u8>,
+    /// The skipped invalid notes.
     pub skipped_invalid_notes: usize,
 }
 
 /// Recoverable MIDI rendering failures at the Rust library boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MidiExportError {
+    /// Represents the Python-compatible invalid tempo case.
     InvalidTempo,
+    /// Represents the Python-compatible tempo out of range case.
     TempoOutOfRange,
+    /// Represents the Python-compatible tick out of range case.
     TickOutOfRange,
+    /// Represents the Python-compatible track too large case.
     TrackTooLarge,
 }
 
@@ -76,6 +107,11 @@ pub enum MidiExportError {
 /// Returns an error when the tempo is non-finite, non-positive, outside Mido's
 /// `set_tempo` meta-message range after conversion, or when tick/file sizes
 /// exceed the in-memory encoder bounds.
+///
+/// # Panics
+///
+/// Panics only if a note that passed finite-value validation later produces an
+/// unordered onset comparison.
 pub fn render_midi_export<'a>(
     notes: &[MidiNoteInfo<'a>],
     tempo_bpm: f64,

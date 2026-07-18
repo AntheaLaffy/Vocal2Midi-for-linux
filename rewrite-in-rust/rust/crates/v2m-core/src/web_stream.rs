@@ -7,17 +7,24 @@
 /// Callback call emitted by a non-empty write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamCallbackCall {
+    /// The message text.
     pub message: String,
+    /// The level.
     pub level: String,
 }
 
 /// Result of modeling one redirector operation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamRedirectOutcome {
+    /// The ordered stream writes.
     pub stream_writes: Vec<String>,
+    /// The ordered callbacks.
     pub callbacks: Vec<StreamCallbackCall>,
+    /// Whether the callback error was swallowed.
     pub callback_error_swallowed: bool,
+    /// The number of flush calls.
     pub flush_count: usize,
+    /// The optional attribute value.
     pub attribute_value: Option<String>,
 }
 
@@ -74,8 +81,11 @@ pub fn redirect_getattr(
 /// Callback behavior in the fixture model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CallbackMode {
+    /// Represents the Python-compatible record case.
     Record,
+    /// Represents the Python-compatible raise case.
     Raise,
+    /// Represents the Python-compatible none case.
     None,
 }
 

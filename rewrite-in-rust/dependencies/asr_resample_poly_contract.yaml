@@ -1,0 +1,99 @@
+unit: asr_resample_poly_contract
+status: done
+capabilities:
+  default_1d_float32_polyphase_resampling:
+    legacy: "scipy.signal.resample_poly(audio, sample_rate, sr) calls in inference/qwen3asr_dml/utils.py and inference/romaji_asr/common.py"
+    rust: "narrow hand-written 1D float32 compatibility adapter against SciPy 1.17.1 source and fixtures"
+    reason: "Both project call sites pass 1D float32 audio, axis=0, default window=('kaiser', 5.0), default padtype='constant', and integer target/source sample rates."
+  scipy_default_filter_design:
+    legacy: "third_party/sources/scipy-1.17.1/scipy/signal/_signaltools.py::resample_poly, _fir_filter_design.py::firwin, and windows/_windows.py::get_window/kaiser"
+    rust: "hand-write reduced-rate gcd logic, Kaiser-windowed low-pass FIR design including Bessel I0 approximation, pre-padding, upfirdn constant-zero filtering, and output trimming for the fixture-bound default path"
+    reason: "Generic audio resampling crates do not expose SciPy's exact default FIR length, Kaiser beta, pre-pad, and trim contract."
+  output_shape_dtype_and_errors:
+    legacy: "NumPy float32 input/output projection and SciPy ValueError text"
+    rust: "Vec<f32> output with fixture-backed length/dtype projection and Python-compatible invalid-rate errors"
+    reason: "The public seam observes output length, float32 samples, NaN propagation, empty input behavior, and invalid up/down error messages."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/asr_resample_poly_contract.jsonl contains 18 Python 3.12/SciPy 1.17.1 golden outputs for identity, short boundary ratios, long steady-state 44100->16000/48000->16000/22050->16000/8000->16000 inputs, GCD reduction, upsampling, single-sample, empty input, NaN/Inf propagation, and invalid target/source/equal-rate errors."
+    - "rewrite-in-rust/bootstrap/check_asr_resample_poly_contract.py verifies the fixture file against the current uv Python environment without a caller-level identity shortcut."
+crate_reuse:
+  candidates:
+    - crate: "rubato"
+      covered_capabilities:
+        - "high-quality general audio sample-rate conversion"
+      gaps:
+        - "Does not claim SciPy resample_poly default Kaiser FIR design, n_pre_pad/n_pre_remove trimming, constant-zero upfirdn behavior, exact output lengths, or SciPy error messages."
+      adapter_plan: "Reject for exact parity in this unit; a promotion-time product tolerance could choose a different resampler only through a separate non-parity record."
+      decision: reject
+    - crate: "samplerate"
+      covered_capabilities:
+        - "libsamplerate-backed sample-rate conversion"
+      gaps:
+        - "FFI/native dependency, different resampling algorithm, different boundary behavior, and no direct SciPy resample_poly parity."
+      adapter_plan: "Reject for this fixture-bound compatibility seam."
+      decision: reject
+    - crate: "ndarray"
+      covered_capabilities:
+        - "array-shaped storage for future romaji batch metadata"
+      gaps:
+        - "Does not implement firwin, upfirdn, or SciPy resampling semantics."
+      adapter_plan: "Do not use for this 1D Vec<f32> resampler unless a later shared array API requires it."
+      decision: defer
+dependency_strategy:
+  stance: "hand-write the narrow SciPy default 1D float32 behavior because maintained audio resampler crates cover a different lower-layer contract"
+  not_goal: "minimize dependency count"
+  full_handwritten_allowed_when:
+    - "the public behavior is SciPy's exact default filter construction and trimming, not merely perceptual audio quality"
+    - "generic resampler crates would require a tolerance-based behavioral change"
+    - "fixtures can prove the narrow output surface without model inference or audio file IO"
+source_expansion:
+  first_layer_reference:
+    status: indexed
+    source_manifest: "third_party/sources/manifest.json records scipy 1.17.1 and numpy 1.26.4 source snapshots; uv.lock locks scipy 1.17.1 and numpy 1.26.4."
+  targeted_deep_expansion:
+    used: true
+    proof:
+      - "qwen3asr_dml.utils._load_wav_audio -> scipy.signal.resample_poly -> scipy/signal/_signaltools.py::resample_poly -> scipy/signal/_fir_filter_design.py::firwin and scipy/signal/_upfirdn.py::upfirdn -> scipy/signal/_upfirdn_apply.pyx::_output_len/_apply."
+      - "scipy/signal/_fir_filter_design.py::firwin -> scipy/signal/windows/_windows.py::get_window -> scipy/signal/windows/_windows.py::kaiser -> scipy.special.i0 for the default window=('kaiser', 5.0) path."
+      - "romaji_asr.common.load_audio -> scipy.signal.resample_poly follows the same default call path after soundfile IO and mono mean."
+    rejected:
+      - "SciPy/OpenBLAS native libraries because this 1D float32 FIR/upfirdn path does not call BLAS."
+      - "soundfile/libsndfile codec behavior because file IO remains legacy-owned or a separate romaji load_audio unit."
+      - "ONNX Runtime, qwen-asr, torch, transformers, and model runtimes because resampling is reached before model execution and is fixtureable with synthetic arrays."
+low_level_boundary:
+  ignored:
+    - "NaN payload bits and CPU SIMD differences; fixtures assert public NaN placement/string projection, not payload identity."
+    - "NumPy allocator/stride internals beyond contiguous 1D float32 fixture output."
+    - "SciPy alternative array API backends, non-default padtype/window/axis, complex dtype, multi-dimensional arrays, and custom FIR window arrays."
+  investigated:
+    - "SciPy 1.17.1 default FIR length, gcd reduction, Kaiser window beta, special.i0-backed Kaiser weights, zero-padding/trimming, output length, dtype preservation, empty input behavior, NaN/Inf propagation, and invalid-rate ValueError text."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit can stay independent: it owns only default 1D float32 resample_poly parity shared by Qwen WAV fallback and romaji audio loading. It does not own WAV decoding, soundfile/librosa/pydub IO, or model inference."
+hand_written_replacements:
+  - capability: "SciPy default 1D float32 resample_poly compatibility"
+    reference_sources:
+      - "inference/qwen3asr_dml/utils.py"
+      - "inference/romaji_asr/common.py"
+      - "third_party/sources/scipy-1.17.1/scipy/signal/_signaltools.py"
+      - "third_party/sources/scipy-1.17.1/scipy/signal/_fir_filter_design.py"
+      - "third_party/sources/scipy-1.17.1/scipy/signal/windows/_windows.py"
+      - "third_party/sources/scipy-1.17.1/scipy/signal/_upfirdn.py"
+      - "third_party/sources/scipy-1.17.1/scipy/signal/_upfirdn_apply.pyx"
+    reason: "A narrow Rust implementation is more verifiable than replacing SciPy resample_poly with a different audio resampler and tolerance contract."
+legacy_kept:
+  - capability: "non-default resample_poly options: axis, window arrays, padtype variants, cval, complex/multidimensional arrays"
+    reason: "No project source ref calls these options in the selected seam."
+  - capability: "pydub, soundfile, libsndfile, and arbitrary audio file IO"
+    reason: "This unit starts from synthetic/pre-decoded 1D float32 arrays."
+  - capability: "Qwen/Romaji model execution and ONNX Runtime sessions"
+    reason: "Resampling parity is independent from model inference."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_asr_resample_poly_contract.py"
+  - "uv run python -m py_compile inference/qwen3asr_dml/utils.py inference/romaji_asr/common.py"
+  - "uv run python scripts/audit_vendored_sources.py"

@@ -15,76 +15,107 @@ use crate::web_model_download_process::{
 /// Fake wait behavior for cancellable process fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FakeWaitOutcome {
+    /// Carries the Python-compatible return value.
     Return(i64),
+    /// Represents the Python-compatible timeout case.
     Timeout,
 }
 
 /// Fake child process behavior used by execution fixtures.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FakeExecutionProcess {
+    /// The optional stdout.
     pub stdout: Option<String>,
+    /// The subprocess return code.
     pub returncode: i64,
+    /// The optional poll after read.
     pub poll_after_read: Option<i64>,
+    /// The ordered wait plan.
     pub wait_plan: Vec<FakeWaitOutcome>,
+    /// The optional popen error.
     pub popen_error: Option<String>,
 }
 
 /// Task state plus execution-only runtime handles.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelDownloadExecutionTask {
+    /// The task.
     pub task: ModelDownloadProcessTask,
+    /// Whether a stop event is present.
     pub stop_event_present: bool,
+    /// Whether the stop event is set.
     pub stop_event_set: bool,
+    /// Whether a subprocess is assigned.
     pub process_assigned: bool,
 }
 
 /// Inputs injected into the fake execution seam.
 #[derive(Debug, Clone, Copy)]
 pub struct ExecuteDownloadInput<'a> {
+    /// The python executable.
     pub python_executable: &'a str,
+    /// The root dir.
     pub root_dir: &'a str,
+    /// The base env.
     pub base_env: &'a Map<String, Value>,
+    /// The popen kwargs.
     pub popen_kwargs: &'a Value,
+    /// The optional active task id.
     pub active_task_id: Option<&'a str>,
 }
 
 /// Captured fake Popen call.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FakePopenCall {
+    /// The ordered command.
     pub command: Vec<String>,
+    /// The cwd.
     pub cwd: String,
+    /// The env.
     pub env: Map<String, Value>,
+    /// The kwargs.
     pub kwargs: Value,
 }
 
 /// Captured fake wait call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FakeWaitCall {
+    /// The optional timeout.
     pub timeout: Option<i64>,
+    /// The result.
     pub result: FakeWaitCallResult,
 }
 
 /// Fake wait result.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FakeWaitCallResult {
+    /// Carries the Python-compatible return value.
     Return(i64),
+    /// Represents the Python-compatible timeout case.
     Timeout,
 }
 
 /// Captured process termination handoff.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FakeTerminationCall {
+    /// Whether forced replacement is enabled.
     pub force: bool,
 }
 
 /// Output from the fake execution seam.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExecutionResult {
+    /// The optional active task id.
     pub active_task_id: Option<String>,
+    /// The ordered emits.
     pub emits: Vec<Value>,
+    /// The ordered popen calls.
     pub popen_calls: Vec<FakePopenCall>,
+    /// The ordered wait calls.
     pub wait_calls: Vec<FakeWaitCall>,
+    /// The ordered recorded process-termination calls.
     pub termination_calls: Vec<FakeTerminationCall>,
+    /// Whether the output reader was called.
     pub output_reader_called: bool,
 }
 
@@ -102,6 +133,11 @@ impl ExecutionResult {
 }
 
 /// Executes the fixture-backed `_execute_download` result state machine.
+///
+/// # Panics
+///
+/// Panics only if a failure branch reaches response projection without first
+/// storing its required task error message.
 pub fn execute_download(
     execution_task: &mut ModelDownloadExecutionTask,
     process: &FakeExecutionProcess,

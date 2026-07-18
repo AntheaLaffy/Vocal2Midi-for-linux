@@ -61,22 +61,39 @@ const PROCESS_MODEL_SPECS: &[ProcessModelSpec] = &[
 /// Mutable task state used by process-planning and output-parser fixtures.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelDownloadProcessTask {
+    /// The task identifier.
     pub task_id: String,
+    /// The ordered selected model identifiers.
     pub selected_models: Vec<String>,
+    /// The selected Qwen model source.
     pub qwen_source: String,
+    /// Whether forced replacement is enabled.
     pub force: bool,
+    /// The proxy mode.
     pub proxy_mode: String,
+    /// The proxy URL.
     pub proxy_url: String,
+    /// The status.
     pub status: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
+    /// The creation timestamp.
     pub created_at: String,
+    /// The optional start timestamp.
     pub started_at: Option<String>,
+    /// The optional completion timestamp.
     pub completed_at: Option<String>,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The optional subprocess return code.
     pub returncode: Option<i64>,
+    /// The ordered logs.
     pub logs: Vec<Value>,
+    /// The ordered completed model identifiers.
     pub completed_models: Vec<String>,
+    /// The optional active model identifier.
     pub active_model: Option<String>,
 }
 

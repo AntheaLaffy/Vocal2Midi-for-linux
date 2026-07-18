@@ -1,7 +1,8 @@
 # Rust Rewrite Review Reports
 
 Review reports are durable promotion evidence. A reviewer writes one report for
-one unit and one role.
+one unit and one role. Reports are append-only historical evidence: fix a stale
+or failed conclusion with a dated rerun instead of editing the old decision.
 
 ## Naming
 
@@ -53,3 +54,19 @@ Reports may include "No findings" only after checking the role's full scope.
 For `dependency_bootstrap_reviewer`, the report must also state whether the
 manifest unit boundary is confirmed, should be split, should be merged, should be
 deferred, or should be replaced.
+
+## Evidence Rules
+
+- Record the exact command and result, not only "tests pass."
+- Link findings to repository-root-relative paths and line numbers when stable.
+- Separate observed evidence from reviewer inference.
+- State skipped checks and residual risk explicitly.
+- Never promote a unit solely because a report contains no findings; the
+  manifest must name every required role and its evidence.
+- A reviewer must not patch production code in the same review role.
+
+## Documentation Review
+
+Rust style review includes crate/module rustdoc, public `Result` error sections,
+panic and safety contracts, intra-doc links, examples where practical, and the
+commands in [`docs/documentation.md`](../../docs/documentation.md).

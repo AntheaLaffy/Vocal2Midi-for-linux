@@ -7,13 +7,20 @@
 /// Validation failure returned by `validate_phones`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PhoneValidationError {
+    /// Represents the Python-compatible length mismatch case.
     LengthMismatch {
+        /// The phoneme count.
         phoneme_count: usize,
+        /// The duration count.
         duration_count: usize,
     },
+    /// Represents the Python-compatible word span mismatch case.
     WordSpanMismatch {
+        /// The ordered spans.
         spans: Vec<usize>,
+        /// The sum.
         sum: usize,
+        /// The expected.
         expected: usize,
     },
 }
@@ -53,11 +60,18 @@ impl std::error::Error for PhoneValidationError {}
 /// Condition used to mark a parsed word as unvoiced.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UvCondition {
+    /// Represents the Python-compatible lead case.
     Lead,
+    /// Represents the Python-compatible all case.
     All,
 }
 
 /// Validates the phoneme sequence, durations, and word spans.
+///
+/// # Errors
+///
+/// Returns [`PhoneValidationError`] when the phoneme and duration lengths differ
+/// or the word-span total does not equal the phoneme count.
 pub fn validate_phones(
     ph_seq: &[String],
     ph_dur: &[f64],
@@ -95,6 +109,11 @@ pub fn validate_phones_py_shape(
 }
 
 /// Converts phoneme sequence data to word durations and voiced/unvoiced flags.
+///
+/// # Panics
+///
+/// Panics when `ph_num` does not describe valid spans into `ph_seq` and
+/// `ph_dur`. Call [`validate_phones`] before this function at public boundaries.
 pub fn parse_words(
     ph_seq: &[String],
     ph_dur: &[f64],
@@ -142,6 +161,10 @@ pub fn parse_words(
 }
 
 /// Merges consecutive unvoiced words into one.
+///
+/// # Panics
+///
+/// Panics when `word_dur` is non-empty and `word_vuv` has no first element.
 pub fn merge_consecutive_uv_words(word_dur: &[f64], word_vuv: &[u8]) -> (Vec<f64>, Vec<u8>) {
     if word_dur.is_empty() {
         return (Vec::new(), Vec::new());

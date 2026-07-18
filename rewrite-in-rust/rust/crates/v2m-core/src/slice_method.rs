@@ -19,9 +19,13 @@ const SUPPORTED_METHODS_MESSAGE: &str = "default, smart, heuristic, grid";
 /// Canonical slicing method names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SlicingMethod {
+    /// Represents the Python-compatible default case.
     Default,
+    /// Represents the Python-compatible smart case.
     Smart,
+    /// Represents the Python-compatible heuristic case.
     Heuristic,
+    /// Represents the Python-compatible grid case.
     Grid,
 }
 
@@ -64,20 +68,30 @@ impl std::error::Error for UnsupportedSlicingMethod {}
 /// Custom min/max duration bounds accepted by slicer contract helpers.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CustomSliceBounds {
+    /// The min seconds.
     pub min_seconds: f64,
+    /// The max seconds.
     pub max_seconds: f64,
 }
 
 /// Custom-bound validation failure that maps to Python `ValueError`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CustomSliceBoundsError {
+    /// Represents the Python-compatible cli pair required case.
     CliPairRequired,
+    /// Represents the Python-compatible cli min negative case.
     CliMinNegative,
+    /// Represents the Python-compatible cli max not positive case.
     CliMaxNotPositive,
+    /// Represents the Python-compatible cli min greater than max case.
     CliMinGreaterThanMax,
+    /// Represents the Python-compatible api pair required case.
     ApiPairRequired,
+    /// Represents the Python-compatible api min negative case.
     ApiMinNegative,
+    /// Represents the Python-compatible api max not positive case.
     ApiMaxNotPositive,
+    /// Represents the Python-compatible api min greater than max case.
     ApiMinGreaterThanMax,
 }
 

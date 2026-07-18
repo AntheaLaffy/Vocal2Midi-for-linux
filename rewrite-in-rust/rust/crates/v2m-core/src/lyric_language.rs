@@ -15,8 +15,11 @@ use crate::zh_g2p::{self, ZhG2p, ZhG2pDictionaries};
 /// Processed lyric data produced by a language processor.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LyricData {
+    /// The ordered text list.
     pub text_list: Vec<String>,
+    /// The ordered phonetic list.
     pub phonetic_list: Vec<String>,
+    /// The raw text.
     pub raw_text: String,
 }
 
@@ -87,8 +90,11 @@ impl ProcessorFactory {
 /// One of the legacy language processors.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Processor {
+    /// Carries the Python-compatible chinese value.
     Chinese(ChineseProcessor),
+    /// Carries the Python-compatible english value.
     English(EnglishProcessor),
+    /// Carries the Python-compatible japanese value.
     Japanese(JapaneseProcessor),
 }
 
@@ -180,24 +186,29 @@ pub struct ChineseProcessor {
 }
 
 impl ChineseProcessor {
+    /// Creates a Chinese processor with caller-supplied dictionaries.
     pub fn new(dictionaries: ZhG2pDictionaries) -> Self {
         Self {
             g2p: ZhG2p::new(dictionaries),
         }
     }
 
+    /// Returns the legacy Chinese language code.
     pub const fn language_code(&self) -> &'static str {
         "zh"
     }
 
+    /// Applies the legacy Chinese character and whitespace cleanup policy.
     pub fn clean_text(&self, text: &str) -> String {
         collapse_whitespace(&clean_chinese_legacy_regex(text))
     }
 
+    /// Splits cleaned Chinese text into display tokens.
     pub fn split_text(&self, text: &str) -> Vec<String> {
         zh_g2p::split_string(text)
     }
 
+    /// Converts Chinese display tokens into phonetic tokens.
     pub fn get_phonetic_list(&self, text_list: &[String]) -> Vec<String> {
         split_on_ascii_space_preserving_empty(&self.g2p.convert_list(text_list, false, false))
     }
@@ -208,14 +219,17 @@ impl ChineseProcessor {
 pub struct EnglishProcessor;
 
 impl EnglishProcessor {
+    /// Creates the stateless English processor.
     pub const fn new() -> Self {
         Self
     }
 
+    /// Returns the legacy English language code.
     pub const fn language_code(&self) -> &'static str {
         "en"
     }
 
+    /// Keeps legacy English punctuation and collapses whitespace.
     pub fn clean_text(&self, text: &str) -> String {
         let filtered = text
             .chars()
@@ -231,10 +245,12 @@ impl EnglishProcessor {
         collapse_whitespace(&filtered)
     }
 
+    /// Lowercases and splits English text with the shared token policy.
     pub fn split_text(&self, text: &str) -> Vec<String> {
         zh_g2p::split_string(&text.to_lowercase())
     }
 
+    /// Uses English display tokens directly as phonetic tokens.
     pub fn get_phonetic_list(&self, text_list: &[String]) -> Vec<String> {
         text_list.to_vec()
     }
@@ -247,18 +263,22 @@ pub struct JapaneseProcessor {
 }
 
 impl JapaneseProcessor {
+    /// Creates a processor using the fallback [`JaG2p`] implementation.
     pub fn new() -> Self {
         Self { g2p: JaG2p::new() }
     }
 
+    /// Returns the legacy Japanese language code.
     pub const fn language_code(&self) -> &'static str {
         "ja"
     }
 
+    /// Collapses whitespace without running the unavailable OpenJTalk frontend.
     pub fn clean_text(&self, text: &str) -> String {
         collapse_whitespace(text)
     }
 
+    /// Splits text into kana mora display tokens.
     pub fn split_text(&self, text: &str) -> Vec<String> {
         if text.is_empty() {
             Vec::new()
@@ -267,6 +287,7 @@ impl JapaneseProcessor {
         }
     }
 
+    /// Converts kana mora tokens into romaji phonetic tokens.
     pub fn get_phonetic_list(&self, text_list: &[String]) -> Vec<String> {
         if text_list.is_empty() {
             return Vec::new();
@@ -278,6 +299,7 @@ impl JapaneseProcessor {
             .collect()
     }
 
+    /// Builds aligned kana and romaji mora lists for a reference lyric.
     pub fn build_reference_lyric(&self, text: &str) -> (Vec<String>, Vec<String>) {
         if text.is_empty() {
             return (Vec::new(), Vec::new());

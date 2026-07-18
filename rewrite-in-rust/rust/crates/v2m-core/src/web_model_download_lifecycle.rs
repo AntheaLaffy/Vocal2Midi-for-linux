@@ -11,57 +11,94 @@ use serde_json::json;
 /// Fake thread metadata exposed by lifecycle fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelDownloadThreadMeta {
+    /// The name.
     pub name: String,
+    /// Whether the thread is configured as a daemon.
     pub daemon: bool,
+    /// Whether the thread has started.
     pub started: bool,
+    /// Whether the fake thread target was called.
     pub target_called: bool,
 }
 
 /// Model-download task state used by lifecycle fixtures.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelDownloadLifecycleTask {
+    /// The task identifier.
     pub task_id: String,
+    /// The ordered selected model identifiers.
     pub selected_models: Vec<String>,
+    /// The selected Qwen model source.
     pub qwen_source: String,
+    /// Whether forced replacement is enabled.
     pub force: bool,
+    /// The proxy mode.
     pub proxy_mode: String,
+    /// The proxy URL.
     pub proxy_url: String,
+    /// The status.
     pub status: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
+    /// The creation timestamp.
     pub created_at: String,
+    /// The optional start timestamp.
     pub started_at: Option<String>,
+    /// The optional completion timestamp.
     pub completed_at: Option<String>,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The optional subprocess return code.
     pub returncode: Option<i64>,
+    /// The ordered logs.
     pub logs: Vec<Value>,
+    /// Whether a stop event is present.
     pub stop_event_present: bool,
+    /// Whether the stop event is set.
     pub stop_event_set: bool,
+    /// The optional thread.
     pub thread: Option<ModelDownloadThreadMeta>,
 }
 
 /// Input used to create a model-download lifecycle task.
 #[derive(Debug, Clone, Copy)]
 pub struct CreateLifecycleTaskInput<'a> {
+    /// The selected model identifiers.
     pub selected_models: &'a [String],
+    /// The selected Qwen model source.
     pub qwen_source: &'a str,
+    /// Whether forced replacement is enabled.
     pub force: bool,
+    /// The optional proxy mode.
     pub proxy_mode: Option<&'a str>,
+    /// The optional proxy URL.
     pub proxy_url: Option<&'a str>,
+    /// The task identifier.
     pub task_id: &'a str,
+    /// The creation timestamp.
     pub created_at: &'a str,
 }
 
 /// Input used to start a model-download lifecycle task.
 #[derive(Debug, Clone, Copy)]
 pub struct StartLifecycleTaskInput<'a> {
+    /// The selected model identifiers.
     pub selected_models: &'a [String],
+    /// The selected Qwen model source.
     pub qwen_source: &'a str,
+    /// Whether forced replacement is enabled.
     pub force: bool,
+    /// The proxy mode.
     pub proxy_mode: &'a str,
+    /// The proxy URL.
     pub proxy_url: &'a str,
+    /// The task identifier.
     pub task_id: &'a str,
+    /// The creation timestamp.
     pub created_at: &'a str,
+    /// The start timestamp.
     pub started_at: &'a str,
 }
 
@@ -125,7 +162,9 @@ impl ModelDownloadLifecycleTask {
 /// In-memory manager state for model-download lifecycle fixtures.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ModelDownloadLifecycleManager {
+    /// The ordered tasks.
     pub tasks: Vec<ModelDownloadLifecycleTask>,
+    /// The optional active task id.
     pub active_task_id: Option<String>,
 }
 
@@ -177,6 +216,16 @@ impl ModelDownloadLifecycleManager {
     }
 
     /// Starts a task with fake thread metadata and injected UUID/time values.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error message when another task is pending, running, or
+    /// stopping.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the internal create operation fails to retain the task it
+    /// just inserted.
     pub fn start_task(
         &mut self,
         input: StartLifecycleTaskInput<'_>,

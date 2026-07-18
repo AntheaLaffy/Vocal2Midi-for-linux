@@ -26,41 +26,37 @@ production caller routing.
 
 ## Split Units
 
-`asr_chinese_itn_core` is writer-ready after fixtures. It covers
+`asr_chinese_itn_core` is verified. It covers
 `chinese_to_num` and its helper tables/patterns: ranges, pure digits, numeric
 values, consecutive values, percentages, fractions, ratios, times, dates,
 units, idiom/fuzzy no-ops, and fallback no-op behavior on conversion errors.
 Rollback is keeping `inference.qwen3asr_dml.chinese_itn` as runtime owner.
 
-`asr_qwen_language_schema_contract` is writer-ready after fixtures. It covers
+`asr_qwen_language_schema_contract` is verified. It covers
 `SUPPORTED_LANGUAGES`, `normalize_language_name`, `validate_language`,
 `MsgType`, `StreamingMessage`, `DecodeResult`, `ASREngineConfig`, and
 `TranscribeResult`. Rollback is keeping the Python utils/schema classes as
 runtime owner.
 
-`asr_qwen_wav_pcm_decode_core` is writer-ready for same-rate WAV PCM fallback
-after fixtures. It covers Python `wave` fallback behavior for unsigned 8-bit,
-signed 16-bit, signed 24-bit little-endian, signed 32-bit, unsupported sample
-widths, multichannel mean, float32 output, and final slicing. Resampling should
-not be hidden inside this unit.
+`asr_qwen_wav_pcm_decode_core` is verified for same-rate WAV PCM fallback. It
+covers Python `wave` fallback behavior for unsigned 8-bit, signed 16-bit, signed
+24-bit little-endian, signed 32-bit, unsupported sample widths, multichannel
+mean, float32 output, and final slicing. Resampling remains separate.
 
-`asr_resample_poly_contract` is a prerequisite discovery unit before any child
-owns resampled audio parity. It should decide whether to port a narrow
-`scipy.signal.resample_poly` compatibility layer, use a Rust crate with a
-recorded tolerance, or keep resampling legacy-owned. It is not writer-ready from
-this bootstrap alone.
+`asr_resample_poly_contract` is verified as the narrow default-path
+`scipy.signal.resample_poly` compatibility layer needed by the ASR audio helper
+contracts.
 
-`asr_romaji_vocab_ctc_decode_core` is writer-ready after fixtures. It covers
+`asr_romaji_vocab_ctc_decode_core` is verified. It covers
 `load_vocab`, `decode_pred_ids`, `decode_logits`, `decode_outputs`, and
 `chunked`. It excludes file audio loading, ONNX session creation, provider
 selection, and model execution.
 
-`asr_romaji_batch_metadata_contract` remains planned. It covers
+`asr_romaji_batch_metadata_contract` is verified. It covers
 `get_fixed_batch_size`, `get_fixed_num_samples`, `ort_type_to_numpy_dtype`, and
 `prepare_batch` using fake session/input metadata. It should not create
-`onnxruntime.InferenceSession`; any audio-file loading or resampling needed by
-fixtures depends on `asr_resample_poly_contract` or a preloaded-waveform test
-adapter.
+`onnxruntime.InferenceSession`; the verified fixtures use synthetic waveforms
+and keep file loading/resampling legacy-owned.
 
 ## Dependency Evidence
 
@@ -88,10 +84,11 @@ Use `serde_json` for romaji vocab JSON parsing. Add a compatibility adapter for
 Python `int(v)` conversion, id-to-token inversion, and `<blank>`/`PAD`/`0`
 fallback behavior.
 
-Use a maintained WAV parser such as `hound` for
-`asr_qwen_wav_pcm_decode_core`, then hand-write the Python-compatible sample
-normalization and channel averaging. The exact crate can be confirmed by the
-writer, but the capability is WAV PCM parsing only, not arbitrary audio codecs.
+Use a maintained WAV parser for `asr_qwen_wav_pcm_decode_core` only if it
+preserves Python `wave.getsampwidth()` byte-container semantics before rejecting
+non-byte-aligned headers. Otherwise hand-write the narrow RIFF/WAVE PCM parser,
+then hand-write the Python-compatible sample normalization and channel
+averaging. The capability is WAV PCM parsing only, not arbitrary audio codecs.
 
 `ndarray` is already allowed in this Rust workspace and should be decided per
 child unit. Defer it for Chinese ITN, Qwen language/schema, and Qwen WAV PCM
@@ -121,6 +118,20 @@ and deterministic:
   expected input_values/attention_mask shapes and values, used lengths, dtype
   mapping, and error messages.
 
+## Split Closure
+
+The split umbrella is closed after all six child units reached `verified`:
+
+- `asr_chinese_itn_core`
+- `asr_qwen_language_schema_contract`
+- `asr_qwen_wav_pcm_decode_core`
+- `asr_resample_poly_contract`
+- `asr_romaji_vocab_ctc_decode_core`
+- `asr_romaji_batch_metadata_contract`
+
+The umbrella itself still must not be assigned to a writer, and it does not
+promote Rust into production callers.
+
 ## Kept Legacy
 
 Keep pydub primary loading, soundfile/libsndfile arbitrary file IO, librosa,
@@ -135,6 +146,12 @@ Recommended bootstrap checks from the repository root:
 ```bash
 uv run python -m py_compile inference/qwen3asr_dml/chinese_itn.py inference/qwen3asr_dml/utils.py inference/qwen3asr_dml/schema.py inference/romaji_asr/common.py
 uv run python scripts/audit_vendored_sources.py
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_chinese_itn_core
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_qwen_language_schema_contract
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_qwen_wav_pcm_decode_core
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_resample_poly_contract
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_vocab_ctc_decode_core
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_batch_metadata_contract
 uv run python - <<'PY'
 import pathlib, yaml
 for path in [

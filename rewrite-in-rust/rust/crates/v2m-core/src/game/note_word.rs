@@ -6,6 +6,11 @@
 const ALIGN_MIN_GAP: f64 = 1e-4;
 
 /// Aligns note sequence data to word durations.
+///
+/// # Panics
+///
+/// Panics when non-empty duration and label arrays violate the legacy shape
+/// invariants, such as a missing label for a selected note segment.
 pub fn align_notes_to_words(
     word_dur: &[f64],
     word_vuv: &[u8],

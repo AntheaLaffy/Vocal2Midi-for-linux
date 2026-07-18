@@ -10,7 +10,10 @@ over memory when choosing migration units or dependencies.
 - `docs/architecture.md`: dependency direction and major runtime boundaries.
 - `docs/contributing.md`: documentation style, environment assumptions, and
   verification commands.
+- `docs/documentation.md`: document ownership, rustdoc conventions, historical
+  evidence policy, and documentation checks.
 - `docs/web-api.md`: Web API behavior boundary when Web workflows are affected.
+- `SECURITY.md`: vulnerability reporting and security boundaries.
 - `rewrite-in-rust/rust/README.md`: Rust workspace toolchain, crate contracts,
   bridge JSON contract, and Rust-specific verification commands.
 
@@ -89,7 +92,7 @@ manual Rust replacements.
   for exactly one unit and one review theme.
 
 These repository skills are the source of truth. The matching
-`/home/fuurin/.claude/skills/` directories are installation mirrors for future
+`$CODEX_HOME/skills/` directories are installation mirrors for future
 sessions.
 
 ## Durable Rewrite Artifacts
@@ -98,25 +101,27 @@ sessions.
 - `rewrite-in-rust/bootstrap/`: per-unit seam or fixture-harness proof records.
 - `rewrite-in-rust/reviews/`: independent review reports used as promotion
   evidence.
+- `rewrite-in-rust/records/`: append-only decisions and reusable migration
+  lessons.
 
-## Provisional Migration Candidates
+## Initial Seed Candidates
 
-These candidates are intentionally provisional. They are starting points for
-dependency and capability discovery, not a fixed backlog. Re-cut them when
-Python dependency expansion reveals a better seam.
+These were the historical seed candidates used to prove the workflow. They are
+all verified now and are not the current backlog. Their re-cuts and successors
+remain visible in `manifest.yaml` and `records/`.
 
 - `application/config.py`: small validation behavior with clear fixtures.
 - `inference/device_utils.py`: pure normalization logic plus platform defaults.
 - `inference/game/alignment_utils.py`: pure list/numeric transforms.
 - `inference/io/note_io.py`: deterministic TXT/CSV export behavior.
-- `inference/quant/quantization.py`: larger algorithmic unit to defer until the
-  fixture workflow is proven.
+- `inference/quant/quantization.py`: algorithmic units and the opt-in JSON
+  bridge.
 
-## Stage 1 Non-Inference Backend Candidates
+## Stage 1 Verified Coverage
 
-Stage 1 covers remaining backend behavior outside the desktop GUI, browser
-frontend, and model inference chain. These candidates must still pass
-dependency/bootstrap discovery before writer work.
+The current manifest records verified fixture boundaries for the following
+backend behavior outside the desktop GUI, browser frontend, and model inference
+chain. Verification does not promote Rust to runtime owner.
 
 - Application and Web contracts: `application/pipeline.py`,
   `web_task_manager.py`, `web_stream_redirector.py`, `web_server.py`, and
@@ -164,9 +169,9 @@ Run from the repository root:
 
 ```bash
 cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 uv run pytest tests/test_web_api.py
 uv run python scripts/audit_vendored_sources.py
 ```

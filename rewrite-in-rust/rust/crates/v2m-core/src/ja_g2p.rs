@@ -7,6 +7,7 @@
 //! GUI/Web/CLI callers, and production routing.
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
+/// Stateless Japanese fallback grapheme-to-phoneme converter.
 pub struct JaG2p;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

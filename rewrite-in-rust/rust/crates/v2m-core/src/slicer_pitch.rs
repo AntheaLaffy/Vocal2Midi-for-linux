@@ -13,12 +13,19 @@ use crate::slicer_window::{SlicerWindowError, rms_db};
 /// Caller-provided smart slicer parameters for the supplied-mask path.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PitchOverrideConfig {
+    /// The min len sec.
     pub min_len_sec: f64,
+    /// The max len sec.
     pub max_len_sec: f64,
+    /// The silence removal threshold db.
     pub silence_removal_threshold_db: f64,
+    /// The min silence len ms.
     pub min_silence_len_ms: f64,
+    /// The ultra short sec.
     pub ultra_short_sec: f64,
+    /// The optional voiced flag override.
     pub voiced_flag_override: Option<Vec<bool>>,
+    /// The optional voiced flag override step sec.
     pub voiced_flag_override_step_sec: Option<f64>,
 }
 
@@ -64,32 +71,49 @@ impl PitchOverrideConfig {
 /// Legacy `Slicer` construction parameters used by `pitch_based_slice`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreSlicerParams {
+    /// The sample rate in hertz.
     pub sample_rate: f64,
+    /// The threshold db.
     pub threshold_db: f64,
+    /// The min length ms.
     pub min_length_ms: f64,
+    /// The min interval ms.
     pub min_interval_ms: f64,
+    /// The max sil kept ms.
     pub max_sil_kept_ms: f64,
 }
 
 /// Parameters passed from the outer smart-slicing policy into the split helper.
 #[derive(Debug, Clone, PartialEq)]
 pub struct PitchSplitRequest {
+    /// The sample rate in hertz.
     pub sample_rate: f64,
+    /// The min len sec.
     pub min_len_sec: f64,
+    /// The max len sec.
     pub max_len_sec: f64,
+    /// The hop length.
     pub hop_length: usize,
+    /// The optional voiced flag override.
     pub voiced_flag_override: Option<Vec<bool>>,
+    /// The optional voiced flag override step sec.
     pub voiced_flag_override_step_sec: Option<f64>,
+    /// The segment offset sec.
     pub segment_offset_sec: f64,
 }
 
 /// Error produced by fixture-bound supplied-mask pitch slicer helpers.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SlicerPitchError {
+    /// Represents the Python-compatible invalid frame case.
     InvalidFrame,
+    /// Represents the Python-compatible empty voiced mask case.
     EmptyVoicedMask,
+    /// Represents the Python-compatible pyin unsupported case.
     PyinUnsupported,
+    /// Carries the Python-compatible default value.
     Default(SlicerDefaultError),
+    /// Carries the Python-compatible window value.
     Window(SlicerWindowError),
 }
 

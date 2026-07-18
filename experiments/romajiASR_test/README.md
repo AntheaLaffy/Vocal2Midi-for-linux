@@ -1,46 +1,32 @@
-# exp12 ONNX DML Inference Bundle
+# Romaji ASR Test Bundle
 
-This folder is a self-contained DirectML deployment bundle for the fastest current exp12 ONNX model.
-
-Tested on Windows with Python 3.12.
+This directory is a development-only model fixture. Production defaults use
+`experiments/romajiASR`; no application, GUI, Web, or CLI setting points to this
+directory automatically.
 
 ## Files
 
-- `model.onnx`
-- `model.meta.json`
-- `phoneme_vocab.json`
-- `infer_dml.py`
-- `benchmark_dml.py`
-- `common.py`
-- `requirements.txt`
+| Path | Purpose |
+| --- | --- |
+| `model.onnx` | Optional local ONNX model; it may be absent from a source checkout. |
+| `model.meta.json` | Model input/output metadata. |
+| `phoneme_vocab.json` | Token ID to phoneme vocabulary. |
 
-## Install
+## Verify
 
-```powershell
-pip install -r requirements.txt
+From the repository root:
+
+```bash
+uv run python -m inference.romaji_asr.infer_dml \
+  --model experiments/romajiASR_test \
+  --audio tests/jp-bpm-126.flac \
+  --provider cpu
 ```
 
-## Single-file inference
+## Current Limits
 
-```powershell
-python infer_dml.py --audio "your_audio.wav" --provider dml
-```
-
-## Manifest batch inference
-
-```powershell
-python infer_dml.py --manifest "dev.jsonl" --provider dml --batch_size 2
-```
-
-## Benchmark
-
-```powershell
-python benchmark_dml.py --manifest "dev.jsonl" --manifest_n 50 --providers dml,cpu --batch_size 2
-```
-
-## Notes
-
-- Default model is the bundled `model.onnx`.
-- The bundled model already outputs `pred_ids`, so it is optimized for greedy decoding speed.
-- `batch_size=2` is the recommended deployment setting on the current machine.
-- Recommended input format is mono WAV at 16 kHz, although the script will resample other supported formats.
+- This duplicate asset directory is not part of the supported runtime path.
+- Keep it only while a test or comparison explicitly names it.
+- Do not update production documentation or defaults to use this directory.
+- Model files may have separate distribution or usage terms from Vocal2Midi
+  source code.

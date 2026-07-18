@@ -9,36 +9,55 @@ use std::collections::{BTreeMap, BTreeSet};
 #[cfg(test)]
 use serde_json::{Value, json};
 
+/// GitHub repository containing the pinned model release assets.
 pub const GITHUB_REPO: &str = "AntheaLaffy/Vocal2Midi-for-linux";
+/// Release tag containing the pinned model archives.
 pub const RELEASE_TAG: &str = "v0.1.0";
+/// Upstream Qwen model identifier used by the legacy downloader.
 pub const QWEN_MODEL_ID: &str = "Qwen/Qwen3-ASR-1.7B";
+/// Repository-relative destination for the official Qwen model.
 pub const QWEN_LOCAL_DIR: &str = "experiments/Qwen3-ASR-1.7B";
 
 /// One GitHub release model row from the legacy catalog.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CatalogModel {
+    /// The name.
     pub name: String,
+    /// The repo.
     pub repo: String,
+    /// The tag.
     pub tag: String,
+    /// The asset.
     pub asset: String,
+    /// The target.
     pub target: String,
+    /// The marker.
     pub marker: String,
+    /// The label.
     pub label: String,
 }
 
 /// Inputs needed to render the legacy `list_planned` dry-run output.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlannedDisplayInput {
+    /// The ordered models.
     pub models: Vec<CatalogModel>,
+    /// The asset sizes.
     pub asset_sizes: BTreeMap<(String, String), BTreeMap<String, i64>>,
+    /// The existing paths.
     pub existing_paths: BTreeSet<String>,
+    /// The qwen local dir.
     pub qwen_local_dir: String,
+    /// Whether the Qwen destination exists.
     pub qwen_dest_exists: bool,
+    /// The ordered qwen entries.
     pub qwen_entries: Vec<String>,
+    /// The selected Qwen model source.
     pub qwen_source: String,
 }
 
 impl CatalogModel {
+    /// Creates one catalog row from owned or borrowed strings.
     pub fn new(
         name: impl Into<String>,
         repo: impl Into<String>,

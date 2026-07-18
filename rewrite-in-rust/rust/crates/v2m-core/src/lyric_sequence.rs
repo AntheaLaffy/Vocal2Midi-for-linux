@@ -21,8 +21,11 @@ enum EditOperation {
 /// Edit-cost configuration used by legacy `SequenceAligner`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SequenceAligner {
+    /// The deletion cost.
     pub deletion_cost: i64,
+    /// The insertion cost.
     pub insertion_cost: i64,
+    /// The substitution cost.
     pub substitution_cost: i64,
 }
 
@@ -368,19 +371,28 @@ impl SequenceAligner {
 /// Result from `compute_alignment`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AlignmentResult {
+    /// The distance.
     pub distance: i64,
+    /// The ordered aligned1.
     pub aligned1: Vec<String>,
+    /// The ordered aligned2.
     pub aligned2: Vec<String>,
 }
 
 /// Result from `find_best_match`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MatchResult {
+    /// The matched text.
     pub matched_text: String,
+    /// The start.
     pub start: isize,
+    /// The end.
     pub end: isize,
+    /// The optional matched phonetic list.
     pub matched_phonetic_list: Option<Vec<String>>,
+    /// The optional matched text list.
     pub matched_text_list: Option<Vec<String>>,
+    /// The reason.
     pub reason: String,
 }
 
@@ -400,17 +412,24 @@ impl MatchResult {
 /// Result from the lyric-wrapper helper.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LyricMatchResult {
+    /// The matched text.
     pub matched_text: String,
+    /// The matched phonetic.
     pub matched_phonetic: String,
+    /// The start.
     pub start: isize,
+    /// The end.
     pub end: isize,
+    /// The reason.
     pub reason: String,
 }
 
 /// Result from scan-window helper.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct ScanResult {
+    /// The best start.
     pub best_start: isize,
+    /// The optional min edit dist.
     pub min_edit_dist: Option<i64>,
 }
 
@@ -426,9 +445,13 @@ impl ScanResult {
 /// Result from `SmartHighlighter.highlight_differences`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HighlightResult {
+    /// The asr highlighted.
     pub asr_highlighted: String,
+    /// The phonetic highlighted.
     pub phonetic_highlighted: String,
+    /// The text highlighted.
     pub text_highlighted: String,
+    /// The edit distance.
     pub edit_distance: i64,
 }
 

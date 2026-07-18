@@ -12,11 +12,17 @@ use crate::slicer_window::{SlicerWindowError, sliding_window_split};
 /// Caller-provided heuristic slicer parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct HeuristicConfig {
+    /// The min len sec.
     pub min_len_sec: f64,
+    /// The max len sec.
     pub max_len_sec: f64,
+    /// The silence removal threshold db.
     pub silence_removal_threshold_db: f64,
+    /// The min silence len ms.
     pub min_silence_len_ms: f64,
+    /// The split threshold db.
     pub split_threshold_db: f64,
+    /// The ultra short sec.
     pub ultra_short_sec: f64,
 }
 
@@ -60,28 +66,41 @@ impl HeuristicConfig {
 /// Legacy `Slicer` construction parameters used by `heuristic_slice`.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PreSlicerParams {
+    /// The sample rate in hertz.
     pub sample_rate: f64,
+    /// The threshold db.
     pub threshold_db: f64,
+    /// The min length ms.
     pub min_length_ms: f64,
+    /// The min interval ms.
     pub min_interval_ms: f64,
+    /// The max sil kept ms.
     pub max_sil_kept_ms: f64,
 }
 
 /// Parameters passed to the sliding-window split dependency.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SplitRequest {
+    /// The sample rate in hertz.
     pub sample_rate: f64,
+    /// The min len sec.
     pub min_len_sec: f64,
+    /// The max len sec.
     pub max_len_sec: f64,
+    /// The target threshold db.
     pub target_threshold_db: f64,
+    /// The frame length.
     pub frame_length: usize,
+    /// The hop length.
     pub hop_length: usize,
 }
 
 /// Error produced by fixture-bound heuristic slicer helpers.
 #[derive(Debug, Clone, PartialEq)]
 pub enum SlicerHeuristicError {
+    /// Carries the Python-compatible default value.
     Default(SlicerDefaultError),
+    /// Carries the Python-compatible window value.
     Window(SlicerWindowError),
 }
 

@@ -7,39 +7,63 @@
 /// Web pipeline task state stored by the registry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebTask {
+    /// The identifier.
     pub id: String,
+    /// The status.
     pub status: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
+    /// The Python-compatible configuration representation.
     pub config_repr: String,
+    /// The audio file path.
     pub audio_file_path: String,
+    /// The creation timestamp.
     pub created_at: String,
+    /// The optional start timestamp.
     pub started_at: Option<String>,
+    /// The optional completion timestamp.
     pub completed_at: Option<String>,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The ordered registered output files.
     pub output_files: Vec<String>,
+    /// The optional thread.
     pub thread: Option<WebTaskThread>,
+    /// Whether the stop event is set.
     pub stop_event_set: bool,
+    /// The ordered logs.
     pub logs: Vec<String>,
 }
 
 /// Minimal thread metadata exposed by `start_task`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebTaskThread {
+    /// The name.
     pub name: String,
+    /// Whether the thread is configured as a daemon.
     pub daemon: bool,
+    /// Whether the thread has started.
     pub started: bool,
 }
 
 /// Summary returned by `TaskManager.list_tasks`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct WebTaskSummary {
+    /// The identifier.
     pub id: String,
+    /// The status.
     pub status: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
+    /// The creation timestamp.
     pub created_at: String,
+    /// The optional start timestamp.
     pub started_at: Option<String>,
+    /// The optional completion timestamp.
     pub completed_at: Option<String>,
 }
 

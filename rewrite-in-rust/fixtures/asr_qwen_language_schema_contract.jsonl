@@ -1,0 +1,57 @@
+{"kind":"normalize_language_name","category":"normalize_none","input":null,"result":{"ok":false,"error_type":"ValueError","message":"language is None"}}
+{"kind":"normalize_language_name","category":"normalize_empty","input":"","result":{"ok":false,"error_type":"ValueError","message":"language is empty"}}
+{"kind":"normalize_language_name","category":"normalize_spaces","input":"   ","result":{"ok":false,"error_type":"ValueError","message":"language is empty"}}
+{"kind":"normalize_language_name","category":"normalize_lower","input":"english","result":{"ok":true,"value":"English"}}
+{"kind":"normalize_language_name","category":"normalize_trim_upper","input":" ENGLISH ","result":{"ok":true,"value":"English"}}
+{"kind":"normalize_language_name","category":"normalize_mixed","input":"eNGLISH","result":{"ok":true,"value":"English"}}
+{"kind":"normalize_language_name","category":"normalize_unicode","input":"中文","result":{"ok":true,"value":"中文"}}
+{"kind":"normalize_language_name","category":"normalize_numeric_string","input":"123","result":{"ok":true,"value":"123"}}
+{"kind":"normalize_language_name","category":"normalize_int_display","input":123,"result":{"ok":true,"value":"123"}}
+{"kind":"supported_languages","category":"all_supported_languages","languages":["Chinese","English","Cantonese","Arabic","German","French","Spanish","Portuguese","Indonesian","Italian","Korean","Russian","Thai","Vietnamese","Japanese","Turkish","Hindi","Malay","Dutch","Swedish","Danish","Finnish","Polish","Czech","Filipino","Persian","Greek","Romanian","Hungarian","Macedonian"]}
+{"kind":"validate_language","category":"validate_supported","input":"Chinese","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"English","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Cantonese","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Arabic","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"German","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"French","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Spanish","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Portuguese","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Indonesian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Italian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Korean","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Russian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Thai","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Vietnamese","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Japanese","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Turkish","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Hindi","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Malay","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Dutch","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Swedish","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Danish","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Finnish","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Polish","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Czech","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Filipino","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Persian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Greek","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Romanian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Hungarian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_supported","input":"Macedonian","result":{"ok":true,"value":null}}
+{"kind":"validate_language","category":"validate_lowercase","input":"chinese","result":{"ok":false,"error_type":"ValueError","message":"Unsupported language: chinese. Supported: ['Chinese', 'English', 'Cantonese', 'Arabic', 'German', 'French', 'Spanish', 'Portuguese', 'Indonesian', 'Italian', 'Korean', 'Russian', 'Thai', 'Vietnamese', 'Japanese', 'Turkish', 'Hindi', 'Malay', 'Dutch', 'Swedish', 'Danish', 'Finnish', 'Polish', 'Czech', 'Filipino', 'Persian', 'Greek', 'Romanian', 'Hungarian', 'Macedonian']"}}
+{"kind":"validate_language","category":"validate_unknown","input":"Klingon","result":{"ok":false,"error_type":"ValueError","message":"Unsupported language: Klingon. Supported: ['Chinese', 'English', 'Cantonese', 'Arabic', 'German', 'French', 'Spanish', 'Portuguese', 'Indonesian', 'Italian', 'Korean', 'Russian', 'Thai', 'Vietnamese', 'Japanese', 'Turkish', 'Hindi', 'Malay', 'Dutch', 'Swedish', 'Danish', 'Finnish', 'Polish', 'Czech', 'Filipino', 'Persian', 'Greek', 'Romanian', 'Hungarian', 'Macedonian']"}}
+{"kind":"validate_language","category":"validate_none","input":null,"result":{"ok":false,"error_type":"ValueError","message":"Unsupported language: None. Supported: ['Chinese', 'English', 'Cantonese', 'Arabic', 'German', 'French', 'Spanish', 'Portuguese', 'Indonesian', 'Italian', 'Korean', 'Russian', 'Thai', 'Vietnamese', 'Japanese', 'Turkish', 'Hindi', 'Malay', 'Dutch', 'Swedish', 'Danish', 'Finnish', 'Polish', 'Czech', 'Filipino', 'Persian', 'Greek', 'Romanian', 'Hungarian', 'Macedonian']"}}
+{"kind":"validate_language","category":"validate_empty","input":"","result":{"ok":false,"error_type":"ValueError","message":"Unsupported language: . Supported: ['Chinese', 'English', 'Cantonese', 'Arabic', 'German', 'French', 'Spanish', 'Portuguese', 'Indonesian', 'Italian', 'Korean', 'Russian', 'Thai', 'Vietnamese', 'Japanese', 'Turkish', 'Hindi', 'Malay', 'Dutch', 'Swedish', 'Danish', 'Finnish', 'Polish', 'Czech', 'Filipino', 'Persian', 'Greek', 'Romanian', 'Hungarian', 'Macedonian']"}}
+{"kind":"msg_types","category":"enum_auto_order","items":[{"name":"CMD_ENCODE","value":1,"str":"MsgType.CMD_ENCODE","repr":"<MsgType.CMD_ENCODE: 1>"},{"name":"CMD_STOP","value":2,"str":"MsgType.CMD_STOP","repr":"<MsgType.CMD_STOP: 2>"},{"name":"MSG_EMBD","value":3,"str":"MsgType.MSG_EMBD","repr":"<MsgType.MSG_EMBD: 3>"},{"name":"MSG_READY","value":4,"str":"MsgType.MSG_READY","repr":"<MsgType.MSG_READY: 4>"},{"name":"MSG_DONE","value":5,"str":"MsgType.MSG_DONE","repr":"<MsgType.MSG_DONE: 5>"},{"name":"MSG_ERROR","value":6,"str":"MsgType.MSG_ERROR","repr":"<MsgType.MSG_ERROR: 6>"}]}
+{"kind":"streaming_message","category":"defaults","snapshot":{"msg_type_name":"CMD_ENCODE","msg_type_value":1,"data":null,"is_last":false,"encode_time":0.0,"repr":"StreamingMessage(msg_type=<MsgType.CMD_ENCODE: 1>, data=None, is_last=False, encode_time=0.0)"}}
+{"kind":"streaming_message","category":"custom","snapshot":{"msg_type_name":"MSG_DONE","msg_type_value":5,"data":{"k":[1,2]},"is_last":true,"encode_time":1.25,"repr":"StreamingMessage(msg_type=<MsgType.MSG_DONE: 5>, data={'k': [1, 2]}, is_last=True, encode_time=1.25)"}}
+{"kind":"decode_result","category":"defaults","snapshot":{"text":"","stable_tokens":[],"t_prefill":0.0,"t_generate":0.0,"n_prefill":0,"n_generate":0,"is_aborted":false},"repr":"DecodeResult(text='', stable_tokens=[], t_prefill=0.0, t_generate=0.0, n_prefill=0, n_generate=0, is_aborted=False)"}
+{"kind":"decode_result","category":"custom","snapshot":{"text":"abc","stable_tokens":[1,2],"t_prefill":0.5,"t_generate":1.5,"n_prefill":3,"n_generate":4,"is_aborted":true},"repr":"DecodeResult(text='abc', stable_tokens=[1, 2], t_prefill=0.5, t_generate=1.5, n_prefill=3, n_generate=4, is_aborted=True)"}
+{"kind":"decode_result","category":"stable_tokens_independent","same_object":false,"first":[],"second":[1,2]}
+{"kind":"asr_engine_config","category":"defaults","snapshot":{"model_dir":"model","encoder_frontend_fn":"qwen3_asr_encoder_frontend.fp16.onnx","encoder_backend_fn":"qwen3_asr_encoder_backend.fp16.onnx","llm_fn":"qwen3_asr_llm.f16.gguf","use_dml":true,"n_ctx":2048,"chunk_size":40.0,"memory_num":1,"max_decode_tokens":512,"llama_backend":"auto","verbose":true},"repr":"ASREngineConfig(model_dir='model', encoder_frontend_fn='qwen3_asr_encoder_frontend.fp16.onnx', encoder_backend_fn='qwen3_asr_encoder_backend.fp16.onnx', llm_fn='qwen3_asr_llm.f16.gguf', use_dml=True, n_ctx=2048, chunk_size=40.0, memory_num=1, max_decode_tokens=512, llama_backend='auto', verbose=True)"}
+{"kind":"asr_engine_config","category":"custom","snapshot":{"model_dir":"m","encoder_frontend_fn":"front.onnx","encoder_backend_fn":"back.onnx","llm_fn":"llm.gguf","use_dml":false,"n_ctx":1024,"chunk_size":12.5,"memory_num":2,"max_decode_tokens":42,"llama_backend":"cpu","verbose":false},"repr":"ASREngineConfig(model_dir='m', encoder_frontend_fn='front.onnx', encoder_backend_fn='back.onnx', llm_fn='llm.gguf', use_dml=False, n_ctx=1024, chunk_size=12.5, memory_num=2, max_decode_tokens=42, llama_backend='cpu', verbose=False)"}
+{"kind":"transcribe_result","category":"defaults","snapshot":{"text":"txt","performance":null},"repr":"TranscribeResult(text='txt', performance=None)"}
+{"kind":"transcribe_result","category":"custom","snapshot":{"text":"txt","performance":{"rtf":0.5}},"repr":"TranscribeResult(text='txt', performance={'rtf': 0.5})"}
+{"kind":"constructor_error","category":"StreamingMessage","result":{"ok":false,"error_type":"TypeError","message":"StreamingMessage.__init__() missing 1 required positional argument: 'msg_type'"}}
+{"kind":"constructor_error","category":"ASREngineConfig","result":{"ok":false,"error_type":"TypeError","message":"ASREngineConfig.__init__() missing 1 required positional argument: 'model_dir'"}}
+{"kind":"constructor_error","category":"TranscribeResult","result":{"ok":false,"error_type":"TypeError","message":"TranscribeResult.__init__() missing 1 required positional argument: 'text'"}}

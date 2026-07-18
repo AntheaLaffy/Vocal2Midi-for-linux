@@ -23,15 +23,20 @@ const MORA_ONSETS: &[&str] = &[
 /// Ordered output shared by the HubertFA G2P implementations.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaG2pOutput {
+    /// The ordered phonemes.
     pub phonemes: Vec<String>,
+    /// The ordered words.
     pub words: Vec<String>,
+    /// The ordered phoneme to word.
     pub phoneme_to_word: Vec<isize>,
 }
 
 /// Failure from the shared legacy `BaseG2P.__call__` output contract.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HfaG2pError {
+    /// Represents the Python-compatible empty phoneme sequence case.
     EmptyPhonemeSequence,
+    /// Represents the Python-compatible invalid silence layout case.
     InvalidSilenceLayout,
 }
 
@@ -64,10 +69,15 @@ impl Error for HfaG2pError {}
 /// Operation that produced a structured dictionary G2P diagnostic.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HfaDictionaryG2pOperation {
+    /// Represents the Python-compatible open case.
     Open,
+    /// Represents the Python-compatible read case.
     Read,
+    /// Represents the Python-compatible decode case.
     Decode,
+    /// Represents the Python-compatible parse case.
     Parse,
+    /// Represents the Python-compatible convert case.
     Convert,
 }
 
@@ -87,8 +97,11 @@ impl HfaDictionaryG2pOperation {
 /// Python UTF-8 decode reason retained by a dictionary load error.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HfaUtf8DecodeReason {
+    /// Represents the Python-compatible invalid start byte case.
     InvalidStartByte,
+    /// Represents the Python-compatible invalid continuation byte case.
     InvalidContinuationByte,
+    /// Represents the Python-compatible unexpected end of data case.
     UnexpectedEndOfData,
 }
 
@@ -106,24 +119,41 @@ impl HfaUtf8DecodeReason {
 /// Structured constructor failure for an immutable dictionary snapshot.
 #[derive(Debug)]
 pub enum HfaDictionaryG2pLoadError {
+    /// Represents the Python-compatible io case.
     Io {
+        /// The operation.
         operation: HfaDictionaryG2pOperation,
+        /// The filesystem path.
         path: PathBuf,
+        /// The source.
         source: io::Error,
     },
+    /// Represents the Python-compatible decode case.
     Decode {
+        /// The operation.
         operation: HfaDictionaryG2pOperation,
+        /// The filesystem path.
         path: PathBuf,
+        /// The start.
         start: usize,
+        /// The end.
         end: usize,
+        /// The offending byte.
         offending_byte: u8,
+        /// The reason.
         reason: HfaUtf8DecodeReason,
+        /// The source.
         source: Utf8Error,
     },
+    /// Represents the Python-compatible malformed row case.
     MalformedRow {
+        /// The operation.
         operation: HfaDictionaryG2pOperation,
+        /// The filesystem path.
         path: PathBuf,
+        /// The row index.
         row_index: usize,
+        /// The field count.
         field_count: usize,
     },
 }
@@ -208,13 +238,20 @@ impl Error for HfaDictionaryG2pLoadError {
 /// Ordered warning produced while converting dictionary-backed text.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HfaDictionaryG2pWarning {
+    /// Represents the Python-compatible missing word case.
     MissingWord {
+        /// The input word index.
         input_word_index: usize,
+        /// The word.
         word: String,
     },
+    /// Represents the Python-compatible edge silence case.
     EdgeSilence {
+        /// The input word index.
         input_word_index: usize,
+        /// The dictionary phone index.
         dictionary_phone_index: usize,
+        /// The word.
         word: String,
     },
 }
@@ -259,7 +296,9 @@ impl HfaDictionaryG2pWarning {
 /// One dictionary conversion, retaining warnings even when the base contract fails.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaDictionaryG2pConversion {
+    /// The output.
     pub output: Result<HfaG2pOutput, HfaG2pError>,
+    /// The ordered warnings.
     pub warnings: Vec<HfaDictionaryG2pWarning>,
 }
 

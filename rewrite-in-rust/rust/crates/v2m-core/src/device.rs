@@ -6,7 +6,9 @@
 /// Runtime platform used to resolve the implicit default device.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RuntimePlatform {
+    /// Represents the Python-compatible windows case.
     Windows,
+    /// Represents the Python-compatible other case.
     Other,
 }
 

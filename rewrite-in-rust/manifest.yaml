@@ -1700,7 +1700,7 @@ units:
 
   - id: asr_text_postprocess_contract
     title: "ASR text post-processing and schema helpers"
-    status: planned
+    status: verified
     inventory_status: split
     current_owner: legacy
     target_owner: rust
@@ -1717,14 +1717,15 @@ units:
       - error_tracing_reviewer
     verification:
       - "Re-cut recorded in rewrite-in-rust/dependencies/asr_text_postprocess_contract.yaml, rewrite-in-rust/bootstrap/asr_text_postprocess_contract.md, and rewrite-in-rust/records/0102-bootstrap-asr-text-postprocess-contract.md."
-      - "Writer-ready child units after fixture generation: asr_chinese_itn_core, asr_qwen_language_schema_contract, asr_qwen_wav_pcm_decode_core for same-rate PCM fallback, and asr_romaji_vocab_ctc_decode_core."
-      - "Prerequisite/planned child units: asr_resample_poly_contract for SciPy resampling parity and asr_romaji_batch_metadata_contract for fake-session metadata/batch assembly."
+      - "Split closure recorded in rewrite-in-rust/records/0125-close-asr-text-postprocess-split-umbrella.md."
+      - "Verified child units: asr_chinese_itn_core, asr_qwen_language_schema_contract, asr_qwen_wav_pcm_decode_core for same-rate PCM fallback, asr_resample_poly_contract for SciPy resampling parity, asr_romaji_vocab_ctc_decode_core, and asr_romaji_batch_metadata_contract."
+      - "Child close records: rewrite-in-rust/records/0107-close-asr-chinese-itn-gate.md, rewrite-in-rust/records/0109-close-asr-qwen-language-schema-gate.md, rewrite-in-rust/records/0112-close-asr-qwen-wav-pcm-decode-gate.md, rewrite-in-rust/records/0116-close-asr-resample-poly-gate.md, rewrite-in-rust/records/0120-close-asr-romaji-vocab-ctc-gate.md, and rewrite-in-rust/records/0124-close-asr-romaji-batch-metadata-gate.md."
       - "Do not cover create_session, encoder/decoder workers, llama subprocess inference, ONNX Runtime sessions, or model weight parsing in this unit."
     rollback: "Keep qwen3asr_dml and romaji_asr Python helpers as runtime owners."
 
   - id: asr_chinese_itn_core
     title: "ASR Chinese inverse text normalization"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1735,18 +1736,28 @@ units:
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "rewrite-in-rust/fixtures/asr_chinese_itn_core.jsonl contains 37 Python 3.12 golden cases for dates, pure digits, decimals, strict single-one no-op, numeric values, range expressions, percent/fraction/ratio/time, idiom and fuzzy no-ops, unit mapping, ASCII head/suffix behavior, consecutive-value quirks, and sentence-embedded spans."
+      - "rewrite-in-rust/fixtures/asr_chinese_itn_core.jsonl contains 68 Python 3.12 golden cases for dates, pure digits, valid and malformed decimals including leading/trailing-dot no-ops, strict single-one no-op, numeric values, range expressions including 万/亿/千米/千克 unit edges and the [万千百]+two-digit branch, percent/fraction/ratio/time, malformed time/ratio/fraction no-ops, idiom and fuzzy no-ops including idiom-adjacent digit/ASCII cases, unit mapping, ASCII head/suffix behavior, consecutive-value quirks, and sentence-embedded spans."
       - "rewrite-in-rust/bootstrap/check_asr_chinese_itn_core.py"
       - "rewrite-in-rust/rust/crates/v2m-core/src/asr_chinese_itn.rs"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_chinese_itn_core"
       - "rewrite-in-rust/records/0103-implement-asr-chinese-itn-core.md"
+      - "rewrite-in-rust/records/0104-fix-asr-chinese-itn-review-findings.md"
+      - "rewrite-in-rust/records/0105-fix-asr-chinese-itn-rerun-findings.md"
+      - "rewrite-in-rust/records/0106-fix-asr-chinese-itn-leading-dot.md"
+      - "rewrite-in-rust/records/0107-close-asr-chinese-itn-gate.md"
+      - "Initial behavior and data/algorithm reviews found malformed decimal drift, range+unit drift for 万/亿/千米/千克, and overly broad suffix-retry scanner behavior. Record 0104 fixed these with 11 additional Python-generated fixtures, one-shot candidate replacement, tighter candidate suffix boundaries, and stricter decimal predicates."
+      - "First review reruns found the missing Python [万千百]+two-digit range branch and byte-based idiom-lookback drift. Record 0105 fixed these with 12 additional Python-generated fixtures, a large-place range predicate, `十` leading-value handling for 十三万二三-style quirks, idiom-adjacent no-op consumption, and character-index lookback."
+      - "Second data/algorithm rerun found leading-dot malformed decimal partial conversion and behavior rerun2 requested a bare 三百二三 fixture. Record 0106 fixed these with 6 additional Python-generated fixtures and by allowing 点 to start one-shot no-op candidates."
+      - "Final behavior and data/algorithm reruns passed with follow-ups. Record 0107 added two follow-up malformed ratio/fraction fixtures and closed the gate."
+      - "rewrite-in-rust/reviews/2026-07-18-asr_chinese_itn_core-behavior_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_chinese_itn_core-data_algorithm_reviewer-rerun3.md"
       - "uv run python -m py_compile inference/qwen3asr_dml/chinese_itn.py"
       - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep inference.qwen3asr_dml.chinese_itn.chinese_to_num as the runtime owner."
 
   - id: asr_qwen_language_schema_contract
     title: "Qwen ASR language and schema contracts"
-    status: planned
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1758,14 +1769,22 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add JSONL fixtures for language normalization/errors, supported-language validation, MsgType values, StreamingMessage defaults, DecodeResult default_factory list independence, ASREngineConfig defaults, and TranscribeResult defaults."
+      - "rewrite-in-rust/fixtures/asr_qwen_language_schema_contract.jsonl contains 57 Python 3.12 golden cases for normalize_language_name None/empty/trim/case/unicode/int-display behavior, all 30 SUPPORTED_LANGUAGES validation accepts, unsupported-language ValueError text including list repr, MsgType auto order/name/value/str/repr, StreamingMessage default/custom snapshots, DecodeResult default/custom/default_factory independence, ASREngineConfig default/custom snapshots, TranscribeResult default/custom snapshots, and required-constructor TypeError messages."
+      - "rewrite-in-rust/bootstrap/check_asr_qwen_language_schema_contract.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/asr_qwen_language_schema.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_qwen_language_schema_contract"
+      - "rewrite-in-rust/records/0108-implement-asr-qwen-language-schema-contract.md"
+      - "rewrite-in-rust/records/0109-close-asr-qwen-language-schema-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_qwen_language_schema_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_qwen_language_schema_contract-error_tracing_reviewer.md"
+      - "Behavior and error/tracing reviews passed without findings."
       - "uv run python -m py_compile inference/qwen3asr_dml/utils.py inference/qwen3asr_dml/schema.py"
       - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep inference.qwen3asr_dml.utils and inference.qwen3asr_dml.schema as runtime owners."
 
   - id: asr_qwen_wav_pcm_decode_core
     title: "Qwen ASR WAV PCM fallback decode"
-    status: planned
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1777,15 +1796,26 @@ units:
       - data_algorithm_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add generated WAV or serialized sample fixtures for unsigned 8-bit, signed 16-bit, signed 24-bit little-endian, signed 32-bit, unsupported sample width, mono/stereo/multichannel mean, same-rate float32 output, and start_second/duration slicing after fallback."
+      - "rewrite-in-rust/fixtures/asr_qwen_wav_pcm_decode_core.jsonl contains 22 cases: Python 3.12 golden WAV cases for unsigned 8-bit centering, signed 16-bit, signed 24-bit little-endian sign extension, signed 32-bit, non-byte-aligned 7/12/20-bit headers using Python wave bit-depth sample-width behavior including block-align disagreement, unsupported sample width 5 ValueError text, mono/stereo/three-channel mean, same-rate float32 output, positive/zero-duration/negative-start/non-finite slicing after pydub fallback is forced, plus a Rust-only same-rate boundary fixture for source-rate mismatch."
+      - "rewrite-in-rust/bootstrap/check_asr_qwen_wav_pcm_decode_core.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/asr_qwen_wav_pcm_decode.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_qwen_wav_pcm_decode_core"
+      - "rewrite-in-rust/records/0110-implement-asr-qwen-wav-pcm-decode-core.md"
+      - "rewrite-in-rust/records/0111-fix-asr-qwen-wav-pcm-decode-review-findings.md"
+      - "Initial behavior/data reviews found hound-derived bit-depth sample-width drift for non-byte-aligned headers, block-align-disagreement sample-width drift, non-finite slicing error drift, and missing same-rate boundary coverage. Record 0111 fixed these by replacing hound with a narrow RIFF/WAVE parser using ceil(bits_per_sample/8) sample width, adding non-byte-aligned 7/12/20-bit and block-align-disagreement fixtures, adding NaN/infinity slicing fixtures, and adding a Rust-only source-rate mismatch boundary fixture."
+      - "rewrite-in-rust/records/0112-close-asr-qwen-wav-pcm-decode-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_qwen_wav_pcm_decode_core-behavior_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_qwen_wav_pcm_decode_core-data_algorithm_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_qwen_wav_pcm_decode_core-error_tracing_reviewer-rerun2.md"
+      - "Behavior, data/algorithm, and error/tracing rerun2 reviews passed without findings."
       - "uv run python -m py_compile inference/qwen3asr_dml/utils.py"
       - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep inference.qwen3asr_dml.utils.load_audio and _load_wav_audio as runtime owners."
 
   - id: asr_resample_poly_contract
     title: "ASR scipy resample_poly parity"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -1797,14 +1827,29 @@ units:
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "Add deterministic fixtures for 44100->16000, 48000->16000, 22050->16000, and identity cases, including expected output length, float samples, and accepted tolerance."
+      - "rewrite-in-rust/dependencies/asr_resample_poly_contract.yaml confirms the narrow 1D float32 default SciPy resample_poly boundary, records the firwin -> get_window -> kaiser -> special.i0 source path, and rejects generic audio resampler crates for exact parity."
+      - "rewrite-in-rust/bootstrap/asr_resample_poly_contract.md records fixture strategy, SciPy source path, and hand-written writer boundary."
+      - "rewrite-in-rust/fixtures/asr_resample_poly_contract.jsonl contains 18 Python 3.12/SciPy 1.17.1 golden cases for identity, short boundary ratios, long steady-state 44100->16000/48000->16000/22050->16000/8000->16000 dual-sine inputs, GCD reduction, upsample, single-sample, empty input, NaN/Inf propagation, and invalid/equal invalid rate errors."
+      - "rewrite-in-rust/bootstrap/check_asr_resample_poly_contract.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/asr_resample_poly.rs implements the default 1D float32 SciPy-compatible gcd/firwin-Kaiser/upfirdn/prepad/trim path with fixture tolerance 2e-7 for finite samples and 1e-5 for projected sums."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_resample_poly_contract"
+      - "rewrite-in-rust/records/0113-bootstrap-asr-resample-poly-contract.md"
+      - "rewrite-in-rust/records/0114-fix-asr-resample-poly-bootstrap-review-findings.md"
+      - "rewrite-in-rust/records/0115-implement-asr-resample-poly-contract.md"
+      - "rewrite-in-rust/records/0116-close-asr-resample-poly-gate.md"
+      - "rewrite-in-rust/records/0126-fix-asr-resample-poly-clippy-msrv.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_resample_poly_contract-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_resample_poly_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_resample_poly_contract-data_algorithm_reviewer.md"
+      - "Dependency/bootstrap, behavior/stage-behavior, and data/algorithm reviews passed without blocking findings."
+      - "Stage-close clippy/MSRV cleanup in record 0126 was behavior-preserving and reran the resample fixture test plus v2m-core clippy."
       - "uv run python -m py_compile inference/qwen3asr_dml/utils.py inference/romaji_asr/common.py"
       - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep scipy.signal.resample_poly calls in Python-owned qwen3asr_dml.utils and romaji_asr.common."
 
   - id: asr_romaji_vocab_ctc_decode_core
     title: "Romaji ASR vocab and CTC decode helpers"
-    status: planned
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1815,15 +1860,27 @@ units:
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "Add JSON fixtures for vocab id inversion, <blank>/PAD/0 blank lookup, duplicate/blank CTC collapse, unknown token fallback, integer-vs-logit decode_outputs dispatch, argmax tie behavior, batch iteration, and chunk_size <= 0 becoming step 1."
+      - "rewrite-in-rust/dependencies/asr_romaji_vocab_ctc_decode_core.yaml confirms the narrow vocab/CTC/chunk helper boundary, selects ndarray for array-shaped logits/batch outputs, and keeps ONNX/audio/resampling legacy-owned."
+      - "rewrite-in-rust/bootstrap/asr_romaji_vocab_ctc_decode_core.md records fixture strategy and writer boundary."
+      - "rewrite-in-rust/fixtures/asr_romaji_vocab_ctc_decode_core.jsonl contains 24 Python 3.12 golden cases for vocab id inversion, <blank>/PAD/0 blank lookup, duplicate-id overwrite, duplicate/blank CTC collapse, unknown token fallback, integer-vs-logit decode_outputs dispatch, argmax tie/NaN behavior, uint64 large-id preservation, batch iteration, and chunk_size <= 0 becoming step 1."
+      - "rewrite-in-rust/bootstrap/check_asr_romaji_vocab_ctc_decode_core.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/asr_romaji_vocab_ctc_decode.rs implements the vocab JSON inversion, CTC collapse, ndarray-backed logits/output decoding, and chunk helpers."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_vocab_ctc_decode_core"
+      - "rewrite-in-rust/records/0117-bootstrap-asr-romaji-vocab-ctc-decode-core.md"
+      - "rewrite-in-rust/records/0118-implement-asr-romaji-vocab-ctc-decode-core.md"
+      - "rewrite-in-rust/records/0119-fix-asr-romaji-vocab-ctc-data-review-findings.md"
+      - "rewrite-in-rust/records/0120-close-asr-romaji-vocab-ctc-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_romaji_vocab_ctc_decode_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_romaji_vocab_ctc_decode_core-data_algorithm_reviewer-rerun.md"
+      - "Behavior/stage-behavior and data/algorithm reruns passed after record 0119 fixed uint64 large-id and NaN argmax parity gaps."
       - "uv run python -m py_compile inference/romaji_asr/common.py"
       - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep inference.romaji_asr.common load_vocab/decode/chunk helpers as runtime owners."
 
   - id: asr_romaji_batch_metadata_contract
     title: "Romaji ASR batch metadata and padding contract"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -1834,7 +1891,21 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add fixtures for fixed/dynamic batch sizes, fixed/dynamic sample counts, empty audio_paths, batch-size mismatch errors, missing attention_mask, dtype string mapping, zero-length waveform, truncation, padding, attention mask, and used lengths. Use synthetic waveforms or depend on asr_resample_poly_contract for file-loading resample cases."
+      - "rewrite-in-rust/dependencies/asr_romaji_batch_metadata_contract.yaml confirms the fake-session metadata and synthetic-waveform batch boundary, selects ndarray for 2D matrices, and keeps ONNX/audio/resampling legacy-owned."
+      - "rewrite-in-rust/bootstrap/asr_romaji_batch_metadata_contract.md records fixture strategy and writer boundary."
+      - "rewrite-in-rust/fixtures/asr_romaji_batch_metadata_contract.jsonl contains 26 Python 3.12 golden cases for fixed/dynamic/bool/one-dimensional/negative shapes, dtype mapping, empty audio_paths, batch-size mismatch errors, missing waveform keys, missing input_values, missing attention_mask, dynamic/fixed sample counts, fixed-zero-samples fallback, zero-length waveform, truncation, padding, attention mask dtype casts including float16, input_values dtype casts, sample-rate passthrough, and used lengths."
+      - "rewrite-in-rust/bootstrap/check_asr_romaji_batch_metadata_contract.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/asr_romaji_batch_metadata.rs implements fake-session metadata extraction, dtype mapping, ndarray-backed input/mask matrix construction, dtype casts through half/primitive arrays, used-length projection, and Python-compatible error ordering."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_batch_metadata_contract"
+      - "rewrite-in-rust/records/0121-bootstrap-asr-romaji-batch-metadata-contract.md"
+      - "rewrite-in-rust/records/0122-implement-asr-romaji-batch-metadata-contract.md"
+      - "rewrite-in-rust/records/0123-fix-asr-romaji-batch-metadata-review-findings.md"
+      - "Initial error/tracing review found negative fixed sample dimensions were silently converted into successful zero-width Rust batches. Behavior and dependency/bootstrap reviews had follow-ups for missing synthetic waveform keys and attention_mask float16 coverage. Record 0123 fixed all three with Python-generated golden fixtures and Rust error projection updates."
+      - "rewrite-in-rust/records/0124-close-asr-romaji-batch-metadata-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_romaji_batch_metadata_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_romaji_batch_metadata_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-asr_romaji_batch_metadata_contract-error_tracing_reviewer-rerun.md"
+      - "Dependency/bootstrap and behavior/stage-behavior reviews passed with follow-ups that are now fixture-backed; error/tracing rerun passed without findings."
       - "uv run python -m py_compile inference/romaji_asr/common.py"
       - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep inference.romaji_asr.common metadata and prepare_batch helpers as runtime owners."

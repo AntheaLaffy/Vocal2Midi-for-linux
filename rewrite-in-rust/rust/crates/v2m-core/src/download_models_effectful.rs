@@ -19,9 +19,13 @@ use serde_json::json;
 /// Result for a mocked GitHub release-asset API request.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AssetApiResult {
+    /// The first.
     pub first: BTreeMap<String, i64>,
+    /// The optional second.
     pub second: Option<BTreeMap<String, i64>>,
+    /// The urlopen calls.
     pub urlopen_calls: usize,
+    /// The request url.
     pub request_url: String,
 }
 
@@ -84,10 +88,15 @@ pub fn github_api_asset_sizes(
 /// Result for a mocked stream download.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StreamDownloadResult {
+    /// The downloaded.
     pub downloaded: i64,
+    /// The file content.
     pub file_content: String,
+    /// The stdout.
     pub stdout: String,
+    /// The request url.
     pub request_url: String,
+    /// The user agent.
     pub user_agent: String,
 }
 
@@ -137,11 +146,17 @@ pub fn stream_download(
 /// Result of a mocked GitHub model download.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GithubDownloadResult {
+    /// Whether the modeled operation returned.
     pub returned: bool,
+    /// The ordered stream calls.
     pub stream_calls: Vec<String>,
+    /// The ordered extract calls.
     pub extract_calls: Vec<BTreeMap<String, String>>,
+    /// The ordered tmp zip leftovers.
     pub tmp_zip_leftovers: Vec<String>,
+    /// The ordered captured standard-output lines.
     pub stdout_lines: Vec<String>,
+    /// The ordered captured standard-error lines.
     pub stderr_lines: Vec<String>,
 }
 
@@ -398,16 +413,27 @@ pub fn cleanup_qwen_artifacts_with_unlink_errors(
 /// Result of a mocked Qwen provider CLI download.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QwenCliResult {
+    /// Whether the modeled operation returned.
     pub returned: bool,
+    /// The ordered resolve calls.
     pub resolve_calls: Vec<String>,
+    /// The ordered pip calls.
     pub pip_calls: Vec<Vec<String>>,
+    /// The ordered run calls.
     pub run_calls: Vec<Vec<String>>,
+    /// Whether cleanup was called.
     pub cleanup_called: bool,
+    /// The ordered captured standard-output lines.
     pub stdout_lines: Vec<String>,
+    /// The ordered captured standard-error lines.
     pub stderr_lines: Vec<String>,
 }
 
 /// Simulate `download_qwen_modelscope` or `download_qwen_huggingface`.
+///
+/// # Panics
+///
+/// Panics when `provider` is neither `modelscope` nor `huggingface`.
 pub fn qwen_cli_download(
     provider: &str,
     resolve_sequence: &[Option<String>],
@@ -560,10 +586,15 @@ fn provider_spec(provider: &str) -> QwenProviderSpec {
 /// Result of `download_qwen` strategy selection.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QwenStrategyResult {
+    /// Whether the modeled operation returned.
     pub returned: bool,
+    /// The ordered modelscope calls.
     pub modelscope_calls: Vec<String>,
+    /// The ordered huggingface calls.
     pub huggingface_calls: Vec<String>,
+    /// The ordered captured standard-output lines.
     pub stdout_lines: Vec<String>,
+    /// The ordered captured standard-error lines.
     pub stderr_lines: Vec<String>,
 }
 

@@ -12,14 +12,14 @@ Third-party components, vendored code, bundled data, dictionaries, and other emb
 
 | Project | Role in Vocal2Midi | Upstream repository |
 | --- | --- | --- |
-| GAME | note and pitch extraction | https://github.com/openvpi/GAME |
-| HubertFA | phoneme-level forced alignment | https://github.com/wolfgitpr/HubertFA |
-| LyricFA | lyric matching and G2P-based lyric alignment helpers | https://github.com/wolfgitpr/LyricFA |
-| FunASR | broader ASR foundation referenced by the Qwen3-ASR integration path | https://github.com/modelscope/FunASR |
-| llama.cpp | CPU decoder runtime used by the Qwen3-ASR DML path | https://github.com/ggml-org/llama.cpp |
-| ONNX Runtime | DirectML and CPU inference execution | https://github.com/microsoft/onnxruntime |
-| PyQt-Fluent-Widgets | Fluent-style desktop UI components | https://github.com/zhiyiYo/PyQt-Fluent-Widgets |
-| CPython / Python Software Foundation | reference algorithm for the Rust adaptation of Python 3.12.13 list-sort comparison scheduling and Unicode 15.0 printability | https://github.com/python/cpython/tree/v3.12.13 |
+| GAME | note and pitch extraction | [openvpi/GAME](https://github.com/openvpi/GAME) |
+| HubertFA | phoneme-level forced alignment | [wolfgitpr/HubertFA](https://github.com/wolfgitpr/HubertFA) |
+| LyricFA | lyric matching and G2P-based lyric alignment helpers | [wolfgitpr/LyricFA](https://github.com/wolfgitpr/LyricFA) |
+| FunASR | broader ASR foundation referenced by the Qwen3-ASR integration path | [modelscope/FunASR](https://github.com/modelscope/FunASR) |
+| llama.cpp | CPU decoder runtime used by the Qwen3-ASR DML path | [ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp) |
+| ONNX Runtime | DirectML and CPU inference execution | [microsoft/onnxruntime](https://github.com/microsoft/onnxruntime) |
+| PyQt-Fluent-Widgets | Fluent-style desktop UI components | [zhiyiYo/PyQt-Fluent-Widgets](https://github.com/zhiyiYo/PyQt-Fluent-Widgets) |
+| CPython / Python Software Foundation | reference algorithm for the Rust adaptation of Python 3.12.13 list-sort comparison scheduling and Unicode 15.0 printability | [python/cpython v3.12.13](https://github.com/python/cpython/tree/v3.12.13) |
 
 ## Vendored components in this repository
 

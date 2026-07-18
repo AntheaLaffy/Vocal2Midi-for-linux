@@ -11,18 +11,26 @@ use crate::slicer_segment::{Segment, Waveform};
 /// One grid-search parameter candidate.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GridSearchParams {
+    /// The threshold db.
     pub threshold_db: f64,
+    /// The min length ms.
     pub min_length_ms: f64,
+    /// The min interval ms.
     pub min_interval_ms: f64,
+    /// The max sil kept ms.
     pub max_sil_kept_ms: f64,
 }
 
 /// Caller-provided grid-search slicer parameters.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct GridSearchConfig {
+    /// The min len sec.
     pub min_len_sec: f64,
+    /// The max len sec.
     pub max_len_sec: f64,
+    /// The min interval ms.
     pub min_interval_ms: f64,
+    /// The max sil kept ms.
     pub max_sil_kept_ms: f64,
 }
 
@@ -62,19 +70,28 @@ impl GridSearchConfig {
 /// One scored non-empty candidate.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridSearchScore {
+    /// The params.
     pub params: GridSearchParams,
+    /// The score.
     pub score: f64,
+    /// The chunk count.
     pub chunk_count: usize,
+    /// The short count.
     pub short_count: usize,
+    /// The long count.
     pub long_count: usize,
 }
 
 /// Grid-search policy result plus review/debug metadata.
 #[derive(Debug, Clone, PartialEq)]
 pub struct GridSearchResult {
+    /// The ordered chunks.
     pub chunks: Vec<Segment>,
+    /// The optional best params.
     pub best_params: Option<GridSearchParams>,
+    /// The optional best score.
     pub best_score: Option<f64>,
+    /// The ordered score log.
     pub score_log: Vec<GridSearchScore>,
 }
 

@@ -54,6 +54,7 @@ impl Error for HfaWordMutationError {}
 /// Warning emitted by a local Word mutation when no log list is supplied.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaWordWarning {
+    /// The message text.
     pub message: String,
 }
 
@@ -67,8 +68,11 @@ impl HfaWordWarning {
 /// One HubertFA phoneme interval.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Phoneme {
+    /// The start.
     pub start: f64,
+    /// The end.
     pub end: f64,
+    /// The text.
     pub text: String,
 }
 
@@ -100,9 +104,13 @@ impl Phoneme {
 /// One HubertFA word interval and its locally owned phonemes.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Word {
+    /// The start.
     pub start: f64,
+    /// The end.
     pub end: f64,
+    /// The text.
     pub text: String,
+    /// The ordered phonemes.
     pub phonemes: Vec<Phoneme>,
 }
 
@@ -113,6 +121,11 @@ impl Word {
     ///
     /// Returns `HfaWordError` unless the clamped start is strictly less than
     /// the end.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if construction of the optional initial phoneme rejects the
+    /// word interval after that same interval has already been validated.
     pub fn new(
         start: f64,
         end: f64,
@@ -201,6 +214,10 @@ impl Word {
     }
 
     /// Moves the word and first phoneme start when the new boundary is valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordMutationError`] when the word has no first phoneme.
     pub fn move_start(
         &mut self,
         new_start: f64,
@@ -226,6 +243,10 @@ impl Word {
     }
 
     /// Moves the word and last phoneme end when the new boundary is valid.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordMutationError`] when the word has no last phoneme.
     pub fn move_end(
         &mut self,
         new_end: f64,
@@ -269,6 +290,10 @@ impl WordHandle {
     }
 
     /// Returns an owned snapshot without exposing an interior borrow guard.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] when the word is already mutably borrowed.
     pub fn snapshot(&self) -> Result<Word, HfaWordListError> {
         self.read(Clone::clone)
     }
@@ -280,11 +305,19 @@ impl WordHandle {
 
     /// Mutates a raw public start value as Python callers can after
     /// construction.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] when the word is already borrowed.
     pub fn set_start(&self, start: f64) -> Result<(), HfaWordListError> {
         self.write(|word| word.start = start)
     }
 
     /// Replaces Word text without exposing mutable interior access.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] when the word is already borrowed.
     pub fn set_text(&self, text: impl Into<String>) -> Result<(), HfaWordListError> {
         let text = text.into();
         self.write(|word| word.text = text)
@@ -292,6 +325,10 @@ impl WordHandle {
 
     /// Replaces Word text and every owned phoneme text, preserving the source
     /// alias mutation exercised by the compatibility contract.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] when the word is already borrowed.
     pub fn set_text_and_all_phonemes(
         &self,
         text: impl Into<String>,
@@ -336,7 +373,9 @@ pub const DEFAULT_SP_PHONE: &str = "SP";
 /// One raw entry retained by the heterogeneous legacy WordList.
 #[derive(Debug, Clone)]
 pub enum WordListEntry {
+    /// Carries the Python-compatible word value.
     Word(WordHandle),
+    /// Carries the Python-compatible invalid value.
     Invalid(String),
 }
 
@@ -356,9 +395,13 @@ impl WordListEntry {
 /// Python exception kind projected by WordList operations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HfaWordListErrorKind {
+    /// Represents the Python-compatible value error case.
     ValueError,
+    /// Represents the Python-compatible attribute error case.
     AttributeError,
+    /// Represents the Python-compatible index error case.
     IndexError,
+    /// Represents the Python-compatible borrow error case.
     BorrowError,
 }
 
@@ -479,6 +522,11 @@ impl WordList {
 
     /// Returns overlapping Word handles in current list order, ignoring invalid
     /// entries and treating touching boundaries as non-overlapping.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] when any inspected word has a conflicting
+    /// interior borrow.
     pub fn overlapping_words(
         &self,
         new_word: &WordHandle,
@@ -505,6 +553,11 @@ impl WordList {
     }
 
     /// Appends a validated Word reference or records the exact legacy warning.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] when validation encounters a conflicting
+    /// interior borrow.
     pub fn append(&mut self, word: WordHandle) -> Result<(), HfaWordListError> {
         Self::append_into(&mut self.entries, &mut self.log, word)
     }
@@ -851,6 +904,12 @@ impl WordList {
 
     /// Adds an AP Word using legacy aliasing, subtraction, filtering, sorting,
     /// partial-mutation, and caught-error behavior.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`HfaWordListError`] for conflicting interior borrows. Other
+    /// legacy failures are recorded in the diagnostic log when the Python path
+    /// catches them.
     pub fn add_ap(
         &mut self,
         new_word: WordHandle,
@@ -924,6 +983,10 @@ impl WordList {
     }
 
     /// Adds an AP Word using the legacy default minimum duration.
+    ///
+    /// # Errors
+    ///
+    /// Returns the same [`HfaWordListError`] conditions as [`Self::add_ap`].
     pub fn add_ap_default(&mut self, new_word: WordHandle) -> Result<(), HfaWordListError> {
         self.add_ap(new_word, DEFAULT_AP_MIN_DURATION)
     }
@@ -970,6 +1033,11 @@ impl WordList {
     ///
     /// Returns the exact invalid-entry `AttributeError` projection after any
     /// preceding valid entries have already been mutated.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if splitting an owned phoneme string fails to yield its
+    /// guaranteed final segment.
     pub fn clear_language_prefix(&mut self) -> Result<(), HfaWordListError> {
         for entry in &self.entries {
             let WordListEntry::Word(word) = entry else {

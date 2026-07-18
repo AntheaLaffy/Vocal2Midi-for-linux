@@ -82,6 +82,11 @@ const IDIOMS: &[&str] = &[
 ];
 
 /// Converts Chinese spoken-form numbers in `input` to Arabic numerals.
+///
+/// # Panics
+///
+/// Panics only if the internal UTF-8 character-boundary table becomes
+/// inconsistent with `input`.
 pub fn chinese_to_num(input: &str) -> String {
     let mut output = String::new();
     let starts = char_starts(input);
@@ -89,8 +94,15 @@ pub fn chinese_to_num(input: &str) -> String {
 
     while index < starts.len() - 1 {
         if let Some(idiom) = idiom_at(input, starts[index]) {
-            output.push_str(idiom);
-            index = byte_to_char_index(&starts, starts[index] + idiom.len());
+            let after_idiom = byte_to_char_index(&starts, starts[index] + idiom.len());
+            let end_index = idiom_noop_end(input, after_idiom, &starts).unwrap_or(after_idiom);
+            let end_byte = if end_index < starts.len() {
+                starts[end_index]
+            } else {
+                input.len()
+            };
+            output.push_str(&input[starts[index]..end_byte]);
+            index = end_index;
             continue;
         }
 
@@ -114,40 +126,29 @@ pub fn chinese_to_num(input: &str) -> String {
             continue;
         }
 
-        let mut chosen: Option<(usize, String)> = None;
-        for end_index in ((index + 1)..=max_index).rev() {
-            let end_byte = if end_index < starts.len() {
-                starts[end_index]
-            } else {
-                input.len()
-            };
-            let candidate = &input[byte..end_byte];
-            if let Some(converted) = replace_candidate(input, byte, end_byte, candidate)
-                && converted != candidate
-            {
-                chosen = Some((end_index, converted));
-                break;
-            }
-        }
-
-        if let Some((end_index, converted)) = chosen {
-            output.push_str(&converted);
-            index = end_index;
+        let end_byte = if max_index < starts.len() {
+            starts[max_index]
         } else {
-            output.push(ch);
-            index += 1;
-        }
+            input.len()
+        };
+        let candidate = &input[byte..end_byte];
+        let converted = replace_candidate(input, byte, end_byte, candidate)
+            .unwrap_or_else(|| candidate.to_string());
+        output.push_str(&converted);
+        index = max_index;
     }
 
     output
 }
 
 fn replace_candidate(context: &str, start: usize, end: usize, candidate: &str) -> Option<String> {
-    if idiom_overlaps(context, start.saturating_sub(6), end) || candidate.contains('几') {
+    let (head, original) = split_ascii_head(candidate);
+    let group_start = start + head.len();
+    if idiom_overlaps(context, lookback_start_byte(context, group_start, 2), end)
+        || candidate.contains('几')
+    {
         return None;
     }
-
-    let (head, original) = split_ascii_head(candidate);
     if original.is_empty() {
         return None;
     }
@@ -226,6 +227,40 @@ fn byte_to_char_index(starts: &[usize], byte: usize) -> usize {
         .unwrap_or(starts.len() - 1)
 }
 
+fn lookback_start_byte(input: &str, byte: usize, chars_back: usize) -> usize {
+    let positions = input
+        .char_indices()
+        .map(|(position, _)| position)
+        .take_while(|position| *position < byte)
+        .collect::<Vec<_>>();
+    if positions.len() <= chars_back {
+        0
+    } else {
+        positions[positions.len() - chars_back]
+    }
+}
+
+fn idiom_noop_end(input: &str, index: usize, starts: &[usize]) -> Option<usize> {
+    let mut cursor = index;
+    while cursor < starts.len() - 1 {
+        let ch = input[starts[cursor]..].chars().next().unwrap();
+        if ch == ' ' {
+            cursor += 1;
+        } else {
+            break;
+        }
+    }
+    if cursor >= starts.len() - 1 {
+        return None;
+    }
+    let ch = input[starts[cursor]..].chars().next().unwrap();
+    if is_numeric_start(ch) {
+        Some(candidate_end(input, cursor, starts))
+    } else {
+        None
+    }
+}
+
 fn can_start_candidate(input: &str, index: usize, starts: &[usize], ch: char) -> bool {
     if is_numeric_start(ch) {
         return true;
@@ -246,18 +281,60 @@ fn can_start_candidate(input: &str, index: usize, starts: &[usize], ch: char) ->
 
 fn candidate_end(input: &str, index: usize, starts: &[usize]) -> usize {
     let mut cursor = index;
+    if cursor < starts.len() - 1 {
+        let first = input[starts[cursor]..].chars().next().unwrap();
+        if first.is_ascii_lowercase() {
+            cursor += 1;
+            while cursor < starts.len() - 1 {
+                let ch = input[starts[cursor]..].chars().next().unwrap();
+                if ch == ' ' {
+                    cursor += 1;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
     while cursor < starts.len() - 1 {
         let ch = input[starts[cursor]..].chars().next().unwrap();
-        if is_candidate_char(ch) {
+        if is_numeric_body_char(ch) {
             cursor += 1;
         } else {
             break;
         }
     }
-    cursor
+
+    cursor + suffix_char_len(input, cursor, starts)
 }
 
-fn is_candidate_char(ch: char) -> bool {
+fn suffix_char_len(input: &str, cursor: usize, starts: &[usize]) -> usize {
+    if cursor >= starts.len() - 1 {
+        return 0;
+    }
+    let prefix = &input[..starts[cursor]];
+    let rest = &input[starts[cursor]..];
+    if prefix.ends_with(['秒', '分', '年', '月', '日', '号']) {
+        return 0;
+    }
+    if prefix.ends_with('千') {
+        for suffix in ["米每小时", "米", "克"] {
+            if rest.starts_with(suffix) {
+                return suffix.chars().count();
+            }
+        }
+    }
+    for (unit, _) in sorted_units() {
+        if rest.starts_with(unit) {
+            return unit.chars().count();
+        }
+    }
+    rest.chars()
+        .take_while(|ch| ch.is_ascii_alphabetic())
+        .count()
+}
+
+fn is_numeric_body_char(ch: char) -> bool {
     matches!(
         ch,
         '几' | '零'
@@ -286,23 +363,8 @@ fn is_candidate_char(ch: char) -> bool {
             | '日'
             | '号'
             | '秒'
-            | '钟'
-            | '个'
-            | '只'
-            | '天'
-            | '时'
-            | '人'
-            | '层'
-            | '楼'
-            | '倍'
-            | '块'
-            | '次'
-            | '克'
-            | '米'
-            | '每'
-            | '小'
             | ' '
-    ) || ch.is_ascii_alphabetic()
+    )
 }
 
 fn is_numeric_start(ch: char) -> bool {
@@ -322,6 +384,7 @@ fn is_numeric_start(ch: char) -> bool {
             | '九'
             | '十'
             | '百'
+            | '点'
     )
 }
 
@@ -595,19 +658,16 @@ fn is_pure_num(text: &str) -> bool {
     if stripped.is_empty() {
         return false;
     }
-    let mut expect_digits = true;
-    for ch in stripped.chars() {
-        if expect_digits {
-            if matches!(
+    for segment in stripped.split('点') {
+        if segment.is_empty() {
+            return false;
+        }
+        if !segment.chars().all(|ch| {
+            matches!(
                 ch,
                 '零' | '幺' | '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九'
-            ) {
-                continue;
-            }
-            if ch == '点' {
-                expect_digits = true;
-                continue;
-            }
+            )
+        }) {
             return false;
         }
     }
@@ -618,6 +678,19 @@ fn is_value_num(text: &str) -> bool {
     let text = text.trim();
     if text.is_empty() {
         return false;
+    }
+    if let Some((integer, decimal)) = text.split_once('点') {
+        if integer.is_empty() || decimal.is_empty() || decimal.contains('点') {
+            return false;
+        }
+        if !decimal.chars().all(|ch| {
+            matches!(
+                ch,
+                '零' | '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九'
+            )
+        }) {
+            return false;
+        }
     }
     let mut seen = false;
     let mut dot_count = 0;
@@ -779,11 +852,10 @@ fn is_repeated_hundreds(text: &str) -> bool {
 }
 
 fn is_range_expression(text: &str) -> bool {
-    let (stripped, _) = strip_unit(text);
-    if stripped.contains('点') {
+    if text.contains('点') {
         return false;
     }
-    let chars = stripped.chars().collect::<Vec<_>>();
+    let chars = text.chars().collect::<Vec<_>>();
     if chars.len() >= 3
         && matches!(
             chars[0],
@@ -825,6 +897,54 @@ fn is_range_expression(text: &str) -> bool {
             '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九'
         )
         && chars[4] == '十'
+        || is_large_place_two_digit_range(text)
+}
+
+fn is_large_place_two_digit_range(text: &str) -> bool {
+    let core = strip_range_optional_unit(text);
+    let chars = core.chars().collect::<Vec<_>>();
+    if chars.len() < 4 {
+        return false;
+    }
+    let prefix_len = chars.len() - 2;
+    matches!(chars[prefix_len - 1], '万' | '千' | '百')
+        && chars[..prefix_len].iter().all(|ch| {
+            matches!(
+                ch,
+                '一' | '二'
+                    | '三'
+                    | '四'
+                    | '五'
+                    | '六'
+                    | '七'
+                    | '八'
+                    | '九'
+                    | '十'
+                    | '百'
+                    | '千'
+                    | '万'
+            )
+        })
+        && matches!(
+            chars[prefix_len],
+            '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九'
+        )
+        && matches!(
+            chars[prefix_len + 1],
+            '一' | '二' | '三' | '四' | '五' | '六' | '七' | '八' | '九'
+        )
+}
+
+fn strip_range_optional_unit(text: &str) -> &str {
+    for (unit_cn, _) in sorted_units() {
+        if matches!(unit_cn, "万" | "亿" | "千" | "百" | "十") {
+            continue;
+        }
+        if let Some(stripped) = text.strip_suffix(unit_cn) {
+            return stripped;
+        }
+    }
+    text
 }
 
 fn convert_range_expression(text: &str) -> Option<String> {
@@ -950,11 +1070,11 @@ fn convert_range_pattern_2(text: &str) -> Option<String> {
             if base.len() == 1 {
                 10
             } else {
-                digit_value(base[0])? * 10
+                range_leading_value(base[0])? * 10
             }
         } else if value_of(last).is_some() {
             if base.len() > 1 {
-                digit_value(base[0])? * value_of(last)?
+                range_leading_value(base[0])? * value_of(last)?
             } else {
                 value_of(last)?
             }
@@ -970,6 +1090,14 @@ fn convert_range_pattern_2(text: &str) -> Option<String> {
         ));
     }
     None
+}
+
+fn range_leading_value(ch: char) -> Option<i64> {
+    if ch == '十' {
+        Some(10)
+    } else {
+        digit_value(ch)
+    }
 }
 
 fn convert_range_pattern_3(text: &str) -> Option<String> {

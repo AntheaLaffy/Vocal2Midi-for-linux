@@ -2,6 +2,9 @@
 
 This guide is for maintainers and contributors working on Vocal2Midi code.
 User-facing setup instructions live in the platform documents under `docs/`.
+The shorter repository entrypoint is [`CONTRIBUTING.md`](../CONTRIBUTING.md),
+and the full documentation policy is
+[`docs/documentation.md`](documentation.md).
 
 The documentation style follows the habits common in Rust projects:
 
@@ -104,7 +107,9 @@ instead of duplicating it separately in every UI.
 Rust code lives under `rewrite-in-rust/rust/` and follows the same owner model
 as the migration manifest:
 
-- `v2m-core` holds pure, fixture-backed library behavior.
+- `v2m-core` holds fixture-backed application/Web contracts, deterministic
+  processing and export helpers, and inference-adjacent preprocessing that does
+  not create model sessions.
 - `v2m-quant-bridge` is a JSON stdin/stdout bridge for explicitly selected
   quantization runs.
 - Python remains the default runtime owner until a manifest unit is promoted.
@@ -122,9 +127,9 @@ workspace is explicit:
 
 ```bash
 cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 ```
 
 For changes crossing the Python/Rust seam, also run the narrow Python parity
@@ -132,6 +137,10 @@ tests named by the manifest unit. Keep fixture updates, Rust code, Python seam
 code, and docs in the same change when public behavior changes.
 
 ## Documentation Standard
+
+[`docs/documentation.md`](documentation.md) is authoritative for document
+ownership, historical migration evidence, Markdown structure, rustdoc, and
+verification. The summary below applies to code review.
 
 For Markdown documents:
 
@@ -141,6 +150,13 @@ For Markdown documents:
 - mark commands with `bash`, `fish`, or `python`
 - include the command that verifies the documented behavior
 - avoid describing planned behavior as if it already exists
+
+Validate repository-local Markdown targets after moving files or changing
+links:
+
+```bash
+uv run python scripts/check_markdown_links.py
+```
 
 For public Python functions, classes, and dataclasses:
 
@@ -207,7 +223,7 @@ server to be reachable at `http://localhost:5000` unless the script is changed.
 Rust migration checks:
 
 ```bash
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
 uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py
 ```
 
@@ -215,8 +231,9 @@ Run the full Rust style gate before promoting or reviewing a Rust unit:
 
 ```bash
 cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 ```
 
 ## Review Checklist
@@ -229,6 +246,8 @@ Before handing off a change:
 - update `docs/web-api.md` when REST or SocketIO behavior changes
 - update `docs/architecture.md` when a module boundary changes
 - update `docs/linux.md` when setup, model paths, or runtime assumptions change
+- update `docs/documentation.md` when document ownership or verification rules
+  change
 - update `rewrite-in-rust/manifest.yaml`, `rewrite-in-rust/records/`, and the
   relevant review report when a Rust migration state changes
 - keep generated model files, local settings, and output artifacts out of review

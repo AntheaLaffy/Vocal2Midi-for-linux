@@ -1,5 +1,5 @@
 unit: asr_text_postprocess_contract
-status: planned
+status: done
 capabilities:
   chinese_inverse_text_normalization:
     legacy: "inference/qwen3asr_dml/chinese_itn.py::chinese_to_num and helper regex tables"
@@ -65,13 +65,13 @@ crate_reuse:
         - "It does not cover NumPy dtype dispatch, np.issubdtype, frombuffer, astype(copy=False), scipy.signal.resample_poly, or soundfile IO semantics."
       adapter_plan: "Use in asr_romaji_vocab_ctc_decode_core and asr_romaji_batch_metadata_contract only if the public Rust API benefits from array-shaped inputs; defer for Chinese ITN, schema/language, and Qwen WAV PCM decode."
       decision: defer
-    - crate: "hound"
+    - crate: "hound or narrow hand-written RIFF/WAVE parser"
       covered_capabilities:
         - "WAV container parsing and 8/16/24/32-bit PCM sample extraction for asr_qwen_wav_pcm_decode_core"
       gaps:
-        - "Must preserve Python wave/numpy normalization denominators, unsigned 8-bit centering, 24-bit sign extension, channel mean, sample-width error text, and fallback slicing order."
-      adapter_plan: "Use hound or an equivalent maintained WAV parser for container reading, then hand-write Python-compatible normalization and channel averaging."
-      decision: use
+        - "Must preserve Python wave/numpy normalization denominators, unsigned 8-bit centering, 24-bit sign extension, channel mean, sample-width error text, fallback slicing order, and Python wave.getsampwidth() byte-container semantics for non-byte-aligned headers."
+      adapter_plan: "Prefer a maintained WAV parser only if it exposes the Python-compatible container sample width before rejecting non-byte-aligned bits-per-sample headers; otherwise hand-write the narrow RIFF/WAVE PCM parser and keep normalization/channel averaging explicit."
+      decision: conditional
     - crate: "rubato or samplerate-like resampler"
       covered_capabilities:
         - "general audio resampling"
@@ -114,22 +114,22 @@ inventory_impact:
   reason: "The umbrella unit mixed pure Chinese ITN, Qwen language/schema DTOs, Qwen WAV PCM fallback, SciPy resampling, romaji vocab/CTC decode, and ONNX metadata/batch assembly. These have different dependencies, fixture shapes, review needs, and writer readiness."
   split_units:
     - id: asr_chinese_itn_core
-      status: writer-ready after fixtures
+      status: verified
       rollback: "Keep inference.qwen3asr_dml.chinese_itn.chinese_to_num as runtime owner."
     - id: asr_qwen_language_schema_contract
-      status: writer-ready after fixtures
+      status: verified
       rollback: "Keep qwen3asr_dml Python utils/schema as runtime owners."
     - id: asr_qwen_wav_pcm_decode_core
-      status: "writer-ready for same-rate PCM fallback after fixtures; resampling depends on asr_resample_poly_contract"
+      status: verified
       rollback: "Keep qwen3asr_dml.utils.load_audio/_load_wav_audio as runtime owners."
     - id: asr_resample_poly_contract
-      status: "prerequisite discovery before resampling writer work"
+      status: verified
       rollback: "Keep scipy.signal.resample_poly calls in Python."
     - id: asr_romaji_vocab_ctc_decode_core
-      status: writer-ready after fixtures
+      status: verified
       rollback: "Keep inference.romaji_asr.common vocab/decode/chunk helpers as runtime owners."
     - id: asr_romaji_batch_metadata_contract
-      status: "planned; depends on fixture decision for array API and resampling/audio loading boundary"
+      status: verified
       rollback: "Keep inference.romaji_asr.common.prepare_batch and metadata helpers as runtime owners."
 hand_written_replacements:
   - capability: "Chinese ITN conversion"
@@ -160,4 +160,10 @@ legacy_kept:
 verification:
   - "uv run python -m py_compile inference/qwen3asr_dml/chinese_itn.py inference/qwen3asr_dml/utils.py inference/qwen3asr_dml/schema.py inference/romaji_asr/common.py"
   - "uv run python scripts/audit_vendored_sources.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_chinese_itn_core"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_qwen_language_schema_contract"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_qwen_wav_pcm_decode_core"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_resample_poly_contract"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_vocab_ctc_decode_core"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_batch_metadata_contract"
   - "uv run python - <<'PY'\nimport pathlib, yaml\nfor path in ['rewrite-in-rust/manifest.yaml', 'rewrite-in-rust/dependencies/asr_text_postprocess_contract.yaml']:\n    with pathlib.Path(path).open('r', encoding='utf-8') as f:\n        yaml.safe_load(f)\nprint('yaml ok')\nPY"

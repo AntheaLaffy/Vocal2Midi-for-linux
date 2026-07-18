@@ -11,9 +11,13 @@ use crate::slicer_segment::{Segment, Waveform};
 /// Error produced by fixture-bound RMS/window split helpers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlicerWindowError {
+    /// Represents the Python-compatible invalid frame case.
     InvalidFrame,
+    /// Represents the Python-compatible empty stereo case.
     EmptyStereo,
+    /// Represents the Python-compatible ragged stereo case.
     RaggedStereo,
+    /// Represents the Python-compatible missing cut type case.
     MissingCutType,
 }
 

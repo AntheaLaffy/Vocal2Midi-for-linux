@@ -191,9 +191,9 @@ Rust 迁移工作位于 [rewrite-in-rust/](rewrite-in-rust/)。Cargo workspace �
 
 ```bash
 cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 ```
 
 Rust workspace README 记录了 MSRV、crate 边界、JSON bridge 契约和 migration-owner 规则：
@@ -235,7 +235,10 @@ uv run python scripts/audit_vendored_sources.py
 - Qwen3-ASR Linux 说明: [docs/qwen-linux.md](docs/qwen-linux.md)
 - 架构: [docs/architecture.md](docs/architecture.md)
 - 开发指南: [docs/contributing.md](docs/contributing.md)
+- 贡献入口: [CONTRIBUTING.md](CONTRIBUTING.md)
+- 文档规范: [docs/documentation.md](docs/documentation.md)
 - Web API 契约: [docs/web-api.md](docs/web-api.md)
+- 安全策略: [SECURITY.md](SECURITY.md)
 - 第三方致谢: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)
 
 ## 许可证

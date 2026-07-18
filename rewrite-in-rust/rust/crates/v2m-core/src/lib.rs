@@ -1,11 +1,46 @@
-//! Shared control-plane primitives for the Vocal2Midi Rust rewrite.
+#![warn(missing_docs)]
+#![warn(clippy::missing_errors_doc, clippy::missing_panics_doc)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![forbid(unsafe_code)]
+
+//! Fixture-backed compatibility behavior for the Vocal2Midi Rust rewrite.
 //!
-//! This crate is intentionally not wired into the Python runtime. It gives the
-//! rewrite workspace a small independently testable Rust surface before any
-//! business migration unit is promoted.
+//! `v2m-core` mirrors deterministic public behavior from the legacy Python
+//! implementation. Its modules cover application and Web contracts, batch and
+//! model-asset planning, exports, slicing, lyric and alignment helpers,
+//! quantization, and ASR preprocessing that does not create model sessions.
+//!
+//! # Runtime ownership
+//!
+//! A Rust implementation in this crate does not imply production ownership.
+//! [`MigrationStatus::Verified`] records fixture parity, while only
+//! [`MigrationStatus::Promoted`] or [`MigrationStatus::Optimized`] can represent
+//! a Rust runtime-owner state. `rewrite-in-rust/manifest.yaml` remains
+//! authoritative.
+//!
+//! # Compatibility boundaries
+//!
+//! Each public module names the Python source it mirrors and the live effects it
+//! excludes. Callers should treat public types and functions as compatibility
+//! APIs, including their error text and serialized shapes.
+//!
+//! # Example
+//!
+//! ```
+//! use v2m_core::{MigrationStatus, is_known_status};
+//!
+//! assert!(is_known_status("verified"));
+//! assert!(!MigrationStatus::Verified.is_runtime_owner_state());
+//! assert!(MigrationStatus::Promoted.is_runtime_owner_state());
+//! ```
 
 pub mod application;
 pub mod asr_chinese_itn;
+pub mod asr_qwen_language_schema;
+pub mod asr_qwen_wav_pcm_decode;
+pub mod asr_resample_poly;
+pub mod asr_romaji_batch_metadata;
+pub mod asr_romaji_vocab_ctc_decode;
 pub mod batch_cli_planning;
 pub mod batch_cli_reslice_json;
 pub mod device;
@@ -68,12 +103,19 @@ pub const STATUS_VALUES: &[&str] = &[
 /// Migration status for one independently verifiable rewrite unit.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MigrationStatus {
+    /// The unit is inventoried but implementation has not started.
     Planned,
+    /// Dependency discovery or implementation is in progress.
     Active,
+    /// Rust behavior exists but has not passed its required reviews.
     Reimplemented,
+    /// Required fixture parity and reviews have passed.
     Verified,
+    /// Rust is the default runtime owner and a rollback route remains available.
     Promoted,
+    /// A promoted Rust owner has passed a later optimization gate.
     Optimized,
+    /// The unit cannot progress until its recorded blocker is resolved.
     Blocked,
 }
 
@@ -91,7 +133,10 @@ impl MigrationStatus {
         }
     }
 
-    /// Parses a manifest status value.
+    /// Parses an exact manifest status value.
+    ///
+    /// Returns `None` for unknown values, aliases, or values with surrounding
+    /// whitespace.
     pub fn from_manifest_str(value: &str) -> Option<Self> {
         match value {
             "planned" => Some(Self::Planned),
@@ -111,7 +156,14 @@ impl MigrationStatus {
     }
 }
 
-/// Returns true when a status value is accepted by the rewrite manifest.
+/// Returns `true` when a status value is accepted by the rewrite manifest.
+///
+/// # Examples
+///
+/// ```
+/// assert!(v2m_core::is_known_status("verified"));
+/// assert!(!v2m_core::is_known_status("done"));
+/// ```
 pub fn is_known_status(value: &str) -> bool {
     MigrationStatus::from_manifest_str(value).is_some()
 }

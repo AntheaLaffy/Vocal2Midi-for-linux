@@ -1,0 +1,81 @@
+unit: asr_romaji_vocab_ctc_decode_core
+status: done
+capabilities:
+  vocab_json_id_inversion:
+    legacy: "inference/romaji_asr/common.py::load_vocab using Python json.load and int(...) coercion"
+    rust: "serde_json object parsing plus Python-compatible integer coercion for fixture-bound vocab values"
+    reason: "The public behavior is JSON vocab id inversion and blank-id selection, not model loading."
+  ctc_decode_helpers:
+    legacy: "decode_pred_ids, decode_logits, and decode_outputs in inference/romaji_asr/common.py"
+    rust: "hand-written CTC collapse plus ndarray-backed argmax over 2D logits and batch iteration over integer/logit outputs"
+    reason: "The selected seam only needs deterministic token lookup, blank suppression, duplicate collapse, unknown fallback, NumPy argmax tie-first/NaN behavior, dtype dispatch, and batch ordering."
+  chunked_iteration:
+    legacy: "inference/romaji_asr/common.py::chunked"
+    rust: "fixture-backed chunk helper preserving max(1, int(chunk_size)) behavior for JSON-compatible test projections"
+    reason: "Runtime callers use integer batch sizes, while fixtures pin the Python int(...) edge behavior used by the helper."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/asr_romaji_vocab_ctc_decode_core.jsonl contains 24 Python 3.12 golden cases for vocab id inversion, <blank>/PAD/0 blank lookup, duplicate id overwrite, CTC blank reset and duplicate collapse, unknown fallback, argmax tie-first and NaN behavior, uint64 large-id preservation, integer-vs-logit decode_outputs dispatch, batch iteration, and chunk_size <= 0 becoming step 1."
+    - "rewrite-in-rust/bootstrap/check_asr_romaji_vocab_ctc_decode_core.py verifies the fixture file against the current uv Python environment."
+crate_reuse:
+  candidates:
+    - crate: "ndarray"
+      covered_capabilities:
+        - "2D logits and 2D/3D batch output shape handling for Rust helper APIs and fixture tests"
+      gaps:
+        - "Does not implement Python json.load, int(...) coercion, CTC collapse, token fallback, or dtype dispatch policy."
+      adapter_plan: "Use ndarray only for array-shaped numeric inputs; implement Python-specific vocab/decode/chunk semantics directly against fixtures."
+      decision: use
+    - crate: "serde_json"
+      covered_capabilities:
+        - "JSON object parsing for vocab fixtures and Rust tests"
+      gaps:
+        - "Python int(...) coercion and duplicate-id id2token overwrite are compatibility behavior above JSON parsing."
+      adapter_plan: "Parse JSON with serde_json and hand-write integer coercion plus id inversion."
+      decision: use
+dependency_strategy:
+  stance: "reuse ndarray for numeric array shape handling; hand-write small Python compatibility gaps"
+  not_goal: "replace NumPy, ONNX Runtime, soundfile, or SciPy in this unit"
+  full_handwritten_allowed_when:
+    - "the behavior is pure CTC/list/chunk logic with no model execution"
+    - "Python-specific dispatch and coercion are smaller than integrating a broader CTC decoder crate"
+source_expansion:
+  first_layer_reference:
+    status: indexed
+    source_manifest: "third_party/sources/manifest.json records numpy 1.26.4, scipy 1.17.1, and soundfile 0.14.0; third_party/sources/MISSING_SOURCES.md records onnxruntime upstream fallback."
+  targeted_deep_expansion:
+    used: false
+    proof:
+      - "No transitive source expansion is needed: selected behavior starts at Python helper functions and uses only json.load, np.argmax, np.issubdtype, ndarray shape/dtype, and list slicing."
+    rejected:
+      - "ONNX Runtime source expansion because create_session, session metadata, and model inference are out of scope."
+      - "soundfile/libsndfile and SciPy resample_poly source expansion because audio loading and resampling are owned by separate units."
+      - "NumPy C internals for argmax because the public fixture pins tie-first/NaN output and ndarray shape behavior only."
+low_level_boundary:
+  ignored:
+    - "NumPy allocator, strides, NaN payloads, SIMD argmax internals, ONNX Runtime provider details, soundfile native IO, and SciPy FIR internals."
+  investigated:
+    - "NumPy argmax tie-first and NaN behavior, integer dtype dispatch via np.issubdtype(..., np.integer), uint64 large-id preservation, id2token unknown fallback, blank reset semantics, and Python int(...) coercion for chunk_size/vocab values."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit remains a narrow helper unit independent from romaji audio loading, ONNX session creation, provider selection, model inference, and batch metadata/padding."
+hand_written_replacements:
+  - capability: "Romaji vocab inversion, CTC decode, logits argmax dispatch, and chunk helper"
+    reference_sources:
+      - "inference/romaji_asr/common.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "A narrow Rust implementation with ndarray-owned arrays is smaller and more verifiable than introducing a CTC decoder or model-runtime dependency."
+legacy_kept:
+  - capability: "ONNX Runtime session creation/provider selection and model execution"
+    reason: "Out of scope for this helper seam."
+  - capability: "audio file IO, sample-rate conversion, and batch input padding/mask metadata"
+    reason: "Owned by asr_resample_poly_contract or the planned asr_romaji_batch_metadata_contract."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_asr_romaji_vocab_ctc_decode_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_vocab_ctc_decode_core"
+  - "uv run python -m py_compile inference/romaji_asr/common.py"
+  - "uv run python scripts/audit_vendored_sources.py"

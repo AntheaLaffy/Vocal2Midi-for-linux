@@ -127,13 +127,11 @@ print(results[0].language)
 print(results[0].text)
 ```
 
-To test the repository's sample audio without using the project-local
-`llama.cpp`/GGUF runtime, load the official Transformers-format model downloaded
-above:
+From the repository root, test the sample audio without using the project-local
+`llama.cpp`/GGUF runtime by loading the official Transformers-format model
+downloaded above:
 
 ```bash
-cd /home/fuurin/Win/Vocal2Midi
-
 ~/.venv/bin/python - <<'PY'
 import torch
 from qwen_asr import Qwen3ASRModel
@@ -147,7 +145,7 @@ model = Qwen3ASRModel.from_pretrained(
 )
 
 results = model.transcribe(
-    audio="test/test-zh.flac",
+    audio="tests/zh-bpm-98.flac",
     language="Chinese",
 )
 

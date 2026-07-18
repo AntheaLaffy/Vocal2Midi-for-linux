@@ -37,72 +37,104 @@ const SLICE_METHOD_KEYWORDS: &[(&str, &[&str])] = &[
 /// Fixture-backed file-tree entry.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FsEntry {
+    /// The filesystem path.
     pub path: String,
+    /// The kind.
     pub kind: FsEntryKind,
+    /// The content.
     pub content: String,
 }
 
 /// File-tree entry kind.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FsEntryKind {
+    /// Represents the Python-compatible file case.
     File,
+    /// Represents the Python-compatible dir case.
     Dir,
 }
 
 /// Legacy-compatible planning error.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PlanningError {
+    /// The message text.
     pub message: String,
 }
 
 /// Fake processing outcome for batch-loop accounting fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcessOutcome {
+    /// The chunks.
     pub chunks: usize,
+    /// The labs.
     pub labs: usize,
+    /// The optional error message.
     pub error: Option<String>,
 }
 
 /// Options for the fake batch-loop planner.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchPlanOptions {
+    /// The input dir.
     pub input_dir: String,
+    /// The output directory.
     pub output_dir: String,
+    /// Whether file discovery is recursive.
     pub recursive: bool,
+    /// The file batch size.
     pub file_batch_size: i64,
+    /// Whether existing outputs should be reprocessed.
     pub no_skip_existing: bool,
+    /// The md5 errors.
     pub md5_errors: BTreeSet<String>,
+    /// The process outcomes.
     pub process_outcomes: BTreeMap<String, ProcessOutcome>,
 }
 
 /// Processed file record from the fake batch-loop planner.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProcessedFile {
+    /// The filesystem path.
     pub path: String,
+    /// The output key.
     pub output_key: String,
+    /// The chunks.
     pub chunks: usize,
+    /// The labs.
     pub labs: usize,
 }
 
 /// Skipped file record from the fake batch-loop planner.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct SkippedFile {
+    /// The filesystem path.
     pub path: String,
+    /// The reason.
     pub reason: String,
+    /// The optional output key.
     pub output_key: Option<String>,
 }
 
 /// Fake batch-loop accounting result.
 #[derive(Debug, Clone, PartialEq)]
 pub struct BatchPlanResult {
+    /// The ordered audio files.
     pub audio_files: Vec<String>,
+    /// The ordered batches.
     pub batches: Vec<Vec<String>>,
+    /// The total chunks.
     pub total_chunks: usize,
+    /// The total labs.
     pub total_labs: usize,
+    /// The skipped existing.
     pub skipped_existing: usize,
+    /// The skipped failed.
     pub skipped_failed: usize,
+    /// The ordered processed.
     pub processed: Vec<ProcessedFile>,
+    /// The ordered skipped.
     pub skipped: Vec<SkippedFile>,
+    /// The source index.
     pub source_index: Map<String, Value>,
 }
 
@@ -115,6 +147,10 @@ impl PlanningError {
 }
 
 /// Mirrors `batch_iter` grouping and its batch-size error.
+///
+/// # Errors
+///
+/// Returns [`PlanningError`] when `batch_size` is not positive.
 pub fn batch_iter(items: &[String], batch_size: i64) -> Result<Vec<Vec<String>>, PlanningError> {
     if batch_size <= 0 {
         return Err(PlanningError::new("batch_size must be greater than 0"));
@@ -141,6 +177,11 @@ pub fn repair_text_candidates(text: &str) -> Vec<String> {
 }
 
 /// Mirrors `normalize_slicing_method`.
+///
+/// # Errors
+///
+/// Returns [`PlanningError`] when no exact, repaired, or keyword alias matches
+/// a supported slicing method.
 pub fn normalize_slicing_method(method: Option<&str>) -> Result<String, PlanningError> {
     let Some(method) = method else {
         return Ok(DEFAULT_SLICE_METHOD.to_string());
@@ -181,6 +222,11 @@ pub fn normalize_slicing_method(method: Option<&str>) -> Result<String, Planning
 }
 
 /// Mirrors `resolve_slice_bounds`.
+///
+/// # Errors
+///
+/// Returns [`PlanningError`] when only one bound is supplied, a bound is out of
+/// range, or the minimum exceeds the maximum.
 pub fn resolve_slice_bounds(
     min_seconds: Option<f64>,
     max_seconds: Option<f64>,
@@ -362,6 +408,11 @@ pub fn has_existing_outputs(
 }
 
 /// Mirrors md5-index skip detection.
+///
+/// # Errors
+///
+/// Returns [`PlanningError`] when a legacy index record has an invalid output
+/// key shape.
 pub fn index_has_completed_output(
     index: &Map<String, Value>,
     source_md5: &str,
@@ -401,6 +452,11 @@ pub fn index_has_completed_output(
 }
 
 /// Mirrors the main-loop accounting shape with fake process outcomes.
+///
+/// # Errors
+///
+/// Returns [`PlanningError`] for an invalid file batch size or malformed legacy
+/// index record reached during skip detection.
 pub fn plan_batch_loop(
     source_entries: &[FsEntry],
     output_entries: &[FsEntry],

@@ -35,3 +35,34 @@
 {"category":"seconds_clock","input":"五秒钟","expected":"5秒钟"}
 {"category":"ten_thousand_value","input":"三万五千人","expected":"35000人"}
 {"category":"square_meter_range","input":"面积三四十平方米","expected":"面积30~40平方米"}
+{"category":"malformed_decimal_trailing_dot","input":"三点","expected":"三点"}
+{"category":"malformed_single_one_dot","input":"一点","expected":"一点"}
+{"category":"malformed_multi_digit_dot","input":"一二点","expected":"一二点"}
+{"category":"malformed_time_no_minute_unit","input":"十点二十","expected":"十点二十"}
+{"category":"range_ten_thousand_unit","input":"三四万","expected":"3~4万"}
+{"category":"range_hundred_million_unit","input":"三四亿","expected":"3~4亿"}
+{"category":"range_kilogram_mapped_unit","input":"三四千克","expected":"3~4kg"}
+{"category":"range_kilometer_unit","input":"三四千米","expected":"3~4千米"}
+{"category":"range_kilometer_per_hour_unit","input":"三四千米每小时","expected":"3~4km/h"}
+{"category":"sentence_range_ten_thousand_unit","input":"面积三四万平方米","expected":"面积3~4万平方米"}
+{"category":"range_tens_kilogram_unit","input":"三四十千克","expected":"30~40kg"}
+{"category":"range_ten_thousand_branch","input":"三万二三","expected":"32000~33000"}
+{"category":"range_ten_thousand_branch_unit","input":"三万二三人","expected":"32000~33000人"}
+{"category":"range_one_ten_thousand_branch","input":"一万二三","expected":"12000~13000"}
+{"category":"range_twenty_ten_thousand_branch","input":"二十万三四","expected":"23000~24000"}
+{"category":"range_thirteen_ten_thousand_branch","input":"十三万二三","expected":"102000~103000"}
+{"category":"range_thousand_branch","input":"三千二三","expected":"3200~3300"}
+{"category":"range_ten_thousand_kilometer_branch","input":"三万二三千米","expected":"32000~33000千米"}
+{"category":"range_hundred_branch_bare","input":"三百二三","expected":"320~330"}
+{"category":"idiom_adjacent_digit_noop","input":"正经八百三","expected":"正经八百三"}
+{"category":"idiom_adjacent_unit_noop","input":"正经八百三个人","expected":"正经八百三个人"}
+{"category":"idiom_space_adjacent_digit_noop","input":"正经八百 三","expected":"正经八百 三"}
+{"category":"idiom_ascii_adjacent_digit_convert","input":"一点一滴abc三","expected":"一点一滴abc3"}
+{"category":"idiom_ascii_head_digit_convert","input":"a 一点一滴abc三","expected":"a 一点一滴abc3"}
+{"category":"leading_dot_noop","input":"点三","expected":"点三"}
+{"category":"leading_dot_sentence_noop","input":"我点三","expected":"我点三"}
+{"category":"leading_dot_unit_noop","input":"点三个人","expected":"点三个人"}
+{"category":"leading_dot_ascii_suffix_noop","input":"点三abc","expected":"点三abc"}
+{"category":"leading_dot_percent_noop","input":"百分之点三","expected":"百分之点三"}
+{"category":"leading_dot_ratio_noop","input":"三比点四","expected":"三比点四"}
+{"category":"leading_dot_fraction_noop","input":"三分之点四","expected":"三分之点四"}

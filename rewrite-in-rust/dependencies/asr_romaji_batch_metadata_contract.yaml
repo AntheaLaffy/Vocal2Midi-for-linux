@@ -1,0 +1,81 @@
+unit: asr_romaji_batch_metadata_contract
+status: done
+capabilities:
+  session_shape_metadata:
+    legacy: "inference/romaji_asr/common.py::get_fixed_batch_size and get_fixed_num_samples over session.get_inputs()[0].shape"
+    rust: "fake-session metadata structs with Python-compatible bool/int/null/string dimension handling"
+    reason: "The public seam only observes metadata shape values, not ONNX Runtime internals."
+  ort_dtype_mapping:
+    legacy: "inference/romaji_asr/common.py::ort_type_to_numpy_dtype substring matching"
+    rust: "hand-written case-sensitive substring mapping to fixture dtype tags"
+    reason: "The mapping is a simple Python string policy independent from ONNX Runtime."
+  prepare_batch_padding:
+    legacy: "inference/romaji_asr/common.py::prepare_batch with load_audio results and session input metadata"
+    rust: "ndarray-backed batch matrix and attention-mask construction from synthetic waveforms"
+    reason: "The selected behavior is shape/dtype/padding/truncation/mask/used-length projection, not audio decoding or model inference."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "rewrite-in-rust/fixtures/asr_romaji_batch_metadata_contract.jsonl contains 26 Python 3.12 golden cases for fixed/dynamic/bool/one-dimensional/negative shapes, dtype string mapping, empty audio_paths, batch-size mismatch, missing waveform keys, missing input_values, missing attention_mask, dynamic/fixed sample counts, fixed-zero-sample fallback, zero-length waveform, truncation, padding, attention mask dtype casts including float16, input_values dtype casts, sample-rate passthrough, and used lengths."
+    - "rewrite-in-rust/bootstrap/check_asr_romaji_batch_metadata_contract.py verifies the fixture file against the current uv Python environment with fake session metadata and monkeypatched synthetic load_audio."
+crate_reuse:
+  candidates:
+    - crate: "ndarray"
+      covered_capabilities:
+        - "2D batch and attention-mask matrices for Rust helper APIs and fixture tests"
+      gaps:
+        - "Does not implement ONNX metadata naming, Python dtype substring policy, or load_audio behavior."
+      adapter_plan: "Use ndarray for shaped arrays; implement metadata, dtype mapping, padding/truncation, and error projection directly."
+      decision: use
+    - crate: "half"
+      covered_capabilities:
+        - "IEEE float16 value projection for input_values dtype casts"
+      gaps:
+        - "Does not implement Python dtype mapping or batch construction."
+      adapter_plan: "Use half::f16 only when the fixture-selected input_values dtype is float16."
+      decision: use
+dependency_strategy:
+  stance: "use ndarray for matrix storage; keep ONNX Runtime and audio dependencies outside this unit"
+  not_goal: "replace ONNX Runtime, soundfile, SciPy resampling, or audio loading"
+  full_handwritten_allowed_when:
+    - "the behavior is deterministic metadata and array preparation over synthetic waveforms"
+    - "runtime model/session objects are represented by fixture-owned fake metadata"
+source_expansion:
+  first_layer_reference:
+    status: indexed
+    source_manifest: "third_party/sources/manifest.json records numpy 1.26.4, scipy 1.17.1, and soundfile 0.14.0; third_party/sources/MISSING_SOURCES.md records onnxruntime upstream fallback."
+  targeted_deep_expansion:
+    used: false
+    proof:
+      - "No transitive source expansion is needed: selected behavior starts at Python helper functions and uses only session.get_inputs metadata, NumPy zeros/astype, list lengths, and slice assignment."
+    rejected:
+      - "ONNX Runtime source expansion because the fixtures use fake session metadata and do not create sessions or run models."
+      - "soundfile/libsndfile and SciPy resample_poly source expansion because load_audio is monkeypatched with synthetic waveforms."
+      - "NumPy C internals for astype/zeros because fixtures pin public dtype, shape, and JSON value projections."
+low_level_boundary:
+  ignored:
+    - "ONNX Runtime provider/session allocation, native tensor ABI, soundfile native IO, SciPy FIR internals, NumPy allocator/stride internals, and NaN payload details."
+  investigated:
+    - "Python isinstance(bool, int) metadata behavior, dtype substring matching, fixed_num_samples falsy zero fallback, batch-size mismatch ordering before load_audio, missing input_values KeyError after load_audio, truncation/padding, dtype casts, attention-mask inclusion, and sample-rate passthrough."
+inventory_impact:
+  decision: confirmed
+  reason: "The unit can stay independent: it owns fake-session metadata and batch padding/mask behavior only. It does not own audio loading, resampling, ONNX session creation, provider selection, or model inference."
+hand_written_replacements:
+  - capability: "Romaji fake-session metadata and prepare_batch shape/type/padding contract"
+    reference_sources:
+      - "inference/romaji_asr/common.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "A narrow ndarray-backed Rust implementation is more verifiable than integrating ONNX Runtime or NumPy internals."
+legacy_kept:
+  - capability: "ONNX Runtime session creation/provider selection and model execution"
+    reason: "Out of scope and not needed for fake metadata fixtures."
+  - capability: "audio file IO and sample-rate conversion"
+    reason: "Owned by load_audio/asr_resample_poly paths; this unit starts from synthetic waveforms."
+verification:
+  - "uv run python rewrite-in-rust/bootstrap/check_asr_romaji_batch_metadata_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_romaji_batch_metadata_contract"
+  - "uv run python -m py_compile inference/romaji_asr/common.py"
+  - "uv run python scripts/audit_vendored_sources.py"

@@ -7,55 +7,83 @@
 /// Log entry emitted during pipeline execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineLog {
+    /// The task identifier.
     pub task_id: String,
+    /// The message text.
     pub message: String,
+    /// The level.
     pub level: String,
+    /// The timestamp.
     pub timestamp: String,
 }
 
 /// Progress event emitted during pipeline execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineProgressEvent {
+    /// The task identifier.
     pub task_id: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
 }
 
 /// Terminal status event emitted during pipeline execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineStatusChange {
+    /// The task identifier.
     pub task_id: String,
+    /// The status.
     pub status: String,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The optional output directory.
     pub output_dir: Option<String>,
+    /// The ordered files.
     pub files: Vec<String>,
 }
 
 /// Result object embedded in completed `status_change` SocketIO payloads.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineStatusResult {
+    /// The output directory.
     pub output_dir: String,
+    /// The ordered files.
     pub files: Vec<String>,
 }
 
 /// SocketIO payload emitted by pipeline execution.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PipelineSocketPayload {
+    /// Represents the Python-compatible log case.
     Log {
+        /// The task identifier.
         task_id: String,
+        /// The message text.
         message: String,
+        /// The level.
         level: String,
+        /// The timestamp.
         timestamp: String,
     },
+    /// Represents the Python-compatible progress case.
     Progress {
+        /// The task identifier.
         task_id: String,
+        /// The progress.
         progress: i64,
+        /// The stage.
         stage: String,
     },
+    /// Represents the Python-compatible status change case.
     StatusChange {
+        /// The task identifier.
         task_id: String,
+        /// The status.
         status: String,
+        /// The optional error message.
         error: Option<Option<String>>,
+        /// The optional result.
         result: Option<PipelineStatusResult>,
     },
 }
@@ -63,51 +91,82 @@ pub enum PipelineSocketPayload {
 /// Ordered SocketIO emit trace.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineSocketEvent {
+    /// The event.
     pub event: String,
+    /// The room.
     pub room: String,
+    /// The payload.
     pub payload: PipelineSocketPayload,
 }
 
 /// Simplified pipeline execution result modeled from Python behavior.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineExecutionOutcome {
+    /// The status.
     pub status: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
+    /// The optional error message.
     pub error: Option<String>,
+    /// Whether a completion timestamp is present.
     pub completed_at_present: bool,
+    /// Whether the cancellation checker is installed.
     pub cancel_checker_set: bool,
+    /// Whether standard output was restored.
     pub stdout_restored: bool,
+    /// Whether standard error was restored.
     pub stderr_restored: bool,
+    /// The ordered registered output files.
     pub output_files: Vec<String>,
+    /// The ordered logs.
     pub logs: Vec<PipelineLog>,
+    /// The ordered progress events.
     pub progress_events: Vec<PipelineProgressEvent>,
+    /// The ordered status changes.
     pub status_changes: Vec<PipelineStatusChange>,
+    /// The ordered socket events.
     pub socket_events: Vec<PipelineSocketEvent>,
 }
 
 /// Fake pipeline result selected by a parity fixture.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PipelineRunResult<'a> {
+    /// Represents the Python-compatible completed case.
     Completed,
+    /// Represents the Python-compatible stop after run case.
     StopAfterRun,
+    /// Represents the Python-compatible keyboard interrupt case.
     KeyboardInterrupt,
+    /// Carries the Python-compatible stopped error value.
     StoppedError(&'a str),
+    /// Carries the Python-compatible generic error value.
     GenericError(&'a str),
+    /// Carries the Python-compatible config error value.
     ConfigError(&'a str),
 }
 
 /// Inputs needed to model `_execute_pipeline`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PipelineExecutionInput<'a> {
+    /// The task identifier.
     pub task_id: &'a str,
+    /// The audio path.
     pub audio_path: &'a str,
+    /// The output directory.
     pub output_dir: &'a str,
+    /// The language.
     pub language: &'a str,
+    /// The device.
     pub device: &'a str,
+    /// The run result.
     pub run_result: PipelineRunResult<'a>,
+    /// The ordered captured standard-output lines.
     pub stdout_lines: Vec<&'a str>,
+    /// The ordered captured standard-error lines.
     pub stderr_lines: Vec<&'a str>,
+    /// The ordered registered output files.
     pub output_files: Vec<&'a str>,
 }
 

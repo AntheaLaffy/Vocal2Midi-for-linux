@@ -1,0 +1,23 @@
+{
+  "config": {
+    "default": true,
+    "MD013": false,
+    "MD038": false,
+    "MD024": {
+      "siblings_only": true
+    }
+  },
+  "globs": [
+    "**/*.md",
+    "!**/.venv/**",
+    "!**/.pytest_cache/**",
+    "!rewrite-in-rust/rust/target/**",
+    "!rewrite-in-rust/records/[0-9][0-9][0-9][0-9]-*.md",
+    "!rewrite-in-rust/reviews/20*.md",
+    "!experiments/Qwen3-ASR-1.7B/README.md",
+    "!third_party/sources/**",
+    "!third_party/upstream_sources/**",
+    "!third_party/native_sources/**",
+    "!third_party/cargo_vendor/**"
+  ]
+}

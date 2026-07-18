@@ -1,3 +1,19 @@
+#![warn(missing_docs)]
+#![warn(clippy::missing_errors_doc, clippy::missing_panics_doc)]
+#![deny(rustdoc::broken_intra_doc_links)]
+#![forbid(unsafe_code)]
+
+//! JSON stdin/stdout bridge for opt-in Rust quantization.
+//!
+//! The bridge reads exactly one versioned request from standard input, applies
+//! the selected [`v2m_core::quant`] compatibility path, and writes one JSON
+//! response to standard output. Diagnostics and protocol errors are projected
+//! into the response rather than mixed into stdout.
+//!
+//! Python remains the default quantization owner unless the caller explicitly
+//! selects the `rust-json` backend. The process has no server mode, global
+//! runtime state, GUI dependency, or Web dependency.
+
 use std::{
     cmp::Ordering,
     io::{self, Read, Write},

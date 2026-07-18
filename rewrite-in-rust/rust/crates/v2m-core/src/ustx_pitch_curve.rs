@@ -10,23 +10,31 @@ const U_CURVE_INTERVAL: i64 = 5;
 /// One note row accepted by the USTX pitch-curve renderer.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UstxPitchNote {
+    /// The onset.
     pub onset: f64,
+    /// The offset.
     pub offset: f64,
+    /// The pitch.
     pub pitch: f64,
 }
 
 /// Rendered pitch-deviation curve points.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UstxPitchCurve {
+    /// The ordered xs.
     pub xs: Vec<i64>,
+    /// The ordered ys.
     pub ys: Vec<i64>,
 }
 
 /// Recoverable USTX pitch-curve rendering failures at the Rust boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UstxPitchCurveError {
+    /// Represents the Python-compatible invalid tempo case.
     InvalidTempo,
+    /// Represents the Python-compatible invalid time step case.
     InvalidTimeStep,
+    /// Represents the Python-compatible tick out of range case.
     TickOutOfRange,
 }
 

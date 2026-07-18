@@ -9,8 +9,11 @@ use serde_json::{Value, json};
 /// Fake child process used by termination fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FakeTerminationProcess {
+    /// The pid.
     pub pid: i64,
+    /// The optional poll.
     pub poll: Option<i64>,
+    /// The ordered calls.
     pub calls: Vec<String>,
 }
 
@@ -23,33 +26,46 @@ impl FakeTerminationProcess {
 /// Fake OS/API outcomes used by termination fixtures.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct TerminationEnvironment<'a> {
+    /// The os name.
     pub os_name: &'a str,
+    /// The optional killpg outcome.
     pub killpg_outcome: Option<&'a str>,
+    /// The optional taskkill outcome.
     pub taskkill_outcome: Option<&'a str>,
 }
 
 /// Result of a fake `_terminate_process_tree` call.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct TerminationTrace {
+    /// The ordered killpg calls.
     pub killpg_calls: Vec<Value>,
+    /// The ordered taskkill calls.
     pub taskkill_calls: Vec<Value>,
+    /// The ordered process calls.
     pub process_calls: Vec<String>,
 }
 
 /// Fake task state for the live-process `stop_task` branch.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ModelDownloadTerminationTask {
+    /// The task identifier.
     pub task_id: String,
+    /// The status.
     pub status: String,
+    /// Whether a stop event is present.
     pub stop_event_present: bool,
+    /// Whether the stop event is set.
     pub stop_event_set: bool,
+    /// The optional process.
     pub process: Option<FakeTerminationProcess>,
 }
 
 /// Result of the fake live-process `stop_task` branch.
 #[derive(Debug, Clone, PartialEq)]
 pub struct StopTaskTrace {
+    /// Whether the operation succeeded.
     pub success: bool,
+    /// The ordered recorded process-termination calls.
     pub termination_calls: Vec<Value>,
 }
 

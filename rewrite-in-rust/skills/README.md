@@ -1,7 +1,7 @@
 # Vocal2Midi Rust Rewrite Skills
 
 This directory is the source-of-truth copy of the project-specific rewrite
-skills. Mirror these directories to `/home/fuurin/.claude/skills/` when the user
+skills. Mirror these directories to `$CODEX_HOME/skills/` when the user
 wants the skills available in future sessions.
 
 ## Skills

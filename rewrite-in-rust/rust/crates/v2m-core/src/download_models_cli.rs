@@ -16,47 +16,70 @@ const QWEN_SOURCE_CHOICES: &[&str] = &["auto", "modelscope", "huggingface", "ski
 /// Parsed CLI arguments for `download_models.py`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadModelsArgs {
+    /// The optional only.
     pub only: Option<Vec<String>>,
+    /// Whether forced replacement is enabled.
     pub force: bool,
+    /// The selected Qwen model source.
     pub qwen_source: String,
+    /// Whether the Qwen download is disabled.
     pub no_qwen: bool,
+    /// Whether dry-run listing is selected.
     pub list: bool,
 }
 
 /// Parser failure modeled after argparse's exit status.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CliParseError {
+    /// The exit code.
     pub exit_code: i32,
+    /// The message text.
     pub message: String,
 }
 
 /// One fake GitHub download call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GithubDownloadCall {
+    /// The name.
     pub name: String,
+    /// Whether forced replacement is enabled.
     pub force: bool,
 }
 
 /// One fake Qwen download call.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct QwenDownloadCall {
+    /// The source.
     pub source: String,
+    /// Whether forced replacement is enabled.
     pub force: bool,
 }
 
 /// Simulated output of `main` with patched effectful collaborators.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct MainPlanOutcome {
+    /// The exit code.
     pub exit_code: i32,
+    /// Whether output-directory creation was called.
     pub mkdir_called: bool,
+    /// The ordered github calls.
     pub github_calls: Vec<GithubDownloadCall>,
+    /// The ordered qwen calls.
     pub qwen_calls: Vec<QwenDownloadCall>,
+    /// The ordered list calls.
     pub list_calls: Vec<String>,
+    /// The ordered captured standard-output lines.
     pub stdout_lines: Vec<String>,
+    /// The ordered captured standard-error lines.
     pub stderr_lines: Vec<String>,
 }
 
 /// Mirrors the accepted flags and defaults of `download_models.py::parse_args`.
+///
+/// # Errors
+///
+/// Returns [`CliParseError`] for a missing option value, invalid choice, or
+/// unrecognized argument.
 pub fn parse_cli_args(argv: &[String]) -> Result<DownloadModelsArgs, CliParseError> {
     let only_choices = only_choices();
     let mut args = DownloadModelsArgs {
@@ -111,6 +134,10 @@ pub fn parse_cli_args(argv: &[String]) -> Result<DownloadModelsArgs, CliParseErr
 }
 
 /// Simulates `download_models.py::main` with fake download/list collaborators.
+///
+/// # Errors
+///
+/// Returns [`CliParseError`] when [`parse_cli_args`] rejects the argument list.
 pub fn plan_main(
     argv: &[String],
     github_outcomes: &BTreeMap<String, bool>,

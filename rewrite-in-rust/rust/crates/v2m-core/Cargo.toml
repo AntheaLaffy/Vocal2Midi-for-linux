@@ -1,8 +1,11 @@
 [package]
 name = "v2m-core"
+description = "Fixture-backed Rust compatibility library for Vocal2Midi"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+readme.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 publish = false
 
@@ -11,6 +14,7 @@ path = "src/lib.rs"
 
 [dependencies]
 encoding_rs = "0.8"
+half = "2"
 md-5 = "0.10"
 ndarray = "0.17"
 saphyr-parser = { version = "=0.0.11", default-features = false }

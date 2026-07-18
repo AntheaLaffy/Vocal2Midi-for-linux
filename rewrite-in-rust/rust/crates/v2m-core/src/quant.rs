@@ -78,28 +78,41 @@ const BAYES_ASYM: AsymWeights = AsymWeights {
 /// One note row accepted by the simple grid quantizer.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SimpleGridNote<'a> {
+    /// The onset.
     pub onset: f64,
+    /// The offset.
     pub offset: f64,
+    /// The pitch.
     pub pitch: f64,
+    /// The lyric.
     pub lyric: &'a str,
 }
 
 /// Raw note timing fields used by later quantization algorithms.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct RawNotePair<'a> {
+    /// The raw start.
     pub raw_start: i64,
+    /// The raw end.
     pub raw_end: i64,
+    /// The raw dur.
     pub raw_dur: i64,
+    /// The lyrics.
     pub lyrics: &'a str,
 }
 
 /// Raw note timing fields with the gap from the previous raw note end.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct GapAnnotatedNotePair<'a> {
+    /// The raw start.
     pub raw_start: i64,
+    /// The raw end.
     pub raw_end: i64,
+    /// The raw dur.
     pub raw_dur: i64,
+    /// The lyrics.
     pub lyrics: &'a str,
+    /// The raw gap.
     pub raw_gap: i64,
 }
 
@@ -341,6 +354,11 @@ pub fn quantize_notes_smart(notes: &mut [SimpleGridNote<'_>], tempo: f64, quanti
 ///
 /// This is the pre-promotion implementation for the `dp` mode path. It remains
 /// outside the Python runtime until a later promotion unit chooses a bridge.
+///
+/// # Panics
+///
+/// Panics only if the internal dynamic-programming backtracking state is empty
+/// after a candidate path has been selected.
 pub fn quantize_notes_phrase_dp(
     notes: &mut [SimpleGridNote<'_>],
     tempo: f64,
@@ -569,6 +587,10 @@ pub fn nearest_candidate(value: f64, candidates: &[i64]) -> Option<i64> {
 }
 
 /// Computes circular distance for a positive modulo.
+///
+/// # Panics
+///
+/// Panics when `modulo` is not positive.
 pub fn mod_distance(a: i64, b: i64, modulo: i64) -> i64 {
     assert!(modulo > 0, "modulo must be positive");
 
@@ -578,6 +600,10 @@ pub fn mod_distance(a: i64, b: i64, modulo: i64) -> i64 {
 }
 
 /// Computes the distance from `x` to the nearest positive grid step.
+///
+/// # Panics
+///
+/// Panics when `step` is not positive.
 pub fn dist_grid(x: i64, step: i64) -> i64 {
     assert!(step > 0, "step must be positive");
 
@@ -586,6 +612,10 @@ pub fn dist_grid(x: i64, step: i64) -> i64 {
 }
 
 /// Builds sorted unique candidate tick values around `raw_tick`.
+///
+/// # Panics
+///
+/// Panics when `step` is not positive.
 pub fn candidate_values(raw_tick: i64, radius: i64, step: i64) -> Vec<i64> {
     assert!(step > 0, "step must be positive");
     if radius < 0 {
@@ -1297,6 +1327,10 @@ fn decode_segment_bayesian(
 }
 
 /// Builds sorted unique duration candidates from Python's multiplier table.
+///
+/// # Panics
+///
+/// Panics when `step` is not positive.
 pub fn build_duration_candidates(step: i64, max_raw_tick: i64) -> Vec<i64> {
     assert!(step > 0, "step must be positive");
 
@@ -1315,6 +1349,10 @@ pub fn build_duration_candidates(step: i64, max_raw_tick: i64) -> Vec<i64> {
 }
 
 /// Builds sorted unique gap candidates from Python's multiplier table.
+///
+/// # Panics
+///
+/// Panics when `step` is not positive.
 pub fn build_gap_candidates(step: i64, max_raw_gap: i64) -> Vec<i64> {
     assert!(step > 0, "step must be positive");
 

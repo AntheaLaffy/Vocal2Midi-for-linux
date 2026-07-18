@@ -14,31 +14,42 @@ use std::path::{Component, Path, PathBuf};
 /// One prediction tuple consumed by the TextGrid exporter.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HfaTextGridPrediction {
+    /// The wav path.
     pub wav_path: PathBuf,
+    /// The wav length.
     pub wav_length: f64,
+    /// The ordered words.
     pub words: Vec<Word>,
 }
 
 /// Directory creation planned by the legacy exporter before each TextGrid write.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaTextGridDirectoryPlan {
+    /// The filesystem path.
     pub path: PathBuf,
+    /// Whether parent directories are created.
     pub parents: bool,
+    /// Whether an existing directory is accepted.
     pub exist_ok: bool,
 }
 
 /// One UTF-8 TextGrid write planned by the legacy exporter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaTextGridPlannedFile {
+    /// The filesystem path.
     pub path: PathBuf,
+    /// The encoding.
     pub encoding: &'static str,
+    /// The content.
     pub content: String,
 }
 
 /// Ordered side-effect plan for one `save_textgrids` call.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HfaTextGridExportPlan {
+    /// The ordered directories.
     pub directories: Vec<HfaTextGridDirectoryPlan>,
+    /// The ordered files.
     pub files: Vec<HfaTextGridPlannedFile>,
 }
 
@@ -73,7 +84,9 @@ impl Error for HfaTextGridExportError {}
 /// completed before the failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaTextGridExportFailure {
+    /// The error message.
     pub error: HfaTextGridExportError,
+    /// The partial plan.
     pub partial_plan: HfaTextGridExportPlan,
 }
 

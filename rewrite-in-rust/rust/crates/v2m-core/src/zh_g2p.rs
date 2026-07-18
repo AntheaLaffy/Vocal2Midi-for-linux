@@ -11,9 +11,13 @@ use std::collections::HashMap;
 /// In-memory dictionaries used by the Chinese G2P converter.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct ZhG2pDictionaries {
+    /// The phrases map.
     pub phrases_map: HashMap<String, String>,
+    /// The trans dict.
     pub trans_dict: HashMap<String, String>,
+    /// The word dict.
     pub word_dict: HashMap<String, Vec<String>>,
+    /// The phrases dict.
     pub phrases_dict: HashMap<String, Vec<String>>,
 }
 

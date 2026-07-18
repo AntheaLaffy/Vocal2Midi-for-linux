@@ -13,6 +13,9 @@ It is written as a maintenance contract for the local Web UI.
   check inside the pipeline.
 - Model downloads may start subprocesses and use network access.
 
+See [`SECURITY.md`](../SECURITY.md) for private vulnerability reporting and the
+supported security boundary.
+
 ## Run
 
 ```bash

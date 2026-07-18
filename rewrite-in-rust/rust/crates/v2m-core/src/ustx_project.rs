@@ -7,23 +7,31 @@
 /// One note row accepted by the USTX project renderer.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct UstxNoteInfo<'a> {
+    /// The onset.
     pub onset: f64,
+    /// The offset.
     pub offset: f64,
+    /// The pitch.
     pub pitch: f64,
+    /// The lyric.
     pub lyric: &'a str,
 }
 
 /// Rendered USTX project YAML plus the number of invalid input notes skipped.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UstxProjectExport {
+    /// The yaml.
     pub yaml: String,
+    /// The skipped invalid notes.
     pub skipped_invalid_notes: usize,
 }
 
 /// Recoverable USTX rendering failures at the Rust library boundary.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum UstxProjectError {
+    /// Represents the Python-compatible invalid tempo case.
     InvalidTempo,
+    /// Represents the Python-compatible tick out of range case.
     TickOutOfRange,
 }
 
@@ -33,6 +41,11 @@ pub enum UstxProjectError {
 ///
 /// Returns an error when `tempo` is non-finite or when tick conversion would
 /// exceed the supported integer range.
+///
+/// # Panics
+///
+/// Panics only if a note that passed finite-value validation later produces an
+/// unordered onset comparison.
 pub fn render_ustx_project(
     notes: &[UstxNoteInfo<'_>],
     project_name: &str,

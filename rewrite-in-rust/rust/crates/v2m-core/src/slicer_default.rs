@@ -10,12 +10,19 @@ use crate::slicer_segment::Waveform;
 /// Error produced by the fixture-bound default slicer helpers.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SlicerDefaultError {
+    /// Represents the Python-compatible min length interval order case.
     MinLengthIntervalOrder,
+    /// Represents the Python-compatible max sil kept order case.
     MaxSilKeptOrder,
+    /// Represents the Python-compatible invalid hop size case.
     InvalidHopSize,
+    /// Represents the Python-compatible invalid frame case.
     InvalidFrame,
+    /// Carries the Python-compatible unsupported pad mode value.
     UnsupportedPadMode(String),
+    /// Represents the Python-compatible empty stereo case.
     EmptyStereo,
+    /// Represents the Python-compatible ragged stereo case.
     RaggedStereo,
 }
 
@@ -50,7 +57,9 @@ impl std::error::Error for SlicerDefaultError {}
 /// Padding behavior accepted by `get_rms`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PadMode {
+    /// Represents the Python-compatible constant case.
     Constant,
+    /// Represents the Python-compatible reflect case.
     Reflect,
 }
 
@@ -73,19 +82,28 @@ impl PadMode {
 /// Converted `Slicer` parameters after Python millisecond-to-frame conversion.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Slicer {
+    /// The sample rate in hertz.
     pub sample_rate: f64,
+    /// The threshold.
     pub threshold: f64,
+    /// The hop size.
     pub hop_size: usize,
+    /// The win size.
     pub win_size: usize,
+    /// The min length.
     pub min_length: usize,
+    /// The min interval.
     pub min_interval: usize,
+    /// The max sil kept.
     pub max_sil_kept: usize,
 }
 
 /// One default-slicer output chunk.
 #[derive(Debug, Clone, PartialEq)]
 pub struct SliceChunk {
+    /// The offset.
     pub offset: f64,
+    /// The waveform.
     pub waveform: Waveform,
 }
 
@@ -189,6 +207,11 @@ impl Slicer {
     /// # Errors
     ///
     /// Returns an error when a stereo payload is empty or ragged.
+    ///
+    /// # Panics
+    ///
+    /// Panics only if the silence state machine produces an empty tag list in a
+    /// branch that already established at least one silence interval.
     pub fn slice(&self, waveform: &Waveform) -> Result<Vec<SliceChunk>, SlicerDefaultError> {
         let samples = waveform_mean_samples(waveform)?;
         if ceil_div(samples.len(), self.hop_size) <= self.min_length {

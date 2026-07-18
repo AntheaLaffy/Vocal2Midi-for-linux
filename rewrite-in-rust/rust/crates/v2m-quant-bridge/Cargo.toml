@@ -1,8 +1,11 @@
 [package]
 name = "v2m-quant-bridge"
+description = "Internal JSON bridge for opt-in Vocal2Midi Rust quantization"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+readme.workspace = true
+repository.workspace = true
 rust-version.workspace = true
 publish = false
 

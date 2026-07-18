@@ -73,20 +73,35 @@ const MODEL_SPECS: &[ModelSpec] = &[
 /// Snapshot of a model-download task as exposed through the Web API.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ModelDownloadTaskSnapshot {
+    /// The task identifier.
     pub task_id: String,
+    /// The ordered selected model identifiers.
     pub selected_models: Vec<String>,
+    /// The selected Qwen model source.
     pub qwen_source: String,
+    /// Whether forced replacement is enabled.
     pub force: bool,
+    /// The proxy mode.
     pub proxy_mode: String,
+    /// The proxy URL.
     pub proxy_url: String,
+    /// The status.
     pub status: String,
+    /// The progress.
     pub progress: i64,
+    /// The stage.
     pub stage: String,
+    /// The creation timestamp.
     pub created_at: String,
+    /// The optional start timestamp.
     pub started_at: Option<String>,
+    /// The optional completion timestamp.
     pub completed_at: Option<String>,
+    /// The optional error message.
     pub error: Option<String>,
+    /// The optional subprocess return code.
     pub returncode: Option<i64>,
+    /// The ordered logs.
     pub logs: Vec<Value>,
 }
 
@@ -116,8 +131,18 @@ impl ModelDownloadTaskSnapshot {
 /// Outcome supplied by the fake task manager for start-route modeling.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum StartTaskOutcome {
-    Success { task_id: String, status: String },
-    Conflict { error: String },
+    /// The task manager accepted and started a download task.
+    Success {
+        /// The new task identifier.
+        task_id: String,
+        /// The initial task status.
+        status: String,
+    },
+    /// Another download task prevents the request from starting.
+    Conflict {
+        /// The Python-compatible conflict message.
+        error: String,
+    },
 }
 
 impl StartTaskOutcome {
@@ -259,6 +284,11 @@ pub fn status_route_response(
 }
 
 /// Models `POST /api/models/download`.
+///
+/// # Panics
+///
+/// Panics only if the internally normalized Qwen source is absent after request
+/// validation has supplied its `auto` default.
 pub fn start_route_response(
     request: &Value,
     model_statuses: &[Value],

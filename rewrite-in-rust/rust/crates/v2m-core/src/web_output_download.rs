@@ -7,24 +7,33 @@
 /// File fixture used by the output-download model.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadFileSpec {
+    /// The filesystem path.
     pub path: String,
+    /// The body.
     pub body: String,
 }
 
 /// Synthetic symlink used by canonical-path fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadSymlinkSpec {
+    /// The filesystem path.
     pub path: String,
+    /// The target.
     pub target: String,
 }
 
 /// Modeled response for `GET /api/download/<path>`.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DownloadResponse {
+    /// The HTTP status code.
     pub status_code: u16,
+    /// The optional JSON error message.
     pub json_error: Option<String>,
+    /// The optional JSON success flag.
     pub json_success: Option<bool>,
+    /// The optional body.
     pub body: Option<String>,
+    /// The optional download filename.
     pub download_name: Option<String>,
 }
 

@@ -3,6 +3,10 @@
 This directory is the control plane for the gradual rewrite of Vocal2Midi's
 Python library layers into Rust.
 
+It is written for migration coordinators, implementers, and reviewers. For the
+repository-wide Markdown and rustdoc rules, see
+[`docs/documentation.md`](../docs/documentation.md).
+
 The success condition is not "Rust code exists." The success condition is:
 
 ```text
@@ -63,9 +67,12 @@ the initial unit names.
 - Every unit must have a rollback route before promotion.
 - Rust implementation units start outside the production path.
 - Dependency alignment is capability-based, not package-name based.
-- If Rust dependency coverage is poor, write a narrow Rust implementation
-  against the unit's fixtures instead of forcing a one-to-one Python package
-  replacement.
+- Prefer direct crate coverage when fixtures prove parity. Otherwise combine a
+  maintained lower-level crate with a Python-source-guided compatibility
+  adapter when that is smaller and more verifiable than replacing the full
+  dependency.
+- Hand-write only the uncovered capability, unless a recorded tradeoff shows
+  that a complete narrow replacement is safer or simpler.
 - Dependency expansion can invalidate the current manifest unit list. Re-cut the
   unit inventory when that produces smaller, more verifiable, or more realistic
   Rust work.
@@ -104,15 +111,30 @@ The Rust workspace follows the conventions expected by Rust maintainers:
 See `rust/README.md` for workspace commands, crate ownership, and the
 quantization bridge JSON contract.
 
+## Current State
+
+`manifest.yaml` is the authoritative current-state source. At the time of this
+documentation update it contains 66 verified units: 65 confirmed boundaries
+and one split umbrella. None is promoted, so every unit still names legacy
+Python as its runtime owner.
+
+Do not infer state from the number of Rust modules or review files. Query the
+manifest when exact counts matter:
+
+```bash
+uv run python -c \
+  "import collections, pathlib, yaml; data = yaml.safe_load(pathlib.Path('rewrite-in-rust/manifest.yaml').read_text()); print(collections.Counter(unit['status'] for unit in data['units']))"
+```
+
 ## Baseline Verification
 
 Run from the repository root:
 
 ```bash
 cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 uv run pytest tests/test_web_api.py
 uv run python scripts/audit_vendored_sources.py
 ```

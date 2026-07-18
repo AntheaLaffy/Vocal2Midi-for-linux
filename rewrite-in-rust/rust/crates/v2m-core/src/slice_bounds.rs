@@ -18,9 +18,13 @@ pub const DEFAULT_SLICE_MAX_SEC: f64 = 10.0;
 /// Validation failure that maps to Python `ValueError` on a future bridge.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum SliceBoundsError {
+    /// Represents the Python-compatible slice min out of range case.
     SliceMinOutOfRange,
+    /// Represents the Python-compatible slice max out of range case.
     SliceMaxOutOfRange,
+    /// Represents the Python-compatible slice max not positive case.
     SliceMaxNotPositive,
+    /// Represents the Python-compatible slice min greater than max case.
     SliceMinGreaterThanMax,
 }
 
@@ -47,6 +51,11 @@ impl std::fmt::Display for SliceBoundsError {
 impl std::error::Error for SliceBoundsError {}
 
 /// Validates user-facing slice duration settings.
+///
+/// # Errors
+///
+/// Returns [`SliceBoundsError`] when either bound is outside the supported
+/// range, the maximum is not positive, or the minimum exceeds the maximum.
 pub fn validate_slice_bounds(
     slice_min_sec: f64,
     slice_max_sec: f64,

@@ -205,9 +205,9 @@ Common Rust checks:
 
 ```bash
 cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 ```
 
 The Rust workspace README documents MSRV, crate boundaries, JSON bridge
@@ -251,7 +251,10 @@ uv run python scripts/audit_vendored_sources.py
 - Qwen3-ASR Linux notes: [docs/qwen-linux.md](docs/qwen-linux.md)
 - Architecture: [docs/architecture.md](docs/architecture.md)
 - Development guide: [docs/contributing.md](docs/contributing.md)
+- Contribution entrypoint: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Documentation policy: [docs/documentation.md](docs/documentation.md)
 - Web API contract: [docs/web-api.md](docs/web-api.md)
+- Security policy: [SECURITY.md](SECURITY.md)
 - Third-party credits: [ACKNOWLEDGEMENTS.md](ACKNOWLEDGEMENTS.md)
 
 ## License

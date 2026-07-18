@@ -13,24 +13,34 @@ use serde_json::{Value, json};
 /// One archive file member used by archive-layout fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ArchiveMember {
+    /// The name.
     pub name: String,
+    /// The content.
     pub content: String,
 }
 
 /// One target file used by archive-layout fixtures.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TargetFile {
+    /// The filesystem path.
     pub path: String,
+    /// The content.
     pub content: String,
 }
 
 /// Error message returned for unsafe archive members.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct UnsafeArchiveMember {
+    /// The message text.
     pub message: String,
 }
 
 /// Validates one zip member name using the legacy path rules.
+///
+/// # Errors
+///
+/// Returns [`UnsafeArchiveMember`] for empty, NUL-containing, backslash,
+/// absolute, drive-qualified, or parent-traversing member names.
 pub fn validate_member_parts(name: &str) -> Result<Vec<String>, UnsafeArchiveMember> {
     if name.is_empty() || name.contains('\0') || name.contains('\\') {
         return Err(unsafe_member(name));
@@ -47,6 +57,11 @@ pub fn validate_member_parts(name: &str) -> Result<Vec<String>, UnsafeArchiveMem
 }
 
 /// Models `extract_zip` final target files from explicit archive members.
+///
+/// # Errors
+///
+/// Returns [`UnsafeArchiveMember`] when any archive member fails
+/// [`validate_member_parts`].
 pub fn archive_target_layout(
     members: &[ArchiveMember],
     preexisting: &[TargetFile],

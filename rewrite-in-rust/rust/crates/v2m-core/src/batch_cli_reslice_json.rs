@@ -11,7 +11,9 @@ use crate::batch_cli_planning::safe_stem;
 /// Legacy-compatible error returned by the fixture-backed reslice model.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ResliceError {
+    /// The Python-compatible error type.
     pub error_type: String,
+    /// The message text.
     pub message: String,
 }
 
@@ -27,8 +29,11 @@ impl ResliceError {
 /// One fake WAV write captured by fixture checks.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WriteCall {
+    /// The filesystem path.
     pub path: String,
+    /// The sample rate in hertz.
     pub sr: i64,
+    /// The ordered data.
     pub data: Vec<f64>,
 }
 
@@ -46,7 +51,9 @@ impl WriteCall {
 /// One fake lab sidecar captured by fixture checks.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LabWrite {
+    /// The filesystem path.
     pub path: String,
+    /// The content.
     pub content: String,
 }
 
@@ -60,6 +67,11 @@ impl LabWrite {
 }
 
 /// Extracts text from fixture-modeled ASR-like result values.
+///
+/// # Errors
+///
+/// Returns [`ResliceError`] for missing fixture fields, a modeled object access
+/// failure, or an unknown result kind.
 pub fn extract_text_from_fixture(result: &Value) -> Result<String, ResliceError> {
     let kind = required_str(result, "kind")?;
     match kind {
@@ -95,6 +107,16 @@ pub fn extract_text_from_fixture(result: &Value) -> Result<String, ResliceError>
 }
 
 /// Builds the timestamp JSON payload produced by `save_timestamps_json`.
+///
+/// # Errors
+///
+/// Returns [`ResliceError`] for missing or invalid fields, bad chunk indices,
+/// zero sample rate, or a nested ASR text projection failure.
+///
+/// # Panics
+///
+/// Panics only if an internally constructed offset is non-numeric or NaN,
+/// violating the fixture-model invariant established in this function.
 pub fn save_timestamps_json_model(case: &Value) -> Result<Value, ResliceError> {
     let chunks = required_array(case, "chunks")?;
     let results = required_array(case, "results")?;
@@ -166,6 +188,16 @@ pub fn save_timestamps_json_model(case: &Value) -> Result<Value, ResliceError> {
 }
 
 /// Models `slice_audio_from_json` with fixture payloads and synthetic waveforms.
+///
+/// # Errors
+///
+/// Returns [`ResliceError`] for modeled missing files, malformed payloads,
+/// invalid numeric fields, or unsupported record shapes.
+///
+/// # Panics
+///
+/// Panics when a fixture waveform contains a non-number after its array shape
+/// has passed contract validation.
 pub fn slice_audio_from_json_model(case: &Value) -> Result<Value, ResliceError> {
     let json_path = required_str(case, "json_path")?;
     let source_audio = required_str(case, "source_audio")?;
@@ -280,6 +312,15 @@ pub fn slice_audio_from_json_model(case: &Value) -> Result<Value, ResliceError> 
 }
 
 /// Models `save_chunks` write paths and fake writes.
+///
+/// # Errors
+///
+/// Returns [`ResliceError`] for missing or invalid fields or a zero sample rate.
+///
+/// # Panics
+///
+/// Panics when a fixture waveform contains a non-number after its array shape
+/// has passed contract validation.
 pub fn save_chunks_model(case: &Value) -> Result<Value, ResliceError> {
     let chunk_dir = required_str(case, "chunk_dir")?;
     let source_stem = required_str(case, "source_stem")?;

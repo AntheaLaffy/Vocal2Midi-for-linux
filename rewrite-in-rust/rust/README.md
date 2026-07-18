@@ -7,13 +7,13 @@ state.
 
 ## Status
 
-The Rust workspace is verified for selected library units. It is not the default
-runtime for the whole application.
+The Rust workspace contains verified compatibility implementations, but it is
+not the default runtime for the whole application.
 
 - Python remains the default owner for GUI, Web handlers, model inference,
   slicing orchestration, ASR, forced alignment, and most file I/O.
-- `v2m-core` contains fixture-backed Rust implementations of selected pure
-  library behavior.
+- `v2m-core` contains fixture-backed Rust implementations for all 66 units in
+  the current migration inventory.
 - `v2m-quant-bridge` can run quantization through Rust when Python explicitly
   selects the `rust-json` backend.
 - Promotion decisions are recorded in `../manifest.yaml`, `../records/`, and
@@ -38,19 +38,25 @@ Run commands from the repository root unless a document says otherwise.
 
 ### `v2m-core`
 
-Pure library crate for behavior that can be tested without Python runtime
-objects, model assets, GUI state, or filesystem side effects.
+Library crate for compatibility behavior that can be tested without Python
+runtime objects, model assets, GUI state, or live external effects.
 
-Current public areas:
+Public modules are grouped by compatibility boundary:
 
-- `slice_bounds`: application slice duration validation parity
-- `device`: runtime device name normalization parity
-- `game`: GAME phone/word and note/word helper parity
-- `export`: deterministic TXT/CSV note export rendering parity
-- `quant`: quantization activation and algorithm parity
+| Area | Modules |
+| --- | --- |
+| Application and runtime | `application`, `slice_bounds`, `device` |
+| Web contracts | `web_config`, `web_task`, `web_stream`, `web_pipeline_events`, `web_settings`, `web_filesystem_picker`, `web_output_download`, `web_model_download*` |
+| Batch and model assets | `batch_cli_*`, `download_models_*` |
+| Export and quantization | `export`, `midi_export`, `ustx_*`, `quant` |
+| Slicing | `slice_method`, `slicer_*` |
+| Lyrics and HubertFA | `lyric_*`, `zh_g2p`, `ja_g2p`, `hfa_*`, `game` |
+| ASR preprocessing | `asr_*` |
 
-Public APIs should name the Python compatibility source in module docs and keep
-caller input failures recoverable.
+These modules do not own GUI, Flask/SocketIO routing, filesystem or network
+effects, model sessions, or inference orchestration unless a module contract
+explicitly models an injected effect result. Public APIs must name the Python
+compatibility source and keep caller-input failures recoverable.
 
 ### `v2m-quant-bridge`
 
@@ -111,13 +117,13 @@ cargo fmt --manifest-path rewrite-in-rust/rust/Cargo.toml --all -- --check
 Lint:
 
 ```bash
-cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --all-targets --all-features -- -D warnings
+cargo clippy --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-targets --all-features -- -D warnings
 ```
 
 Test:
 
 ```bash
-cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml
+cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features
 ```
 
 Build the quantization bridge:
@@ -129,7 +135,7 @@ cargo build --manifest-path rewrite-in-rust/rust/Cargo.toml --bin v2m-quant-brid
 Generate docs with rustdoc warnings as errors:
 
 ```bash
-RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --no-deps
+RUSTDOCFLAGS="-D warnings" cargo doc --manifest-path rewrite-in-rust/rust/Cargo.toml --workspace --all-features --no-deps
 ```
 
 Run the Python bridge bootstrap check:
@@ -148,6 +154,20 @@ uv run python rewrite-in-rust/bootstrap/check_quantization_bridge_bootstrap.py
 - Do not document verified units as default runtime owners until the manifest
   promotes them.
 - Keep README examples copyable from the repository root.
+- Use intra-doc links for Rust items and keep broken links as hard failures.
+- Treat every public type, field, variant, constant, and function as a
+  maintained compatibility API.
+
+The repository-wide policy and exact documentation checks are in
+[`docs/documentation.md`](../../docs/documentation.md). The normal `cargo doc`
+gate rejects rustdoc warnings, including the crate-level `missing_docs` lint.
+Run the explicit audit when changing documentation lint policy:
+
+```bash
+RUSTDOCFLAGS="-D warnings -D missing-docs" cargo doc \
+  --manifest-path rewrite-in-rust/rust/Cargo.toml \
+  --workspace --all-features --no-deps
+```
 
 ## Safety
 

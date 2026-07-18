@@ -16,12 +16,19 @@ use std::path::{Path, PathBuf};
 /// sets, ordered pairs, arbitrary mapping keys, aliases, and tagged nodes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HfaConfigValue {
+    /// Represents the Python-compatible null case.
     Null,
+    /// Represents the Python-compatible bool case.
     Bool,
+    /// Represents the Python-compatible int case.
     Int,
+    /// Represents the Python-compatible float case.
     Float,
+    /// Carries the Python-compatible string value.
     String(String),
+    /// Carries the Python-compatible list value.
     List(Vec<HfaConfigValue>),
+    /// Carries the Python-compatible mapping value.
     Mapping(Vec<(String, HfaConfigValue)>),
 }
 
@@ -67,17 +74,26 @@ impl HfaConfigValue {
 /// Compatibility failure from HubertFA config validation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HfaConfigValidationError {
+    /// Represents the Python-compatible assertion case.
     Assertion {
+        /// The message text.
         message: String,
     },
+    /// Represents the Python-compatible attribute case.
     Attribute {
+        /// The message text.
         message: String,
     },
+    /// Represents the Python-compatible type case.
     Type {
+        /// The message text.
         message: String,
     },
+    /// Represents the Python-compatible loader case.
     Loader {
+        /// The exception type.
         exception_type: String,
+        /// The message text.
         message: String,
     },
 }

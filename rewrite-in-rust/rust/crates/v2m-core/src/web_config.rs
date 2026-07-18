@@ -14,35 +14,65 @@ use crate::{
 /// Supported Web frontend configuration values.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WebFrontendConfig {
+    /// The optional slicing method.
     pub slicing_method: Option<String>,
+    /// The optional language.
     pub language: Option<String>,
+    /// The optional device.
     pub device: Option<String>,
+    /// The optional tempo.
     pub tempo: Option<f64>,
+    /// The optional save dir.
     pub save_dir: Option<PathBuf>,
+    /// The optional lyric output mode.
     pub lyric_output_mode: Option<String>,
+    /// The optional enable lyrics match.
     pub enable_lyrics_match: Option<bool>,
+    /// The optional output lyrics.
     pub output_lyrics: Option<bool>,
+    /// The optional lyrics.
     pub lyrics: Option<String>,
+    /// The optional export ustx.
     pub export_ustx: Option<bool>,
+    /// The optional output pitch curve.
     pub output_pitch_curve: Option<bool>,
+    /// The optional debug txt.
     pub debug_txt: Option<bool>,
+    /// The optional debug csv.
     pub debug_csv: Option<bool>,
+    /// The optional debug chunks.
     pub debug_chunks: Option<bool>,
+    /// The optional pitch format.
     pub pitch_format: Option<String>,
+    /// The optional round pitch.
     pub round_pitch: Option<bool>,
+    /// The optional seg threshold.
     pub seg_threshold: Option<f64>,
+    /// The optional seg radius.
     pub seg_radius: Option<f64>,
+    /// The optional est threshold.
     pub est_threshold: Option<f64>,
+    /// The optional t0.
     pub t0: Option<f64>,
+    /// The optional nsteps.
     pub nsteps: Option<i64>,
+    /// The optional game batch.
     pub game_batch: Option<i64>,
+    /// The optional asr batch.
     pub asr_batch: Option<i64>,
+    /// The optional slice min.
     pub slice_min: Option<f64>,
+    /// The optional slice max.
     pub slice_max: Option<f64>,
+    /// The optional game model path.
     pub game_model_path: Option<String>,
+    /// The optional hfa model path.
     pub hfa_model_path: Option<String>,
+    /// The optional ASR model path.
     pub asr_model_path: Option<String>,
+    /// The optional rmvpe model path.
     pub rmvpe_model_path: Option<String>,
+    /// The optional phoneme asr model path.
     pub phoneme_asr_model_path: Option<String>,
 }
 
@@ -93,46 +123,82 @@ impl Default for WebFrontendConfig {
 /// Rust model of the Web-built `PipelineConfig` fields.
 #[derive(Debug, Clone, PartialEq)]
 pub struct WebPipelineConfig {
+    /// The audio path.
     pub audio_path: String,
+    /// The output filename.
     pub output_filename: String,
+    /// The output directory.
     pub output_dir: PathBuf,
+    /// The GAME model directory.
     pub game_model_dir: String,
+    /// The HubertFA model directory.
     pub hfa_model_dir: String,
+    /// The ASR model path.
     pub asr_model_path: String,
+    /// The device.
     pub device: String,
+    /// The language.
     pub language: String,
+    /// The ordered ts.
     pub ts: Vec<f64>,
+    /// The lyric output mode.
     pub lyric_output_mode: String,
+    /// The original lyrics.
     pub original_lyrics: String,
+    /// The ordered output formats.
     pub output_formats: Vec<String>,
+    /// The slicing method.
     pub slicing_method: String,
+    /// The slice min sec.
     pub slice_min_sec: f64,
+    /// The slice max sec.
     pub slice_max_sec: f64,
+    /// The tempo.
     pub tempo: f64,
+    /// The quantization step.
     pub quantization_step: i64,
+    /// The quantization mode.
     pub quantization_mode: String,
+    /// The quantization backend.
     pub quantization_backend: String,
+    /// The quantization bridge bin.
     pub quantization_bridge_bin: String,
+    /// The quantization timeout sec.
     pub quantization_timeout_sec: f64,
+    /// The pitch format.
     pub pitch_format: String,
+    /// Whether exported pitches are rounded.
     pub round_pitch: bool,
+    /// The seg threshold.
     pub seg_threshold: f64,
+    /// The seg radius.
     pub seg_radius: f64,
+    /// The est threshold.
     pub est_threshold: f64,
+    /// The batch size.
     pub batch_size: i64,
+    /// The asr batch size.
     pub asr_batch_size: i64,
+    /// Whether lyric output is enabled.
     pub output_lyrics: bool,
+    /// The rmvpe model path.
     pub rmvpe_model_path: String,
+    /// The phoneme asr model path.
     pub phoneme_asr_model_path: String,
+    /// Whether pitch-curve output is enabled.
     pub output_pitch_curve: bool,
+    /// Whether debug output is enabled.
     pub debug_mode: bool,
 }
 
 /// Failure while preparing the Web pipeline config.
 #[derive(Debug)]
 pub enum WebConfigBuildError {
+    /// Represents the Python-compatible create output dir case.
     CreateOutputDir {
+        /// The filesystem path.
         path: PathBuf,
+        /// The source.
         source: std::io::Error,
     },
 }

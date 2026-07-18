@@ -15,31 +15,42 @@ const HTK_PAD_VALUE: f64 = 10_000_000.0;
 /// One prediction tuple consumed by the HTK exporter.
 #[derive(Debug, Clone, PartialEq)]
 pub struct HfaHtkPrediction {
+    /// The wav path.
     pub wav_path: PathBuf,
+    /// The wav length.
     pub wav_length: f64,
+    /// The ordered words.
     pub words: Vec<Word>,
 }
 
 /// Directory creation planned by the legacy exporter before each write pair.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaHtkDirectoryPlan {
+    /// The filesystem path.
     pub path: PathBuf,
+    /// Whether parent directories are created.
     pub parents: bool,
+    /// Whether an existing directory is accepted.
     pub exist_ok: bool,
 }
 
 /// One UTF-8 HTK `.lab` write planned by the legacy exporter.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaHtkPlannedFile {
+    /// The filesystem path.
     pub path: PathBuf,
+    /// The encoding.
     pub encoding: &'static str,
+    /// The content.
     pub content: String,
 }
 
 /// Ordered side-effect plan for one `save_htk` call.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct HfaHtkExportPlan {
+    /// The ordered directories.
     pub directories: Vec<HfaHtkDirectoryPlan>,
+    /// The ordered files.
     pub files: Vec<HfaHtkPlannedFile>,
 }
 
@@ -74,7 +85,9 @@ impl Error for HfaHtkExportError {}
 /// completed before the conversion failure.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HfaHtkExportFailure {
+    /// The error message.
     pub error: HfaHtkExportError,
+    /// The partial plan.
     pub partial_plan: HfaHtkExportPlan,
 }
 

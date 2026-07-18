@@ -15,6 +15,11 @@
   split, merged, renamed, deferred, or replaced after discovery.
 - Hand-written Rust replacements are acceptable when dependency parity is
   unrealistic, as long as they are narrow and fixture-bound.
+- For audio and inference-adjacent units, Rust dependency discovery should
+  follow existing high-level crates to their concrete lower-layer codec/model
+  crates before deciding to hand-write behavior. For example, `rodio` can be a
+  useful trailhead even when the selected seam ultimately needs a smaller
+  Symphonia codec component or a compatibility adapter.
 - Reference source for hand-written replacements is under `third_party/`:
   Python sdists in `third_party/sources/`, upstream fallbacks in
   `third_party/upstream_sources/`, native/FFI sources in
@@ -26,10 +31,9 @@
   behavior review per stage is the default.
 - Resources, references, records, and style constraints must be indexed like a
   teach workspace.
-- The next rewrite stage must not touch model inference chains or frontend
-  surfaces. It should cover application, Web backend, batch tooling, model
-  asset management, deterministic exports, slicer helpers, lyric/text
-  processing, and other fixture-bound backend helpers.
+- The verified Stage 1 boundary does not include model inference chains or
+  frontend surfaces. Any later expansion into those areas requires a new
+  manifest stage and explicit dependency/bootstrap evidence.
 
 ## Current Repository Facts
 
@@ -37,25 +41,23 @@
   `web -> application -> inference`.
 - Existing fast test command is `uv run pytest tests/test_web_api.py`.
 - Vendored dependency sources are already represented under `third_party/`.
-- The initial Rust workspace is intentionally not connected to the production
-  Python runtime.
+- Most Rust modules are not connected to the production Python runtime. The
+  quantization JSON bridge is the only production-adjacent seam and remains
+  opt-in.
 - `rewrite-in-rust/manifest.yaml` is a control plane, not a frozen project plan.
-- The first verified backend batch covered slice bounds, device normalization,
-  GAME helper logic, TXT/CSV export rendering, quantization algorithms, the
-  quantization JSON bridge, caller/default contracts, and quantization routing.
-- Remaining backend surfaces are broader than the original library candidates:
-  Web task/download management, settings/filesystem/download safety, batch CLI
-  indexing and JSON re-slicing, MIDI/USTX export, slicer policies, lyric/G2P
-  alignment, HubertFA interval/export/metric helpers, and ASR text/schema
-  helpers.
+- The manifest contains 66 verified units across application/Web contracts,
+  batch/model-asset planning, deterministic exports, slicer policies,
+  lyric/G2P/HubertFA helpers, quantization, and ASR preprocessing.
+- All units remain legacy-owned. Verification demonstrates fixture parity; it
+  does not authorize production routing or promotion.
 - Stage 1 must keep ONNX Runtime sessions, Qwen encoder/decoder, llama.cpp
   subprocess inference, romaji/GAME/HFA/RMVPE model execution, GUI code, and
   browser static assets legacy-owned.
-- The provisional Web model download manager unit was split into
+- The Web model download manager unit was split into
   request/catalog, process-planning, task lifecycle, execution-result, and
-  process-termination units. Request serialization and process planning are
-  fixture-backed; execution and termination remain legacy-owned until their own
-  fixture gates exist.
+  process-termination units. Each has a verified fixture boundary, while live
+  subprocess execution, SocketIO delivery, and OS termination remain
+  legacy-owned.
 
 ## Defaults Chosen
 
@@ -66,8 +68,8 @@
 - Review default: stage-level R0 behavior review after 3-5 reimplemented units.
 - Inventory default: dependency discovery may rewrite planned units before
   implementation starts.
-- Stage 1 route: add all non-inference backend candidates as `planned` and
-  `provisional`; require dependency/bootstrap discovery before any writer role.
+- Stage 1 result: 66 verified units, 65 confirmed inventory boundaries, one
+  split umbrella, and no promoted runtime owner.
 - Stage 1 verification default: use synthetic fixtures, fake subprocesses,
   temp files, fake SocketIO objects, and mocked network/runtime boundaries so
   checks do not download models or run inference.

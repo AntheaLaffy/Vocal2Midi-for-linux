@@ -1,6 +1,8 @@
 # Vocal2Midi Architecture
 
-This document describes the current structure of the Vocal2Midi repository after the move toward ONNX-based inference.
+This document is for contributors changing module boundaries, runtime routing,
+or the Rust migration. It describes the current architecture and the invariants
+that changes must preserve.
 
 ## Design goals
 
@@ -58,14 +60,13 @@ rewrite-in-rust/
 
 ## Main runtime model
 
-The current runtime split is:
+The current runtime split is platform-dependent:
 
-- Qwen3-ASR encoder path: ONNX Runtime with DirectML when available
-- Qwen3-ASR decoder path: `llama.cpp` on CPU
-- Romaji ASR: ONNX Runtime
-- HubertFA: ONNX Runtime
-- GAME: ONNX Runtime
-- RMVPE: ONNX Runtime
+- Windows Qwen3-ASR: project-local ONNX encoder through DirectML plus a
+  GGUF/`llama.cpp` CPU decoder.
+- Linux and macOS Qwen3-ASR: the official `qwen-asr` Transformers backend.
+- Romaji ASR, HubertFA, GAME, and RMVPE: ONNX Runtime, with DirectML on Windows
+  when selected and CPU execution on Linux and macOS.
 
 Device normalization is centralized in `inference/device_utils.py`.
 
@@ -79,11 +80,16 @@ library behavior behind fixture-backed compatibility seams.
 
 Current crates:
 
-- `v2m-core`: pure library behavior mirrored from Python. Current modules cover
-  slice validation, runtime device normalization, GAME alignment helpers,
-  TXT/CSV note export rendering, and quantization algorithms.
+- `v2m-core`: fixture-backed library behavior mirrored from Python. Its public
+  modules cover application and Web contracts, batch/model-asset planning,
+  deterministic export, slicing, lyric/G2P/HubertFA helpers, quantization, and
+  ASR preprocessing that does not create model sessions.
 - `v2m-quant-bridge`: a JSON stdin/stdout binary used only when Python selects
   the explicit Rust quantization backend.
+
+The manifest currently records 66 verified units. Verification proves parity
+at the named fixture boundary; it does not transfer runtime ownership. All
+manifest units still name legacy Python as `current_owner`.
 
 The runtime owner rule is:
 
@@ -108,6 +114,19 @@ inference/pipeline/auto_lyric_hybrid.py
 The bridge is opt-in through configuration or environment selection. The
 default path remains legacy Python so packaging or bridge failures can be rolled
 back without changing user workflows.
+
+## Architecture Invariants
+
+- UI and HTTP code must call application-layer entrypoints when one exists.
+- Model sessions, platform providers, and audio inference remain under
+  `inference/` until a reviewed migration unit changes that boundary.
+- Rust migration modules model one public compatibility boundary each and must
+  not silently broaden into model execution or frontend ownership.
+- `rewrite-in-rust/manifest.yaml` is authoritative for migration status and
+  runtime ownership.
+- A `verified` unit is not a `promoted` unit.
+- Recoverable boundary failures must remain data or structured errors; caller
+  input must not introduce Rust panics.
 
 ## Main user entrypoints
 
@@ -298,6 +317,10 @@ The repository keeps detailed maintenance documentation under `docs/` instead of
 - [`docs/qwen-linux.md`](qwen-linux.md): standalone upstream Qwen3-ASR environment notes.
 - [`docs/web-api.md`](web-api.md): Flask and SocketIO API contract.
 - [`docs/contributing.md`](contributing.md): development workflow, documentation standard, and review checklist.
+- [`docs/documentation.md`](documentation.md): document ownership, rustdoc
+  rules, historical evidence policy, and documentation checks.
+- [`SECURITY.md`](../SECURITY.md): vulnerability reporting and security
+  boundaries.
 - [`rewrite-in-rust/README.md`](../rewrite-in-rust/README.md): migration
   control-plane rules and manifest workflow.
 - [`rewrite-in-rust/rust/README.md`](../rewrite-in-rust/rust/README.md): Rust
@@ -326,4 +349,6 @@ The repository is mid-migration, so a few historical details still remain:
 - some UI strings are not yet normalized
 - `environment.yml` still reflects older dependency history more than the current runtime design
 
-Those issues do not change the intended architecture direction: ONNX-first inference, CPU `llama.cpp`, and stable application-layer entrypoints.
+Those issues do not change the intended architecture direction: platform-aware
+ASR routing, ONNX-first non-Qwen inference, and stable application-layer
+entrypoints.
