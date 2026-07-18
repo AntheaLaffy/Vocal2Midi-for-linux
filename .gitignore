@@ -167,3 +167,6 @@ settings/vocal2midi.ini
 *.tar.xz
 .trae/documents/vocal2midi-fullstack-plan.md
 .trae/documents/vocal2midi-web-ui-plan.md
+
+# Local tool settings
+/settings/
