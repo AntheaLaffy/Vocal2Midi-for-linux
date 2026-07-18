@@ -12,4 +12,6 @@ path = "src/lib.rs"
 [dependencies]
 encoding_rs = "0.8"
 md-5 = "0.10"
+ndarray = "0.17"
+saphyr-parser = { version = "=0.0.11", default-features = false }
 serde_json = { version = "1", features = ["preserve_order"] }

@@ -41,7 +41,7 @@ additional Python values PyYAML can construct and rerun cross-unit fixtures.
 
 ## Fixture Harness
 
-`rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl` contains 34 cases.
+`rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl` contains 38 cases.
 Each case declares suffix, temporary files/directories, injected loader value or
 error, repeat count, exact call results, and loader paths. The checker restores
 the real loader after every case and normalizes only the temporary root:
@@ -53,8 +53,9 @@ uv run python rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py
 The table covers default/json/empty/None suffixes; vocab/config first-failure
 order; loader call timing and error pass-through; top-level and `dictionaries`
 shape failures; null, empty, file, directory, nested, Unicode, relative and
-absolute dictionary paths; first missing entry; non-path values; invalid config
-content that passes; and repeat/no-cache behavior.
+absolute dictionary paths; first missing entry; int, bool, list, float, and
+nested-mapping non-path values; invalid config content that passes; and
+repeat/no-cache behavior.
 
 ## Writer Gate
 

@@ -5,7 +5,8 @@
 Preserve `config_utils.load_yaml`: open one path as UTF-8 text and call PyYAML
 6.0.3 `safe_load`, including the returned Python value type and exact failure
 class/message. This is the full loader phase split from deterministic config
-validation; it remains planned and Python-owned.
+validation. The Rust library seam is now reimplemented, while production
+runtime ownership remains Python/PyYAML.
 
 ## Authoritative Candidate Matrix
 
@@ -30,23 +31,104 @@ small compatibility adapter implements PyYAML's resolver, constructor,
 duplicate/merge, single-document, tag-rejection, and error-projection deltas
 from vendored PyYAML source.
 
-No dependency is added during this bootstrap pass.
+The follow-up 2026-07-18 dependency pass selected `saphyr-parser` 0.0.11 as
+the lower-layer parser/event crate. It is pinned in
+`rewrite-in-rust/rust/crates/v2m-core/Cargo.toml` as:
 
-## Required Next Bootstrap
+```toml
+saphyr-parser = { version = "=0.0.11", default-features = false }
+```
 
-Before writer work:
+This pin is not a high-level YAML replacement. `saphyr-parser` owns only the
+syntax/event/span substrate: parser events, tags, aliases, and source
+locations. The writer must implement the PyYAML 6.0.3 compatibility adapter over
+that event stream:
 
-1. define a tagged canonical value projection that does not erase Python
-   date/datetime/bytes/set/omap/pairs distinctions or mapping order/keys;
-2. create a Python 3.12/PyYAML 6.0.3 real-loader golden checker for the complete
-   resolver/constructor/error matrix in the dependency record;
-3. select and pin either a partial parser/event crate plus an explicit
-   compatibility layer, or a fixture-bound hand-written replacement justified
-   against vendored PyYAML resolver/constructor/composer sources;
-4. prove single-document and safe-tag rejection, source marks, UTF-8/file errors,
-   repeated loads, and resource limits;
-5. update this unit from provisional only after that evidence closes the writer
-   gate.
+- YAML 1.1 implicit resolver rules from
+  `third_party/sources/pyyaml-6.0.3/lib/yaml/resolver.py`;
+- SafeConstructor value construction, merge flattening, duplicate replacement,
+  bytes, sets, omap, pairs, timestamps, and alias identity from
+  `third_party/sources/pyyaml-6.0.3/lib/yaml/constructor.py`;
+- single-document, duplicate-anchor, undefined-alias, and tag behavior from
+  `third_party/sources/pyyaml-6.0.3/lib/yaml/composer.py`;
+- Python-style structured error projection from
+  `third_party/sources/pyyaml-6.0.3/lib/yaml/error.py` and the 56-case tagged
+  fixture matrix.
+
+Rejected alternatives for this unit:
+
+- `saphyr` 0.0.11: high-level YAML 1.2 value loading is broader than the
+  selected adapter surface.
+- `yaml-rust2` 0.11.0: event APIs exist, but its high-level loader rejects
+  duplicate keys and `saphyr-parser` exposes a narrower direct parser/span
+  surface.
+- `rust-yaml` 1.1.0: broader loader/emitter/resolver surface with no advantage
+  over the event-only crate for this compatibility adapter.
+- `serde_yaml_ng` 0.10.0: high-level serde/libyaml path differs from PyYAML and
+  pulls in unsafe/libyaml behavior that this seam does not need.
+
+## Tagged Fixture Harness
+
+`rewrite-in-rust/bootstrap/check_hfa_pyyaml_safe_load_contract.py` now executes
+the real `config_utils.load_yaml` against
+`rewrite-in-rust/fixtures/hfa_pyyaml_safe_load_contract.jsonl`.
+
+The checker projects Python runtime values into tagged JSON so fixtures do not
+erase PyYAML-specific types:
+
+- call result tags: `ok: true` for values and `ok: false` for structured
+  errors;
+- scalar tags: `null`, `bool`, decimal-string `int`, structured `float` with
+  kind/repr/hex/sign, `str`, `bytes` with hex/base64, `date`, and `datetime`
+  with timezone offset seconds;
+- container tags: `list`, `tuple`, insertion-ordered `dict`, and sorted
+  projected `set`;
+- repeated-reference tag: `ref`, used for alias identity and recursive aliases;
+- error shape: phase, exception class/message, `context`, `problem`, `note`,
+  `context_mark`, `problem_mark`, file `errno`/filename fields, and
+  `UnicodeDecodeError` encoding/span/object fields with temporary paths
+  normalized.
+
+The 56-case table covers empty and comment-only input, explicit empty document,
+nulls, YAML 1.1 boolean and numeric resolution, quoted strings, PyYAML's `1e3`
+and `1.0e3` string behavior, negative zero, NaN sign category, timestamps,
+spaced and no-space timezone offsets, timestamp field-width and range behavior,
+fractional truncation, binary data including non-ASCII constructor rejection,
+sets, omap/pairs and malformed variants, unhashable keys, alias identity,
+recursive aliases, repeated anchor-shaped text in comments/quoted/block
+scalars, merge flattening and merge errors, duplicate last-wins,
+bool/int/float key collision, non-string mapping keys, custom
+local/global/python-tag rejection, non-specific tag resolution,
+multi-document rejection, scanner/parser/composer/constructor errors, invalid
+UTF-8, filesystem errors, and repeated stateless loads.
+
+```bash
+uv run python rewrite-in-rust/bootstrap/check_hfa_pyyaml_safe_load_contract.py
+```
+
+## Writer Status
+
+Dependency/bootstrap is closed for writer handoff. The writer may implement a
+single Rust library unit using `saphyr-parser` only for syntax events and source
+spans. Record 0085 adds `v2m-core::hfa_pyyaml` and fixture-driven Rust parity
+tests for the tagged projection. Record 0086 expands that projection to 56 rows
+after independent review found duplicate-anchor, timestamp, and binary edge
+gaps.
+
+The Rust implementation does not promote a generic YAML Value API as PyYAML
+parity. It owns the PyYAML 6.0.3 resolver, SafeConstructor, merge/duplicate,
+alias identity, single-document/tag, and structured error projection behavior
+above the parser event layer.
+
+Independent behavior and error/tracing reruns passed after record 0086 fixed
+the initial review findings. The unit is verified as an independent Rust library
+seam. Runtime promotion remains separate.
+
+Resource-limit fixtures for large aliases, deeply nested inputs, and
+scanner/parser limits are explicitly deferred to production-facing promotion
+planning. Current production remains Python/PyYAML-owned and the writer target
+is an independent library seam, so resource policy can be specified before an
+owner switch without blocking the adapter implementation.
 
 ## Kept Legacy And Rollback
 

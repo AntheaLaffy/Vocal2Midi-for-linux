@@ -5,6 +5,7 @@
 //! business migration unit is promoted.
 
 pub mod application;
+pub mod asr_chinese_itn;
 pub mod batch_cli_planning;
 pub mod batch_cli_reslice_json;
 pub mod device;
@@ -15,7 +16,12 @@ pub mod download_models_effectful;
 pub mod export;
 pub mod game;
 pub mod hfa_config;
+pub mod hfa_export_dispatch;
 pub mod hfa_g2p;
+pub mod hfa_htk_export;
+pub mod hfa_metrics;
+pub mod hfa_pyyaml;
+pub mod hfa_textgrid_export;
 pub mod hfa_word;
 pub mod ja_g2p;
 pub mod lyric_language;

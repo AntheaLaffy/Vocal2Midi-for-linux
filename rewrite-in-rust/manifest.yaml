@@ -1487,7 +1487,7 @@ units:
 
   - id: hfa_config_validation_core
     title: "HubertFA config existence and dictionary validation"
-    status: reimplemented
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1501,7 +1501,7 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl contains 34 Python 3.12 temp-directory cases covering suffixes, existence and loader order, injected JSON-compatible value/error shapes, dictionary path policies, exact failures, unparsed config, and repeated calls."
+      - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl contains 38 Python 3.12 temp-directory cases covering suffixes, existence and loader order, injected JSON-compatible value/error shapes, dictionary path policies, exact failures, unparsed config, and repeated calls."
       - "uv run python rewrite-in-rust/bootstrap/check_hfa_config_validation_core.py"
       - "rewrite-in-rust/dependencies/hfa_config_validation_core.yaml"
       - "rewrite-in-rust/bootstrap/hfa_config_validation_core.md"
@@ -1509,15 +1509,22 @@ units:
       - "rewrite-in-rust/bootstrap/hfa_config_file_contract_core.md"
       - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
       - "rewrite-in-rust/records/0079-recut-hfa-config-file-contract.md"
+      - "rewrite-in-rust/records/0082-close-hfa-config-validation-gate.md"
       - "Do not add a YAML parser or claim full load_yaml parity in this writer unit; it consumes an injected outcome and composes with the separate planned loader only after that wider contract is proven."
       - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_config.rs"
       - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_config_validation_core"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_config_validation_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_config_validation_core-dependency_bootstrap_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_config_validation_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_config_validation_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_config_validation_core-error_tracing_reviewer.md"
+      - "Initial dependency/bootstrap and behavior follow-ups were closed by adding top-level int/float and dictionary float/mapping fixture rows, aligning the then-provisional sibling PyYAML loader dependency record, and rerunning the Python/Rust checks."
     rollback: "Keep config_utils.check_configs and load_yaml as runtime owners; no bridge or production caller changes during implementation."
 
   - id: hfa_pyyaml_safe_load_contract
     title: "HubertFA PyYAML safe-load value and error contract"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -1531,18 +1538,34 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Define a tagged cross-runtime value projection and executable Python 3.12/PyYAML 6.0.3 golden matrix before writer work; JSON Value alone is insufficient because safe_load returns non-JSON Python values."
-      - "Neither serde_yaml_ng 0.10.0 nor rust-yaml 1.1.0 passes the authoritative resolver/constructor/error probe; do not add either as a direct parity dependency without an explicit compatibility layer and rerun evidence."
+      - "rewrite-in-rust/fixtures/hfa_pyyaml_safe_load_contract.jsonl contains 56 Python 3.12/PyYAML 6.0.3 golden cases for tagged values, aliases, merges, duplicate keys, marked YAML errors, UTF-8/file errors, timestamp/binary review regressions, anchor-text false positives, and repeated loads."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_pyyaml_safe_load_contract.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_pyyaml.rs implements the fixture-bound loader adapter with saphyr-parser events/spans plus hand-written PyYAML 6.0.3 resolver, constructor, merge/duplicate, alias identity, single-document/tag, and structured error projection behavior."
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_pyyaml"
+      - "The tagged cross-runtime value projection exists; JSON Value alone remains insufficient because safe_load returns non-JSON Python values and alias identity."
+      - "saphyr-parser 0.0.11 is pinned in v2m-core as the parser/event/span lower layer; the PyYAML 6.0.3 resolver, SafeConstructor, merge/duplicate, alias identity, tag, single-document, and error projection behavior remains adapter-owned."
+      - "Neither serde_yaml_ng 0.10.0, rust-yaml 1.1.0, yaml-rust2 0.11.0, nor saphyr 0.0.11 high-level values may be used as direct PyYAML parity without an explicit compatibility layer and rerun evidence."
       - "rewrite-in-rust/dependencies/hfa_pyyaml_safe_load_contract.yaml"
       - "rewrite-in-rust/bootstrap/hfa_pyyaml_safe_load_contract.md"
       - "rewrite-in-rust/dependencies/hfa_config_file_contract_core.yaml"
       - "rewrite-in-rust/bootstrap/hfa_config_file_contract_core.md"
       - "rewrite-in-rust/records/0079-recut-hfa-config-file-contract.md"
+      - "rewrite-in-rust/records/0083-bootstrap-hfa-pyyaml-safe-load-contract.md"
+      - "rewrite-in-rust/records/0084-select-hfa-pyyaml-parser-layer.md"
+      - "rewrite-in-rust/records/0085-implement-hfa-pyyaml-safe-load-contract.md"
+      - "rewrite-in-rust/records/0086-fix-hfa-pyyaml-review-findings.md"
+      - "rewrite-in-rust/records/0087-close-hfa-pyyaml-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_pyyaml_safe_load_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_pyyaml_safe_load_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_pyyaml_safe_load_contract-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_pyyaml_safe_load_contract-error_tracing_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_pyyaml_safe_load_contract-error_tracing_reviewer-rerun.md"
+      - "Initial behavior and error/tracing reviews found duplicate-anchor false positives, timestamp resolver/constructor drift, and non-ASCII binary constructor drift. Record 0086 fixed these with 9 additional PyYAML-generated fixtures; both reruns passed."
     rollback: "Keep config_utils.load_yaml and PyYAML 6.0.3 as sole runtime owners; hfa_config_validation_core is not a replacement for this loader."
 
   - id: hfa_htk_label_export_core
     title: "HubertFA HTK label planning and cumulative output"
-    status: planned
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1556,15 +1579,28 @@ units:
       - data_algorithm_reviewer
       - error_tracing_reviewer
     verification:
-      - "Create planned-file fixtures for empty/single/multiple predictions, fractional/negative/special times, Unicode/quote/newline text, nested paths, duplicate basenames, output-folder and wav-parent modes, write errors, and cumulative second/later prediction contents."
+      - "rewrite-in-rust/fixtures/hfa_htk_label_export_core.jsonl contains 20 Python 3.12 planned-side-effect cases for empty/single/multiple predictions, cumulative second/later prediction contents, duplicate basenames, nested paths, output-folder/wav-parent/empty/dot/dot-slash modes, dot-prefixed wav-parent paths, pathlib suffix edge names, fractional/negative/special/huge finite/large times, empty wav-path errors, Unicode/quote/newline text, empty words/phones, partial plans on conversion errors, and repeated exporter calls."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_htk_label_export_core.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_htk_export.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_htk_label_export_core"
       - "rewrite-in-rust/dependencies/hfa_htk_label_export_core.yaml"
       - "rewrite-in-rust/bootstrap/hfa_htk_label_export_core.md"
       - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "rewrite-in-rust/records/0088-implement-hfa-htk-label-export-core.md"
+      - "rewrite-in-rust/records/0089-fix-hfa-htk-review-findings.md"
+      - "rewrite-in-rust/records/0090-fix-hfa-htk-current-directory-paths.md"
+      - "rewrite-in-rust/records/0091-fix-hfa-htk-pathlib-suffix-names.md"
+      - "rewrite-in-rust/records/0092-close-hfa-htk-label-export-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_htk_label_export_core-dependency_bootstrap_reviewer-rerun3.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_htk_label_export_core-behavior_reviewer-rerun3.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_htk_label_export_core-data_algorithm_reviewer-rerun2.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_htk_label_export_core-error_tracing_reviewer-rerun3.md"
+      - "Initial behavior/data reviews found `i128` timestamp saturation, empty-name path drift, current-directory path rendering drift, and Python pathlib suffix-name drift. Records 0089, 0090, and 0091 fixed these with Python-generated fixtures; final required review reruns passed against the 20-case fixture set."
     rollback: "Keep Exporter.save_htk as the runtime owner, including its cumulative-buffer behavior."
 
   - id: hfa_textgrid_export_core
     title: "HubertFA TextGrid serialization and output planning"
-    status: planned
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1579,15 +1615,25 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Create exact UTF-8 TextGrid byte and planned-path fixtures for empty/gapped/contiguous tiers, negative phone starts, quotes/newlines/Unicode, invalid/overlapping/out-of-range intervals, nested paths, duplicate basenames, output-folder/wav-parent modes, and multiple predictions."
+      - "rewrite-in-rust/fixtures/hfa_textgrid_export_core.jsonl contains 18 Python 3.12 planned-side-effect cases for exact UTF-8 long TextGrid bytes, empty/gapped/contiguous/sorted tiers, negative phone starts, quotes/newlines/Unicode, Python float text, invalid zero/overlapping/out-of-range intervals, partial plans after prior writes, prediction isolation, duplicate basenames, nested paths, output-folder/wav-parent/empty/current-dir/double-slash modes, pathlib suffix edge names, empty wav-path errors, and repeated calls."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_textgrid_export_core.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_textgrid_export.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_textgrid_export_core"
       - "rewrite-in-rust/dependencies/hfa_textgrid_export_core.yaml"
       - "rewrite-in-rust/bootstrap/hfa_textgrid_export_core.md"
       - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "rewrite-in-rust/records/0093-implement-hfa-textgrid-export-core.md"
+      - "rewrite-in-rust/records/0094-fix-hfa-textgrid-double-slash-paths.md"
+      - "rewrite-in-rust/records/0095-close-hfa-textgrid-export-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_textgrid_export_core-dependency_bootstrap_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_textgrid_export_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_textgrid_export_core-error_tracing_reviewer-rerun.md"
+      - "Initial behavior review found POSIX exactly-two-leading-slash path drift. Record 0094 fixed it with three Python-generated path fixtures; final required review reruns passed against the 18-case fixture set."
     rollback: "Keep Exporter.save_textgrids and textgrid 1.6.1 as runtime owners."
 
   - id: hfa_export_dispatch_contract
     title: "HubertFA export format dispatch and caller defaults"
-    status: planned
+    status: verified
     inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
@@ -1602,33 +1648,60 @@ units:
       - stage_behavior_reviewer
       - error_tracing_reviewer
     verification:
-      - "Create injected-sink fixtures for list/tuple/string/mapping/empty/None formats, duplicates, unknown/case variants, fixed call order, default versus explicit empty formats, return values, status prints, and downstream error short-circuiting."
+      - "rewrite-in-rust/fixtures/hfa_export_dispatch_contract.jsonl contains 18 Python 3.12 injected-sink cases for list/tuple/string/mapping/empty/None formats, duplicates, unknown/case variants, fixed TextGrid-before-HTK order, Exporter None TypeError, InferenceBase None default versus explicit empty, output-folder forwarding, return values, repeated calls, exact final status print, and downstream error short-circuiting with no status after failure."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_export_dispatch_contract.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_export_dispatch.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_export_dispatch_contract"
       - "rewrite-in-rust/dependencies/hfa_export_dispatch_contract.yaml"
       - "rewrite-in-rust/bootstrap/hfa_export_dispatch_contract.md"
       - "rewrite-in-rust/records/0074-split-hfa-g2p-config-export-lifecycle.md"
+      - "rewrite-in-rust/records/0096-implement-hfa-export-dispatch-contract.md"
+      - "rewrite-in-rust/records/0097-close-hfa-export-dispatch-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_export_dispatch_contract-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_export_dispatch_contract-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_export_dispatch_contract-error_tracing_reviewer.md"
+      - "The error/tracing review passed with a low promotion-planning follow-up: HfaPlanningExportSink currently projects downstream planner failures to exception type/message and drops partial-plan diagnostics. Do not treat that adapter as a fully diagnosable effect-plan boundary before resolving or explicitly accepting this follow-up."
     rollback: "Keep Exporter.export, InferenceBase.export, ONNX CLI selection, and hfa_api artifact routing as runtime owners."
 
   - id: hfa_metrics_core
     title: "HubertFA alignment metric helpers"
-    status: planned
-    inventory_status: provisional
+    status: verified
+    inventory_status: confirmed
     current_owner: legacy
     target_owner: rust
     source_refs:
       - "inference/HubertFA/tools/metrics.py"
-    public_interface_policy: "Preserve point insertion ordering, vlabeler edit costs, edit ratios, IoU accumulation and zero-union behavior, LCS matching, boundary edit distance/ratio, weighted error penalty, and reset semantics."
+    public_interface_policy: "Preserve CustomPointTier effective point ordering, vlabeler edit costs and truncation behavior, edit ratios, IoU accumulation and zero-union/string-vs-dict behavior, LCS tie/backtracking matches, boundary edit distance/ratio, weighted error penalty, mismatch return behavior, empty-total defaults/errors, and reset semantics including legacy reset gaps."
     required_reviews:
       - dependency_bootstrap_reviewer
       - stage_behavior_reviewer
       - data_algorithm_reviewer
     verification:
-      - "Add synthetic point-tier fixtures for equal/unequal lengths, insert/delete/move costs, label mismatch, empty totals, overlapping intervals, no matched pairs, and reset-after-compute behavior."
+      - "rewrite-in-rust/fixtures/hfa_metrics_core.jsonl contains 12 Python 3.12 synthetic point-tier cases covering point insertion ordering including duplicate-time bisect_left behavior; vlabeler edit count/ratio including truncation, thresholds, label mismatch, repeated target labels, empty totals, Python half-even rounding ties, and reset; IoU overlap/repeated marks/missing phonemes/zero-union dict and string behavior; public ordered list-mode lookup; LCS repeated-label ties and matched pairs; boundary edit distance/ratio including mismatch False returns, no matched pairs, empty target errors, NumPy-scalar-like accumulation where observable, weighted penalty, empty defaults, and inherited/reset quirks."
+      - "uv run python rewrite-in-rust/bootstrap/check_hfa_metrics_core.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_metrics.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_metrics_core"
+      - "ndarray 0.17.2 is used narrowly for the one-dimensional BoundaryEditDistance absolute time-difference sum layer; this does not claim broad NumPy compatibility."
+      - "rewrite-in-rust/dependencies/hfa_metrics_core.yaml"
+      - "rewrite-in-rust/bootstrap/hfa_metrics_core.md"
+      - "rewrite-in-rust/records/0098-bootstrap-hfa-metrics-core.md"
+      - "rewrite-in-rust/records/0099-implement-hfa-metrics-core.md"
+      - "rewrite-in-rust/records/0100-fix-hfa-metrics-review-findings.md"
+      - "rewrite-in-rust/records/0101-close-hfa-metrics-gate.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_metrics_core-dependency_bootstrap_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_metrics_core-behavior_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_metrics_core-behavior_reviewer-rerun.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_metrics_core-data_algorithm_reviewer.md"
+      - "rewrite-in-rust/reviews/2026-07-18-hfa_metrics_core-data_algorithm_reviewer-rerun.md"
+      - "Initial behavior and data/algorithm reviews found Python half-even rounding drift and IoU list-mode ordering drift. Record 0100 fixed both with a 12th fixture and direct ordered compute_list Rust test; both reruns passed."
+      - "uv run python -m py_compile inference/HubertFA/tools/metrics.py"
+      - "uv run python scripts/audit_vendored_sources.py"
     rollback: "Keep inference.HubertFA.tools.metrics as the runtime owner."
 
   - id: asr_text_postprocess_contract
     title: "ASR text post-processing and schema helpers"
     status: planned
-    inventory_status: provisional
+    inventory_status: split
     current_owner: legacy
     target_owner: rust
     source_refs:
@@ -1636,13 +1709,132 @@ units:
       - "inference/qwen3asr_dml/utils.py"
       - "inference/qwen3asr_dml/schema.py"
       - "inference/romaji_asr/common.py"
-    public_interface_policy: "Preserve Chinese inverse text normalization, language-name normalization and validation, WAV PCM fallback loading behavior, ASR schema defaults, romaji vocab loading, CTC decode collapse, chunking, and metadata helpers that do not create ONNX sessions."
+    public_interface_policy: "Umbrella unit re-cut before writer work. Preserve the behavior through split child units for Chinese ITN, Qwen language/schema, Qwen WAV PCM fallback decode, resample_poly parity, romaji vocab/CTC decode, and romaji batch metadata. Do not assign this umbrella to a writer."
     required_reviews:
       - dependency_bootstrap_reviewer
       - stage_behavior_reviewer
       - data_algorithm_reviewer
       - error_tracing_reviewer
     verification:
-      - "Add fixtures for Chinese ranges, pure/value/fraction/percent/ratio/time/date conversions, unsupported language errors, WAV sample widths/channels/resampling, dataclass defaults, vocab blank lookup, CTC duplicate/blank collapse, logits-vs-id decode, and chunked batching."
+      - "Re-cut recorded in rewrite-in-rust/dependencies/asr_text_postprocess_contract.yaml, rewrite-in-rust/bootstrap/asr_text_postprocess_contract.md, and rewrite-in-rust/records/0102-bootstrap-asr-text-postprocess-contract.md."
+      - "Writer-ready child units after fixture generation: asr_chinese_itn_core, asr_qwen_language_schema_contract, asr_qwen_wav_pcm_decode_core for same-rate PCM fallback, and asr_romaji_vocab_ctc_decode_core."
+      - "Prerequisite/planned child units: asr_resample_poly_contract for SciPy resampling parity and asr_romaji_batch_metadata_contract for fake-session metadata/batch assembly."
       - "Do not cover create_session, encoder/decoder workers, llama subprocess inference, ONNX Runtime sessions, or model weight parsing in this unit."
     rollback: "Keep qwen3asr_dml and romaji_asr Python helpers as runtime owners."
+
+  - id: asr_chinese_itn_core
+    title: "ASR Chinese inverse text normalization"
+    status: reimplemented
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/qwen3asr_dml/chinese_itn.py"
+    public_interface_policy: "Preserve chinese_to_num behavior for ranges, pure digits, numeric values, consecutive values, percent, fraction, ratio, time, date, units, idiom/fuzzy no-ops, and conversion-error no-ops."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "rewrite-in-rust/fixtures/asr_chinese_itn_core.jsonl contains 37 Python 3.12 golden cases for dates, pure digits, decimals, strict single-one no-op, numeric values, range expressions, percent/fraction/ratio/time, idiom and fuzzy no-ops, unit mapping, ASCII head/suffix behavior, consecutive-value quirks, and sentence-embedded spans."
+      - "rewrite-in-rust/bootstrap/check_asr_chinese_itn_core.py"
+      - "rewrite-in-rust/rust/crates/v2m-core/src/asr_chinese_itn.rs"
+      - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml asr_chinese_itn_core"
+      - "rewrite-in-rust/records/0103-implement-asr-chinese-itn-core.md"
+      - "uv run python -m py_compile inference/qwen3asr_dml/chinese_itn.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    rollback: "Keep inference.qwen3asr_dml.chinese_itn.chinese_to_num as the runtime owner."
+
+  - id: asr_qwen_language_schema_contract
+    title: "Qwen ASR language and schema contracts"
+    status: planned
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/qwen3asr_dml/utils.py"
+      - "inference/qwen3asr_dml/schema.py"
+    public_interface_policy: "Preserve SUPPORTED_LANGUAGES, normalize_language_name, validate_language, MsgType auto order, and ASR dataclass constructor defaults."
+    required_reviews:
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add JSONL fixtures for language normalization/errors, supported-language validation, MsgType values, StreamingMessage defaults, DecodeResult default_factory list independence, ASREngineConfig defaults, and TranscribeResult defaults."
+      - "uv run python -m py_compile inference/qwen3asr_dml/utils.py inference/qwen3asr_dml/schema.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    rollback: "Keep inference.qwen3asr_dml.utils and inference.qwen3asr_dml.schema as runtime owners."
+
+  - id: asr_qwen_wav_pcm_decode_core
+    title: "Qwen ASR WAV PCM fallback decode"
+    status: planned
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/qwen3asr_dml/utils.py"
+    public_interface_policy: "Preserve _load_wav_audio fallback behavior for same-rate WAV PCM sample widths, 24-bit sign extension, multichannel mean, float32 output, unsupported sample-width errors, and final load_audio slicing when pydub fallback is forced. Resampling is owned by asr_resample_poly_contract."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add generated WAV or serialized sample fixtures for unsigned 8-bit, signed 16-bit, signed 24-bit little-endian, signed 32-bit, unsupported sample width, mono/stereo/multichannel mean, same-rate float32 output, and start_second/duration slicing after fallback."
+      - "uv run python -m py_compile inference/qwen3asr_dml/utils.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    rollback: "Keep inference.qwen3asr_dml.utils.load_audio and _load_wav_audio as runtime owners."
+
+  - id: asr_resample_poly_contract
+    title: "ASR scipy resample_poly parity"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/qwen3asr_dml/utils.py"
+      - "inference/romaji_asr/common.py"
+    public_interface_policy: "Decide and fixture the resampling contract for scipy.signal.resample_poly before any WAV or romaji audio unit owns sample-rate conversion."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add deterministic fixtures for 44100->16000, 48000->16000, 22050->16000, and identity cases, including expected output length, float samples, and accepted tolerance."
+      - "uv run python -m py_compile inference/qwen3asr_dml/utils.py inference/romaji_asr/common.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    rollback: "Keep scipy.signal.resample_poly calls in Python-owned qwen3asr_dml.utils and romaji_asr.common."
+
+  - id: asr_romaji_vocab_ctc_decode_core
+    title: "Romaji ASR vocab and CTC decode helpers"
+    status: planned
+    inventory_status: confirmed
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/romaji_asr/common.py"
+    public_interface_policy: "Preserve load_vocab, decode_pred_ids, decode_logits, decode_outputs, and chunked behavior without audio loading, ONNX session creation, provider selection, or model execution."
+    required_reviews:
+      - stage_behavior_reviewer
+      - data_algorithm_reviewer
+    verification:
+      - "Add JSON fixtures for vocab id inversion, <blank>/PAD/0 blank lookup, duplicate/blank CTC collapse, unknown token fallback, integer-vs-logit decode_outputs dispatch, argmax tie behavior, batch iteration, and chunk_size <= 0 becoming step 1."
+      - "uv run python -m py_compile inference/romaji_asr/common.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    rollback: "Keep inference.romaji_asr.common load_vocab/decode/chunk helpers as runtime owners."
+
+  - id: asr_romaji_batch_metadata_contract
+    title: "Romaji ASR batch metadata and padding contract"
+    status: planned
+    inventory_status: provisional
+    current_owner: legacy
+    target_owner: rust
+    source_refs:
+      - "inference/romaji_asr/common.py"
+    public_interface_policy: "Preserve get_fixed_batch_size, get_fixed_num_samples, ort_type_to_numpy_dtype, and prepare_batch shape/type/padding/mask behavior using fake session metadata. Do not create ONNX Runtime sessions or run model inference."
+    required_reviews:
+      - dependency_bootstrap_reviewer
+      - stage_behavior_reviewer
+      - error_tracing_reviewer
+    verification:
+      - "Add fixtures for fixed/dynamic batch sizes, fixed/dynamic sample counts, empty audio_paths, batch-size mismatch errors, missing attention_mask, dtype string mapping, zero-length waveform, truncation, padding, attention mask, and used lengths. Use synthetic waveforms or depend on asr_resample_poly_contract for file-loading resample cases."
+      - "uv run python -m py_compile inference/romaji_asr/common.py"
+      - "uv run python scripts/audit_vendored_sources.py"
+    rollback: "Keep inference.romaji_asr.common metadata and prepare_batch helpers as runtime owners."

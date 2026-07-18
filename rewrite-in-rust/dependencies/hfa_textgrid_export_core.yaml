@@ -1,5 +1,5 @@
 unit: hfa_textgrid_export_core
-status: planned
+status: done
 capabilities:
   textgrid_tier_construction:
     legacy: "inference/HubertFA/tools/export_tool.py::Exporter.save_textgrids"
@@ -18,9 +18,9 @@ seam:
   default_owner: legacy
   bridge_dependencies: []
 fixtures:
-  required:
-    - "Exact UTF-8 long-TextGrid bytes and ordered planned paths from prediction snapshots."
-    - "Cover empty/gapped/contiguous words and phones, negative phone starts, quotes/newlines/Unicode, float forms, invalid zero/reversed/out-of-range/overlapping intervals, prediction isolation, nested paths, duplicate basenames, output-folder/wav-parent modes, and repeated calls."
+  available:
+    - "rewrite-in-rust/fixtures/hfa_textgrid_export_core.jsonl contains 18 Python 3.12 cases generated from the real Exporter.save_textgrids with monkeypatched mkdir/codecs.open sinks."
+    - "Covered cases include exact UTF-8 long TextGrid bytes, empty/gapped/contiguous tiers, sorted intervals, negative phone start max(0, start), quotes/newlines/Unicode, Python float text, invalid zero/overlapping/out-of-range intervals, partial plans after prior writes, prediction isolation, duplicate basenames, nested paths, output-folder/wav-parent/empty/dot/double-slash modes, pathlib suffix edge names, empty wav-path errors, and repeated calls."
 inventory_impact:
   decision: split
   reason: "TextGrid has a pinned third-party serialization contract absent from HTK and dispatch; it is independently fixture-testable against vendored 1.6.1 source."
@@ -40,4 +40,6 @@ legacy_kept:
 verification:
   - "uv run python --version"
   - "uv run python -m py_compile inference/HubertFA/tools/export_tool.py third_party/sources/textgrid-1.6.1/textgrid/textgrid.py"
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_textgrid_export_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_textgrid_export_core"
   - "uv run python scripts/audit_vendored_sources.py"

@@ -1,5 +1,5 @@
 unit: hfa_htk_label_export_core
-status: planned
+status: done
 capabilities:
   htk_label_rendering:
     legacy: "inference/HubertFA/tools/export_tool.py::Exporter.save_htk"
@@ -18,9 +18,9 @@ seam:
   default_owner: legacy
   bridge_dependencies: []
 fixtures:
-  required:
-    - "Prediction snapshots and output-folder mode yielding ordered planned paths and exact UTF-8 phone/word bytes or numeric/conversion errors."
-    - "Cover empty/single/multiple predictions, cumulative second/later contents, duplicate basenames/overwrite order, nested inputs, output_folder None/empty/Path, fractional/negative/NaN/infinite/large times, Unicode/quote/newline text, empty words/phones, and repeated exporter calls."
+  available:
+    - "rewrite-in-rust/fixtures/hfa_htk_label_export_core.jsonl contains 20 Python 3.12 cases generated from the real Exporter.save_htk with monkeypatched mkdir/open sinks."
+    - "Covered cases include empty/single/multiple predictions, cumulative second/later contents, duplicate basenames/overwrite order, nested inputs, output_folder None/empty/string/dot/dot-slash, dot-prefixed wav-parent mode, pathlib suffix edge names, fractional/negative/NaN/infinite/huge finite/large times, empty wav-path name errors, Unicode/quote/newline text, empty words/phones, partial plans after conversion errors, and repeated exporter calls."
 inventory_impact:
   decision: split
   reason: "HTK rendering has no TextGrid dependency and its cross-prediction accumulator is a separate state contract that must not be hidden inside generic export."
@@ -39,4 +39,6 @@ legacy_kept:
 verification:
   - "uv run python --version"
   - "uv run python -m py_compile inference/HubertFA/tools/export_tool.py"
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_htk_label_export_core.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_htk_label_export_core"
   - "uv run python scripts/audit_vendored_sources.py"

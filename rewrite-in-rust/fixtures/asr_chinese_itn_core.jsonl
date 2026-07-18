@@ -1,0 +1,37 @@
+{"category":"date_year_month","input":"二零二五年十月","expected":"2025年10月"}
+{"category":"pure_digits","input":"一二三","expected":"123"}
+{"category":"decimal_digits","input":"一点二三","expected":"1.23"}
+{"category":"single_one_noop","input":"一","expected":"一"}
+{"category":"tens_value","input":"二十","expected":"20"}
+{"category":"standalone_ten_value","input":"十一","expected":"11"}
+{"category":"hundred_zero_value","input":"一百零二","expected":"102"}
+{"category":"large_value","input":"两千三百四十五","expected":"2345"}
+{"category":"range_tens_with_unit","input":"三四十人","expected":"30~40人"}
+{"category":"range_hundreds_with_unit","input":"二三百人","expected":"200~300人"}
+{"category":"range_teens_with_suffix","input":"十七八万","expected":"17~18万"}
+{"category":"range_mixed_places","input":"三百二三十人","expected":"320~330人"}
+{"category":"short_two_digits_not_range","input":"三四","expected":"34"}
+{"category":"percent","input":"百分之三十五","expected":"35%"}
+{"category":"fraction","input":"三分之二","expected":"2/3"}
+{"category":"ratio","input":"三比四","expected":"3:4"}
+{"category":"time_minutes","input":"十点二十分","expected":"10:20"}
+{"category":"time_seconds","input":"十点二十分三十秒","expected":"10:20:30"}
+{"category":"full_date","input":"二零二五年十月三日","expected":"2025年10月3日"}
+{"category":"idiom_noop","input":"正经八百","expected":"正经八百"}
+{"category":"fuzzy_noop","input":"几百人","expected":"几百人"}
+{"category":"grams_unit","input":"五克","expected":"5g"}
+{"category":"kilograms_unit","input":"五千克","expected":"5kg"}
+{"category":"speed_unit","input":"三千米每小时","expected":"3km/h"}
+{"category":"ascii_suffix","input":"一二三abc","expected":"123abc"}
+{"category":"ascii_head","input":"a 一二三","expected":"a 123"}
+{"category":"consecutive_hundreds_quirk","input":"一百二十一百三十人","expected":"2230人"}
+{"category":"consecutive_tens","input":"十七十八人","expected":"17 18人"}
+{"category":"sentence_people","input":"我有三个人","expected":"我有3个人"}
+{"category":"sentence_date","input":"今天是二零二五年十月三日","expected":"今天是2025年10月3日"}
+{"category":"idiom_partial_noop","input":"一点一滴","expected":"一点一滴"}
+{"category":"idiom_probable_noop","input":"十有八九","expected":"十有八九"}
+{"category":"five_blocks","input":"价格五块","expected":"价格5块"}
+{"category":"block_suffix_followed","input":"五块钱","expected":"5块钱"}
+{"category":"seconds_clock","input":"五秒钟","expected":"5秒钟"}
+{"category":"ten_thousand_value","input":"三万五千人","expected":"35000人"}
+{"category":"square_meter_range","input":"面积三四十平方米","expected":"面积30~40平方米"}

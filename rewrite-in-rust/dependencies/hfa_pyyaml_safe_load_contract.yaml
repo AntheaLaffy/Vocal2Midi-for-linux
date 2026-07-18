@@ -1,63 +1,140 @@
 unit: hfa_pyyaml_safe_load_contract
-status: planned
+status: done
 capabilities:
   utf8_file_loading:
     legacy: "inference/HubertFA/tools/config_utils.py::load_yaml UTF-8 text open"
-    rust: "unselected"
-    reason: "File, directory, permission, and decode errors must compose with parser errors and retain Python path/error projections."
+    rust: "std::fs/read_to_string plus Python-compatible file/decode error projection"
+    reason: "The file-open/decode phase happens before PyYAML sees the stream and must preserve path, errno, and UnicodeDecodeError projection separately from YAML syntax and construction errors."
+  yaml_event_stream:
+    legacy: "PyYAML 6.0.3 Reader/Scanner/Parser/Composer event/node pipeline"
+    rust: "saphyr-parser =0.0.11 pinned in rewrite-in-rust/rust/crates/v2m-core/Cargo.toml"
+    reason: "saphyr-parser is a pure-Rust parser crate with low-level events, tags, aliases, and Span/Marker locations; it can own the YAML syntax/event layer without forcing its YAML 1.2 value model into PyYAML parity."
   yaml_1_1_resolution:
     legacy: "PyYAML 6.0.3 SafeLoader Resolver"
-    rust: "unselected parser/event crate plus PyYAML-compatible resolver adapter"
-    reason: "PyYAML resolves yes/on booleans, 077 octal, sexagesimal numbers, timestamps, merge keys, and other YAML 1.1 forms that candidate high-level Values resolve differently; lower-layer crate reuse remains valid if the adapter owns these deltas."
+    rust: "hand-written PyYAML-compatible resolver adapter over saphyr-parser events"
+    reason: "PyYAML resolves yes/on booleans, 077 octal, sexagesimal numbers, timestamps, merge keys, and float forms differently from generic YAML 1.2 crates; the adapter owns these YAML 1.1 resolver deltas."
   safe_python_value_construction:
     legacy: "PyYAML 6.0.3 SafeConstructor"
-    rust: "unselected tagged compatibility value model over a crate or hand-written event source"
-    reason: "The contract includes bytes, sets, ordered mappings/pairs, dates, datetimes, duplicate replacement, aliases/merge behavior, and safe rejection of unsupported tags; only the Python-specific construction layer must be custom."
+    rust: "hand-written tagged compatibility value model over saphyr-parser events"
+    reason: "The contract includes bytes, sets, ordered mappings/pairs, dates, datetimes, duplicate replacement, aliases/merge behavior, recursive identity, and safe rejection of unsupported tags; only syntax events are crate-owned."
   document_and_tag_errors:
     legacy: "PyYAML Composer/SafeConstructor single-document and tag errors"
-    rust: "unselected parser/source-mark substrate plus Python error projection adapter"
-    reason: "Custom tags and multiple documents are rejected with marked Python errors; accepting or differently projecting them is a behavior change even if syntax scanning is delegated to a Rust crate."
+    rust: "saphyr-parser Span/Marker input plus PyYAML-compatible composer/constructor/error adapter"
+    reason: "Custom tags and multiple documents are rejected with marked Python errors; accepting or differently projecting them is a behavior change even if syntax scanning is delegated to Rust."
+  tagged_projection:
+    legacy: "Python 3.12 runtime values returned or raised by config_utils.load_yaml"
+    rust: "canonical tagged JSON fixture projection consumed by v2m-core::hfa_pyyaml tests"
+    reason: "The bootstrap checker preserves Python value classes, non-string mapping keys, date/datetime/bytes/set/list/tuple/dict distinctions, repeated references, recursive aliases, float sign/hex categories, file/decode details, and marked errors."
 seam:
   kind: library
   default_owner: legacy
   bridge_dependencies: []
-  rust_module: "unselected"
+  rust_module: "v2m-core::hfa_pyyaml"
   public_payload: "load UTF-8 path -> tagged PyYAML-safe value or structured file/decode/scanner/parser/composer/constructor error"
   error_mapping: "Must retain path, operation, marks, problem/context text, Python exception class/message, and no unsafe/custom object construction."
 fixtures:
-  required:
-    - "Build a canonical tagged JSON projection for null/bool/int/float/string/list/mapping plus date/datetime/bytes/set/omap/pairs so Python and Rust can share golden data without erasing type distinctions."
-    - "Cover yes/on, true/false, binary/octal/hex/decimal/sexagesimal integers, PyYAML float resolver forms including 1e3 behavior, dates/datetimes/timezones, !!binary, !!set, !!omap, !!pairs, aliases, merge precedence, duplicate last-wins, custom-tag rejection, multi-document rejection, empty input, invalid syntax, UTF-8 decode, and filesystem errors."
+  available:
+    - "rewrite-in-rust/fixtures/hfa_pyyaml_safe_load_contract.jsonl contains 56 Python 3.12/PyYAML 6.0.3 cases consumed by the real config_utils.load_yaml function."
+    - "rewrite-in-rust/bootstrap/check_hfa_pyyaml_safe_load_contract.py defines the ok/error tagged projection for null/bool/int/float/string/list/tuple/dict/date/datetime/bytes/set/ref values and structured errors."
+    - "Covered values include empty and comment-only input, explicit empty document, nulls, YAML 1.1 booleans and quoted strings, binary/octal/hex/decimal/sexagesimal integers, PyYAML float resolver forms including 1e3 and 1.0e3 string behavior, negative zero, NaN sign category, dates, datetimes with spaced and no-space timezone offsets and fractional truncation, bytes, set, omap, pairs, alias identity, recursive aliases, repeated anchor-shaped text in comments/quoted/block scalars, merges, duplicate last-wins, bool/int/float key collision, and non-string mapping keys."
+    - "Covered errors include invalid timestamp date/time ValueError, invalid ASCII/base64 binary, malformed omap/pairs, unhashable keys, custom local/global/python tags, multi-document rejection, scanner/parser/composer/constructor errors, invalid merge forms, missing file, directory path, invalid UTF-8, and repeated stateless loads."
+  writer_evidence:
+    - "rewrite-in-rust/rust/crates/v2m-core/src/hfa_pyyaml.rs implements the adapter over saphyr-parser events/spans."
+    - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_pyyaml consumes the 56-case tagged projection; no generic YAML Value API is promoted as PyYAML parity."
+  remaining_before_promotion:
+    - "Add or explicitly bound resource-limit fixtures for large aliases, deeply nested inputs, and scanner/parser limits before any production-facing owner switch."
 inventory_impact:
   decision: confirmed
-  reason: "Full safe_load remains a real planned unit after the split, but it is not writer-ready until a compatible parser/value/error strategy and executable tagged fixtures exist."
+  reason: "The unit remains the full PyYAML safe_load file/value/error contract, with a pinned lower-layer parser strategy and a fixture-bound Rust compatibility adapter."
 crate_reuse:
   candidates:
+    - crate: "saphyr-parser 0.0.11"
+      covered_capabilities:
+        - "pure-Rust YAML event parsing with Event, Tag, Alias, SequenceStart, MappingStart, and Scalar events"
+        - "Span/Marker source locations for syntax and parser error projection"
+        - "YAML syntax layer without importing a high-level YAML Value model"
+      gaps:
+        - "The crate targets YAML 1.2, while PyYAML SafeLoader compatibility requires YAML 1.1 implicit resolver behavior."
+        - "It does not construct Python values for bytes, set, omap, pairs, datetime/date, recursive alias identity, merge flattening, duplicate replacement, or unsupported-tag errors."
+        - "Its native ScanError text/classes are not PyYAML error projections."
+      adapter_plan: "Use only the event/span layer. Implement a PyYAML-source-guided resolver, composer/single-document guard, SafeConstructor-compatible tagged value model, merge/duplicate behavior, alias identity graph, and Python-style structured error projection over the event stream."
+      decision: use
+    - crate: "saphyr 0.0.11"
+      covered_capabilities:
+        - "higher-level YAML loading on top of saphyr-parser"
+      gaps:
+        - "High-level YAML 1.2 value construction would compete with the required PyYAML 1.1 resolver and SafeConstructor adapter."
+      adapter_plan: "Do not use the high-level loader in this unit; depend on saphyr-parser directly."
+      decision: reject
+    - crate: "yaml-rust2 0.11.0"
+      covered_capabilities:
+        - "YAML 1.2 parser with Event and MarkedEventReceiver APIs"
+      gaps:
+        - "High-level loader rejects duplicate keys, while PyYAML keeps the first key object and replaces the value."
+        - "MarkedEventReceiver provides point markers, but saphyr-parser exposes event spans and is the smaller direct parser crate for this adapter."
+        - "Still requires the same PyYAML resolver/constructor/error adapter."
+      adapter_plan: "Keep as fallback evidence only; do not add while saphyr-parser covers the required lower layer with a narrower API."
+      decision: reject
     - crate: "rust-yaml 1.1.0"
       covered_capabilities:
-        - "safe Rust YAML scanning/parsing surface with public parser events and YAML 1.1 directive support"
-        - "lower-layer syntax/token/event handling that may be reusable before PyYAML value construction"
+        - "YAML 1.2 parsing library with public parser events and position-aware errors"
       gaps:
-        - "PyYAML 6.0.3 YAML 1.1 implicit resolver details including octal, sexagesimal, float, date, and timestamp behavior"
-        - "SafeConstructor Python value shapes for bytes, set, omap, pairs, merge precedence, duplicate handling, and custom-tag rejection"
-        - "single-document enforcement and Python exception/mark projection"
-      adapter_plan: "Evaluate rust-yaml as a parser/event substrate, then implement PyYAML resolver, constructor, duplicate/merge, and error projection against vendored PyYAML source and fixtures."
-      decision: defer
+        - "Broader dependency surface includes loader/emitter/resolver/constructor/security-limit features not needed for this adapter."
+        - "Its high-level behavior still differs from PyYAML on resolver, constructor, tag, duplicate, and error behavior."
+      adapter_plan: "Do not add for this unit; saphyr-parser is the narrower parser/event dependency."
+      decision: reject
     - crate: "serde_yaml_ng 0.10.0"
       covered_capabilities:
-        - "serde-oriented YAML 1.1 parsing and value deserialization"
+        - "serde-oriented YAML parsing and deserialization"
       gaps:
-        - "High-level Value behavior differs from PyYAML on resolver, merge, duplicate, tag, and Python value contracts"
-        - "Depends on unsafe-libyaml, so it requires explicit review if chosen as a lower-layer parser"
-      adapter_plan: "Do not use as a direct Value replacement; reconsider only if lower-layer access or libyaml compatibility meaningfully reduces the adapter surface versus rust-yaml."
-      decision: defer
-hand_written_replacements: []
+        - "High-level Value behavior differs from PyYAML on resolver, merge, duplicate, tag, and Python value contracts."
+        - "Depends on unsafe-libyaml; native/libyaml behavior is not needed for the selected file-loader seam."
+      adapter_plan: "Do not use as a direct Value replacement or lower-layer parser for this stage."
+      decision: reject
+dependency_strategy:
+  stance: "reuse saphyr-parser only for stable lower-layer syntax events and source spans; hand-write PyYAML 6.0.3 resolver, SafeConstructor, merge/duplicate, alias identity, tag, single-document, and structured error projection gaps against vendored Python source and the tagged fixture matrix"
+  not_goal: "direct replacement of PyYAML with any generic Rust YAML Value API"
+  full_handwritten_allowed_when:
+    - "saphyr-parser cannot expose enough event/source-mark information for a particular PyYAML-compatible error projection"
+    - "a narrow PyYAML compatibility rule is smaller and safer than adopting a broader high-level crate path"
+    - "resource-limit or security requirements before promotion require adapter-owned policy instead of crate defaults"
+source_expansion:
+  first_layer_reference:
+    status: indexed
+    source_manifest: "third_party/sources/manifest.json lists pyyaml 6.0.3 at third_party/sources/pyyaml-6.0.3"
+  targeted_deep_expansion:
+    used: false
+    proof: []
+    rejected:
+      - "No second-layer Python dependency source is needed to define config_utils.load_yaml; the public seam calls PyYAML SafeLoader directly."
+low_level_boundary:
+  ignored:
+    - "PyYAML C-extension acceleration and libyaml internals are not part of the public seam because the selected Rust strategy does not use unsafe/libyaml."
+    - "NaN bit payloads are not distinguished; the tagged projection records PyYAML's observable nan category."
+    - "saphyr/saphyr-parser YAML 1.2 high-level schema/value behavior is intentionally not the compatibility owner."
+  investigated:
+    - "YAML resolver and constructor rules that change returned Python values."
+    - "Composer/parser/source-mark fields that affect public exception messages and structured error projection."
+    - "UTF-8 file opening errors from config_utils.load_yaml before PyYAML sees the stream."
+hand_written_replacements:
+  - capability: "PyYAML 6.0.3 resolver, SafeConstructor, composer guards, merge/duplicate behavior, alias identity graph, and structured error projection"
+    reference_sources:
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/resolver.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/constructor.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/composer.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/error.py"
+      - "third_party/sources/pyyaml-6.0.3/lib/yaml/loader.py"
+    reason: "saphyr-parser can own syntax events, but the observable contract is PyYAML/Python value and error behavior."
 legacy_kept:
   - capability: "Complete PyYAML 6.0.3 SafeLoader ownership"
-    reason: "serde_yaml_ng 0.10.0 and rust-yaml 1.1.0 both fail the authoritative high-level compatibility matrix; no narrower validator or direct crate Value may be promoted as full YAML parity without a proven PyYAML compatibility adapter."
+    reason: "Python remains the production runtime owner until independent behavior/error reviews and a separate promotion decision define routing and rollback."
   - capability: "Production config loading"
-    reason: "No bridge, payload model, parser dependency, or rollback promotion decision exists."
+    reason: "No bridge, payload model, promotion decision, or rollback owner switch exists."
 verification:
+  - "cargo info saphyr-parser --registry crates-io"
   - "uv run python -c \"import yaml; assert yaml.__version__ == '6.0.3'\""
-  - "uv run python -m py_compile inference/HubertFA/tools/config_utils.py"
+  - "uv run python -m py_compile inference/HubertFA/tools/config_utils.py rewrite-in-rust/bootstrap/check_hfa_pyyaml_safe_load_contract.py"
+  - "uv run python rewrite-in-rust/bootstrap/check_hfa_pyyaml_safe_load_contract.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_pyyaml"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml"
   - "uv run python scripts/audit_vendored_sources.py"

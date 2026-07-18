@@ -17,11 +17,15 @@ crate or port read, PointTier, or MLF APIs. Reuse verified HFA Word state.
 
 ## Fixture Contract
 
-Compare exact UTF-8 bytes and ordered planned paths. Cover empty, contiguous,
-and gapped tiers; negative phone starts; quotes/newlines/Unicode; float forms;
-zero/reversed/out-of-range/overlapping intervals; nested and duplicate
-basenames; output-folder/wav-parent modes; multiple predictions; and repeated
-calls. Expected bytes must come from installed/vendored textgrid 1.6.1.
+`rewrite-in-rust/fixtures/hfa_textgrid_export_core.jsonl` contains 18
+Python-generated cases comparing exact UTF-8 bytes and ordered planned paths.
+Coverage includes empty, contiguous, gapped, and sorted tiers; negative phone
+starts; quotes/newlines/Unicode; Python float text; zero, overlapping, and
+out-of-range interval errors; partial plans after prior writes; nested and
+duplicate basenames; output-folder, wav-parent, empty-output, and current-dir
+modes; POSIX exactly-two-leading-slash roots; pathlib suffix edge names; empty
+wav-path errors; multiple predictions; and repeated calls. Expected bytes come
+from installed/vendored textgrid 1.6.1.
 
 ## Rollback
 

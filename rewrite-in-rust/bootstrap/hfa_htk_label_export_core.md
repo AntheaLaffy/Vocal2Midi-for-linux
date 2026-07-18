@@ -17,15 +17,20 @@ in prediction order and must also be fixture-bound.
 
 ## Seam And Fixtures
 
-- planned module: `v2m-core::hfa_htk_export`
+- Rust module: `v2m-core::hfa_htk_export`
 - reuse verified HFA Word/Phoneme snapshots; no parallel interval model
-- return ordered planned paths and exact UTF-8 bytes
+- return ordered planned paths and exact UTF-8 bytes, or conversion error plus
+  the partial plan Python would already have written
 - no bridge or new crate
 
-Cover empty/single/multiple predictions, cumulative later files, nested and
-duplicate basenames, output-folder modes, fractional/negative/special/large
-times, Unicode/quote/newline text, empty phones, errors, and repeated exporter
-calls.
+`rewrite-in-rust/fixtures/hfa_htk_label_export_core.jsonl` contains 20
+Python-generated cases covering empty/single/multiple predictions, cumulative
+later files, nested and duplicate basenames, output-folder and wav-parent modes,
+fractional/negative/special/huge finite/large times, empty wav-path name errors,
+current-directory lexical path normalization, Python `Path.with_suffix(".lab").name`
+edge cases for trailing-dot, parent-directory, all-dot, hidden, and multi-suffix
+names, Unicode/quote/newline text, empty phones/words, conversion errors with
+partial side effects, and repeated exporter calls.
 
 ## Rollback
 

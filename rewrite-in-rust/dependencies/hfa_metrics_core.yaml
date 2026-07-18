@@ -1,0 +1,108 @@
+unit: hfa_metrics_core
+status: planned
+capabilities:
+  synthetic_point_tier_ordering:
+    legacy: "inference/HubertFA/tools/metrics.py::CustomPointTier plus textgrid 1.6.1 Point/PointTier indexing behavior"
+    rust: "narrow Point { time: f64, mark: String } and PointTier Vec model for metrics fixtures"
+    reason: "Metrics only need sorted insertion, duplicate-time bisect-left behavior, len/index/slice iteration, and public time/mark fields; TextGrid file parsing/writing is not in this unit."
+  vlabeler_edit_distance:
+    legacy: "VlabelerEditsCount and VlabelerEditRatio in inference/HubertFA/tools/metrics.py"
+    rust: "hand-written dynamic programming over point marks/times"
+    reason: "The algorithm is local, deterministic, and fixture-sized; it includes length truncation before DP, insertion/deletion/move/label costs, target-length denominator, empty-total 1.0, and Python round(..., 6)."
+  phoneme_iou:
+    legacy: "IntersectionOverUnion in inference/HubertFA/tools/metrics.py"
+    rust: "hand-written accumulation over adjacent point spans"
+    reason: "Public behavior is dictionary/string/list compute output over per-mark intersection and summed pred+target durations, including zero-union and missing-phoneme quirks."
+  lcs_matching:
+    legacy: "compute_lcs_matches and get_matched_pairs in inference/HubertFA/tools/metrics.py"
+    rust: "hand-written LCS DP and backtracking"
+    reason: "Backtracking tie policy is caller-visible for repeated labels because equal scores choose the target-side decrement branch."
+  boundary_edit_metrics:
+    legacy: "BoundaryEditDistance, BoundaryEditRatio, and BoundaryEditRatioWeighted in inference/HubertFA/tools/metrics.py"
+    rust: "hand-written metric state machine over matched point pairs"
+    reason: "Public behavior includes mismatch False returns, LCS fallback for unequal lengths, NumPy-equivalent absolute/sum accumulation, Python/NumPy scalar rounding, weighted error penalty, empty duration defaults, reset gaps, and IndexError edge cases."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "CustomPointTier insertion orders points by time with bisect_left, so duplicate-time insertion lands before existing equal-time points and bypasses upstream PointTier duplicate/bounds validation."
+    - "VlabelerEditsCount cases for empty/empty, empty target, empty pred, equal points, move_min <= time_diff < move_max, time_diff == move_max no move cost, label mismatch, move plus label mismatch, unequal lengths truncated before DP, repeated target labels reducing insertion penalty, and reset after accumulation."
+    - "VlabelerEditRatio cases for denominator 2 * len(target), total == 0 returning 1.0, unequal lengths still adding full original target length to total, Python round(..., 6), and nested edit-distance reset."
+    - "IntersectionOverUnion cases for one-point tiers producing empty maps, overlapping and non-overlapping adjacent spans, repeated marks accumulating sum/intersection, missing string phoneme returning None, list phoneme results preserving requested order, dict compute returning 0.0 when sum == intersection, and string compute raising ZeroDivisionError when sum == intersection == 0."
+    - "LCS fixtures for empty tiers, no matches, repeated-label tie behavior, returned index pairs, and get_matched_pairs preserving point object order from pred and target."
+    - "BoundaryEditDistance fixtures for equal labels, equal length label mismatch returning False without state mutation, unequal length LCS fallback, no matched pairs returning True with zero phonemes, error_phonemes accumulation as abs(len(pred_lcs) - len(original target)), NumPy float64-like return shape where observable, and reset leaving error_phonemes unchanged."
+    - "BoundaryEditRatio fixtures for successful update duration target[-1].time - target[0].time, failed update leaving duration unchanged and compute 1.0, empty target update raising IndexError after a True distance update, no explicit reset implementation raising NotImplementedError, and Python round(..., 6)."
+    - "BoundaryEditRatioWeighted fixtures for counts increment before distance update, error increment on False distance update, duration/phoneme/count zero defaults returning 1.0, weighted penalty (error / counts) * 0.2, denominator correction using error_phonemes / phonemes, no explicit reset implementation raising NotImplementedError, and round(..., 6)."
+crate_reuse:
+  candidates:
+    - crate: "ndarray"
+      covered_capabilities:
+        - "array-like elementwise absolute difference and sum for this metrics unit"
+        - "a possible shared Rust numeric array layer for later model-adjacent and numeric migration units"
+      gaps:
+        - "The selected hfa_metrics_core NumPy use is only np.array(list), np.abs(vector difference), np.sum(vector), and scalar addition before round."
+        - "Choosing ndarray here would not remove meaningful complexity from the metrics implementation by itself; its value is mainly as an early common layer for future numeric/model-related units."
+      adapter_plan: "Defer as a required hfa_metrics_core dependency. The writer may use plain Vec<f64> for this unit, or may introduce ndarray only if the same writer batch deliberately establishes a small shared numeric-array helper with fixture evidence and no widened production seam."
+      decision: defer
+    - crate: "textgrid-related crate"
+      covered_capabilities:
+        - "general TextGrid parsing/serialization if one were needed"
+      gaps:
+        - "The metrics seam does not parse or write TextGrid files and CustomPointTier intentionally bypasses part of textgrid.PointTier.addPoint validation."
+      adapter_plan: "Reject general TextGrid crate reuse; model only the public point/tier behavior used by metrics."
+      decision: reject
+dependency_strategy:
+  stance: "hand-write narrow deterministic metrics and point-tier model; ndarray is acceptable for future shared numeric work but is not required for this fixture-bound metrics seam"
+  not_goal: "minimize dependency count"
+  full_handwritten_allowed_when:
+    - "the selected NumPy and textgrid behavior is smaller than integrating general crates"
+    - "fixtures can capture the public seam without native BLAS, TextGrid IO, or parser behavior"
+    - "a narrow implementation is easier to roll back because production Python remains the only runtime owner"
+  ndarray_policy:
+    decision: "defer for hfa_metrics_core; acceptable for later numeric/model-related units when a shared array abstraction materially reduces implementation risk"
+    reason: "This metrics unit only needs one-dimensional f64 absolute differences and sums, but future AI/model-inference and numeric units may benefit from using ndarray as a maintained Rust array layer."
+source_expansion:
+  first_layer_reference:
+    status: indexed
+    source_manifest: "third_party/sources/manifest.json records numpy 1.26.4 at third_party/sources/numpy-1.26.4 and textgrid 1.6.1 at third_party/sources/textgrid-1.6.1"
+  targeted_deep_expansion:
+    used: false
+    proof:
+      - "No public seam call path reaches NumPy BLAS/OpenBLAS or textgrid parser/writer internals; metrics.py only calls np.array, np.abs, np.sum, round, and PointTier point container behavior."
+    rejected:
+      - "OpenBLAS/native NumPy implementation details are not public-seam relevant for tiny f64 vector difference/sum fixtures."
+      - "textgrid TextGrid/IntervalTier/parser/writer APIs are not reached by hfa_metrics_core."
+low_level_boundary:
+  ignored:
+    - "NumPy allocator, dtype promotion beyond fixture f64 scalar/list inputs, SIMD, BLAS/OpenBLAS, NaN payloads, and native wheel ABI details."
+    - "textgrid file encoding, parser, writer, IntervalTier, TextGrid, and MLF behavior."
+  investigated:
+    - "textgrid 1.6.1 Point.__lt__/PointTier.__len__/__getitem__/addPoint and metrics.py CustomPointTier.addPoint override."
+    - "NumPy public scalar behavior that leaks through BoundaryEditDistance/Ratio/Weighted compute return values after np.sum accumulation."
+inventory_impact:
+  decision: confirmed
+  reason: "metrics.py is a self-contained deterministic algorithm module; no caller bridge, model runtime, filesystem, or TextGrid IO behavior is needed for writer work."
+hand_written_replacements:
+  - capability: "Point-tier metrics model"
+    reference_sources:
+      - "inference/HubertFA/tools/metrics.py"
+      - "third_party/sources/textgrid-1.6.1/textgrid/textgrid.py"
+    reason: "Only Point time/mark and PointTier points/list behavior are used; direct textgrid crate parity would be broader and less exact than a fixture-backed model."
+  - capability: "Small NumPy vector arithmetic subset"
+    reference_sources:
+      - "inference/HubertFA/tools/metrics.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "np.array, np.abs, and np.sum are used only for one-dimensional f64 time differences; Rust Vec<f64> arithmetic plus Python-compatible output projection is sufficient for this unit. ndarray remains acceptable if introduced as an intentional shared numeric layer, not because metrics requires full array semantics."
+legacy_kept:
+  - capability: "Python runtime ownership of inference.HubertFA.tools.metrics"
+    reason: "No bridge or production caller route is introduced during bootstrap."
+  - capability: "General textgrid package behavior"
+    reason: "TextGrid parsing, writing, IntervalTier, bounds validation, and duplicate rejection are outside this metrics seam."
+  - capability: "General NumPy ndarray behavior and native acceleration"
+    reason: "The public seam only needs scalar/list arithmetic results for metric fixtures."
+verification:
+  - "uv run python -m py_compile inference/HubertFA/tools/metrics.py"
+  - "uv run python scripts/audit_vendored_sources.py"
+  - "cargo test --manifest-path rewrite-in-rust/rust/Cargo.toml hfa_metrics_core"

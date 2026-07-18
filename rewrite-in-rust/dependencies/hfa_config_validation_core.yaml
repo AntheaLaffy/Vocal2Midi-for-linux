@@ -27,8 +27,8 @@ seam:
   repeated_calls: "No cache or mutation; every call repeats existence checks and consumes a fresh supplied loader outcome."
 fixtures:
   required:
-    - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl contains 34 Python 3.12 temp-directory cases consumed by the real check_configs function with a monkeypatched loader."
-    - "Cover default/json/empty/None suffixes; missing vocab/config order; loader error propagation; null/list/string/bool top values; missing/null/list/string/int dictionaries; None/empty/file/directory/relative/absolute/Unicode dictionary values; first failure; invalid value types; unparsed invalid config; and repeated calls."
+    - "rewrite-in-rust/fixtures/hfa_config_validation_core.jsonl contains 38 Python 3.12 temp-directory cases consumed by the real check_configs function with a monkeypatched loader."
+    - "Cover default/json/empty/None suffixes; missing vocab/config order; loader error propagation; null/list/string/bool/int/float top values; missing/null/list/string/int dictionaries; None/empty/file/directory/relative/absolute/Unicode dictionary values; first failure; int/bool/list/float/mapping invalid value types; unparsed invalid config; and repeated calls."
 inventory_impact:
   decision: confirmed
   reason: "The injected-outcome boundary is one independently verifiable deterministic validator and requires no YAML crate, bridge, model runtime, or production caller change."

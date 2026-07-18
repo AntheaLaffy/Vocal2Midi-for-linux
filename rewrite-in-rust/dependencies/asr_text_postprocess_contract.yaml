@@ -1,0 +1,163 @@
+unit: asr_text_postprocess_contract
+status: planned
+capabilities:
+  chinese_inverse_text_normalization:
+    legacy: "inference/qwen3asr_dml/chinese_itn.py::chinese_to_num and helper regex tables"
+    rust: "split unit asr_chinese_itn_core; hand-written regex/string implementation against golden fixtures"
+    reason: "The behavior is local, deterministic, fixture-bound, and uses only Python re/string/list/dict semantics."
+  qwen_language_normalization_validation:
+    legacy: "inference/qwen3asr_dml/utils.py::SUPPORTED_LANGUAGES, normalize_language_name, validate_language"
+    rust: "split unit asr_qwen_language_schema_contract; hand-written string/list validation"
+    reason: "The public seam is exact capitalization, whitespace trimming, accepted language names, and ValueError text."
+  qwen_schema_defaults:
+    legacy: "inference/qwen3asr_dml/schema.py dataclasses and MsgType enum"
+    rust: "split unit asr_qwen_language_schema_contract; DTO/default contract fixtures"
+    reason: "The behavior is construction defaults, enum order/auto values, optional fields, and mutable-list default_factory behavior."
+  qwen_wav_pcm_fallback:
+    legacy: "inference/qwen3asr_dml/utils.py::_load_wav_audio plus load_audio fallback path"
+    rust: "split into asr_qwen_wav_pcm_decode_core and prerequisite asr_resample_poly_contract"
+    reason: "PCM sample-width decode/channel averaging is independent from SciPy polyphase resampling and pydub's primary loader."
+  romaji_vocab_loading:
+    legacy: "inference/romaji_asr/common.py::load_vocab"
+    rust: "split unit asr_romaji_vocab_ctc_decode_core; serde_json plus narrow map conversion"
+    reason: "The behavior is JSON object parsing, token/id inversion, int conversion, and <blank>/PAD/0 fallback."
+  romaji_ctc_decode:
+    legacy: "inference/romaji_asr/common.py::decode_pred_ids, decode_logits, decode_outputs, chunked"
+    rust: "split unit asr_romaji_vocab_ctc_decode_core; hand-written CTC collapse with optional ndarray for logits argmax"
+    reason: "Duplicate/blank collapse, unknown token fallback, integer-vs-logit dispatch, and chunk slicing are deterministic and fixture-bound."
+  romaji_batch_metadata:
+    legacy: "inference/romaji_asr/common.py::get_fixed_batch_size, get_fixed_num_samples, ort_type_to_numpy_dtype, prepare_batch"
+    rust: "split unit asr_romaji_batch_metadata_contract; fake-session metadata DTO plus ndarray-backed or Vec-backed batch arrays"
+    reason: "Session creation and ONNX execution are excluded, but shape/type metadata and padding/mask construction can be tested with fake input metadata."
+seam:
+  kind: library
+  default_owner: legacy
+  bridge_dependencies: []
+fixtures:
+  required:
+    - "asr_chinese_itn_core: JSONL golden cases for idiom/fuzzy no-ops, range patterns, pure digit conversion, strict single-one behavior, value numbers, consecutive tens/hundreds, percent, fraction, ratio, time, date, unit stripping/mapping, ASCII unit preservation, and exception-swallowing no-op cases."
+    - "asr_qwen_language_schema_contract: JSONL cases for None language, empty/whitespace language, capitalization/lowercasing, every SUPPORTED_LANGUAGES entry, unsupported-language ValueError text including list repr, MsgType auto numeric order, StreamingMessage defaults, DecodeResult default_factory list independence, ASREngineConfig defaults, and TranscribeResult performance default."
+    - "asr_qwen_wav_pcm_decode_core: generated WAV fixtures for unsigned 8-bit, signed 16-bit, signed 24-bit little-endian sign extension, signed 32-bit, unsupported sample width error, mono/stereo/multichannel mean behavior, float32 projection, start_second/duration slicing after fallback, and same-rate no-resample path."
+    - "asr_resample_poly_contract: small deterministic fixtures comparing scipy.signal.resample_poly output lengths and float samples for selected up/down ratios used by 44100->16000, 48000->16000, 22050->16000, and identity rejection; record tolerance before writer work."
+    - "asr_romaji_vocab_ctc_decode_core: JSON vocab fixtures for normal id strings, <blank> precedence over PAD, PAD fallback, missing blank default 0, unknown token fallback, duplicate collapse, blank reset behavior, negative/large ids, integer decode_outputs dispatch, float logits argmax ties, batch dimension iteration, and chunk_size <= 0 becoming step 1."
+    - "asr_romaji_batch_metadata_contract: fake session/input metadata fixtures for fixed/dynamic batch sizes, fixed/dynamic sample counts, missing attention_mask, ort type substring mapping, batch size mismatch error text, empty audio_paths error text, zero-length waveform, truncation, padding, attention mask, and dtype projection."
+crate_reuse:
+  candidates:
+    - crate: "regex"
+      covered_capabilities:
+        - "Chinese ITN pattern matching and replacement"
+      gaps:
+        - "Python re conditional groups, lookbehind behavior, match group numbering, replacement exception swallowing, and exact Unicode span behavior must be proven by fixtures."
+      adapter_plan: "Use only if the writer verifies the local patterns compile and match Python outputs; otherwise hand-write scanners for the fixture-bound cases that need Python-specific behavior."
+      decision: defer
+    - crate: "serde_json"
+      covered_capabilities:
+        - "romaji vocab JSON object loading and schema/default fixture serialization"
+      gaps:
+        - "Python int(v) conversion and duplicate value overwrites must be mirrored explicitly."
+      adapter_plan: "Use serde_json for JSON parsing and write a small compatibility adapter for token/id inversion and blank lookup."
+      decision: use
+    - crate: "ndarray"
+      covered_capabilities:
+        - "romaji logits argmax over the last axis"
+        - "romaji batch array shape/dtype fixture representation"
+      gaps:
+        - "It does not cover NumPy dtype dispatch, np.issubdtype, frombuffer, astype(copy=False), scipy.signal.resample_poly, or soundfile IO semantics."
+      adapter_plan: "Use in asr_romaji_vocab_ctc_decode_core and asr_romaji_batch_metadata_contract only if the public Rust API benefits from array-shaped inputs; defer for Chinese ITN, schema/language, and Qwen WAV PCM decode."
+      decision: defer
+    - crate: "hound"
+      covered_capabilities:
+        - "WAV container parsing and 8/16/24/32-bit PCM sample extraction for asr_qwen_wav_pcm_decode_core"
+      gaps:
+        - "Must preserve Python wave/numpy normalization denominators, unsigned 8-bit centering, 24-bit sign extension, channel mean, sample-width error text, and fallback slicing order."
+      adapter_plan: "Use hound or an equivalent maintained WAV parser for container reading, then hand-write Python-compatible normalization and channel averaging."
+      decision: use
+    - crate: "rubato or samplerate-like resampler"
+      covered_capabilities:
+        - "general audio resampling"
+      gaps:
+        - "The selected public behavior calls scipy.signal.resample_poly; a different resampler may not match sample lengths, filters, boundaries, or float output within a defensible tolerance."
+      adapter_plan: "Reject for exact parity unless a later asr_resample_poly_contract record defines acceptable tolerance and proves fixture parity."
+      decision: reject
+dependency_strategy:
+  stance: "split deterministic text/DTO/decode helpers from audio IO/resampling and ONNX metadata; use stable crates for JSON, WAV parsing, and optional array-shaped logits while hand-writing Python compatibility gaps"
+  not_goal: "minimize dependency count"
+  full_handwritten_allowed_when:
+    - "Python regex or numeric behavior is narrower than the candidate crate's public surface"
+    - "fixtures can prove the effective helper behavior without importing model runtimes"
+    - "the capability is easier to roll back as an independent Rust library with Python still owning runtime"
+source_expansion:
+  first_layer_reference:
+    status: indexed
+    source_manifest: "third_party/sources/manifest.json records numpy 1.26.4, scipy 1.17.1, soundfile 0.14.0, pydub 0.25.1, librosa 0.11.0, qwen-asr 0.0.6, sentencepiece 0.2.2, transformers 4.57.6; torch and onnxruntime have upstream fallbacks in third_party/upstream_sources per MISSING_SOURCES.md"
+  targeted_deep_expansion:
+    used: false
+    proof:
+      - "No selected child unit creates ONNX Runtime sessions, Qwen encoder/decoder sessions, llama subprocesses, torch modules, transformers processors, sentencepiece processors, qwen-asr model objects, or librosa feature extraction."
+      - "SciPy deeper/native expansion is deferred until asr_resample_poly_contract needs exact polyphase source-level parity; the current record only identifies that resampling is a separate prerequisite."
+    rejected:
+      - "Lockfile edges from qwen-asr to librosa/soundfile/transformers without a call path from the selected helper seam."
+      - "torch, sentencepiece, transformers, tokenizers, safetensors, and model weight formats because the four source refs do not use them in the confirmed deterministic helper seams."
+      - "ONNX Runtime native/session internals because create_session and InferenceSession execution are explicitly out of scope."
+low_level_boundary:
+  ignored:
+    - "NumPy/OpenBLAS allocator, SIMD, NaN payload, dtype machinery beyond fixture scalar/array projections, and native wheel ABI details."
+    - "libsndfile codecs and soundfile CFFI/native behavior until a child unit explicitly owns non-WAV romaji load_audio formats."
+    - "ONNX Runtime graph optimization, provider selection, execution providers, tensor ABI, and session lifecycle."
+    - "torch, transformers, sentencepiece, qwen-asr, llama.cpp, model weights, and tokenizer/model internals."
+  investigated:
+    - "Python wave PCM sample-width normalization and 24-bit sign extension because these affect fallback WAV samples."
+    - "scipy.signal.resample_poly as public output risk; split out before writer work instead of hiding it inside WAV or romaji audio loaders."
+    - "NumPy argmax/integer-dtype branch behavior for romaji decode_outputs."
+inventory_impact:
+  decision: split
+  reason: "The umbrella unit mixed pure Chinese ITN, Qwen language/schema DTOs, Qwen WAV PCM fallback, SciPy resampling, romaji vocab/CTC decode, and ONNX metadata/batch assembly. These have different dependencies, fixture shapes, review needs, and writer readiness."
+  split_units:
+    - id: asr_chinese_itn_core
+      status: writer-ready after fixtures
+      rollback: "Keep inference.qwen3asr_dml.chinese_itn.chinese_to_num as runtime owner."
+    - id: asr_qwen_language_schema_contract
+      status: writer-ready after fixtures
+      rollback: "Keep qwen3asr_dml Python utils/schema as runtime owners."
+    - id: asr_qwen_wav_pcm_decode_core
+      status: "writer-ready for same-rate PCM fallback after fixtures; resampling depends on asr_resample_poly_contract"
+      rollback: "Keep qwen3asr_dml.utils.load_audio/_load_wav_audio as runtime owners."
+    - id: asr_resample_poly_contract
+      status: "prerequisite discovery before resampling writer work"
+      rollback: "Keep scipy.signal.resample_poly calls in Python."
+    - id: asr_romaji_vocab_ctc_decode_core
+      status: writer-ready after fixtures
+      rollback: "Keep inference.romaji_asr.common vocab/decode/chunk helpers as runtime owners."
+    - id: asr_romaji_batch_metadata_contract
+      status: "planned; depends on fixture decision for array API and resampling/audio loading boundary"
+      rollback: "Keep inference.romaji_asr.common.prepare_batch and metadata helpers as runtime owners."
+hand_written_replacements:
+  - capability: "Chinese ITN conversion"
+    reference_sources:
+      - "inference/qwen3asr_dml/chinese_itn.py"
+    reason: "The selected behavior is a local regex/string transformer with project-specific idiom, fuzzy, unit, and number tables."
+  - capability: "Qwen language and schema contract"
+    reference_sources:
+      - "inference/qwen3asr_dml/utils.py"
+      - "inference/qwen3asr_dml/schema.py"
+    reason: "DTO defaults and language validation are smaller and safer to hand-write than to map to a third-party schema library."
+  - capability: "Romaji CTC duplicate/blank collapse and chunking"
+    reference_sources:
+      - "inference/romaji_asr/common.py"
+      - "third_party/sources/numpy-1.26.4"
+    reason: "The public behavior is list iteration, argmax selection, dtype branch selection, unknown fallback, and chunk slicing; full NumPy compatibility is unnecessary."
+legacy_kept:
+  - capability: "Python runtime ownership of qwen3asr_dml and romaji_asr"
+    reason: "No bridge or production caller route is introduced during bootstrap."
+  - capability: "pydub primary audio loading"
+    reason: "The requested deterministic path is WAV PCM fallback; pydub/ffmpeg behavior for arbitrary formats stays legacy-owned."
+  - capability: "soundfile/librosa non-WAV audio IO and codec handling"
+    reason: "romaji load_audio file IO is not part of the first writer-ready decode unit; libsndfile/native codec details do not reach vocab/CTC/chunk outputs."
+  - capability: "ONNX Runtime sessions and provider resolution"
+    reason: "create_session and model execution are excluded by manifest policy and user instruction."
+  - capability: "Qwen encoder/decoder, llama subprocess inference, torch, transformers, sentencepiece, qwen-asr model execution, and model weights"
+    reason: "The selected public seams are helper contracts only and do not call these model/runtime layers."
+verification:
+  - "uv run python -m py_compile inference/qwen3asr_dml/chinese_itn.py inference/qwen3asr_dml/utils.py inference/qwen3asr_dml/schema.py inference/romaji_asr/common.py"
+  - "uv run python scripts/audit_vendored_sources.py"
+  - "uv run python - <<'PY'\nimport pathlib, yaml\nfor path in ['rewrite-in-rust/manifest.yaml', 'rewrite-in-rust/dependencies/asr_text_postprocess_contract.yaml']:\n    with pathlib.Path(path).open('r', encoding='utf-8') as f:\n        yaml.safe_load(f)\nprint('yaml ok')\nPY"
